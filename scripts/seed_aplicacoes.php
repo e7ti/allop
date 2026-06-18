@@ -1,0 +1,304 @@
+<?php
+/*
+    Autor: Claudio Barto
+    Data : 01/06/2026
+*/
+$aplicacao_nome = "seed_aplicacoes.php";
+$aplicacao_descricao = "Insere aplicacoes ausentes, perfil Administrador, permissoes e usuario admin quando necessario.";
+
+
+
+require_once __DIR__ . '/../config/database.php';
+
+function findId(string $table, string $column, string $value): ?int
+{
+    $stmt = db()->prepare("SELECT id FROM $table WHERE $column = :value LIMIT 1");
+    $stmt->execute(['value' => $value]);
+    $id = $stmt->fetchColumn();
+    return $id !== false && $id !== null ? (int) $id : null;
+}
+
+function nextMenuId(): int
+{
+    return (int) db()->query("SELECT COALESCE(MAX(id), 0) + 1 FROM seg_menu")->fetchColumn();
+}
+
+function saveMenu(string $menu, ?int $forceId = null): int
+{
+    $id = findId('seg_menu', 'menu', $menu);
+    if ($id !== null) {
+        if ($forceId !== null && $id !== $forceId) {
+            $stmt = db()->prepare("SELECT id FROM seg_menu WHERE id = :id LIMIT 1");
+            $stmt->execute(['id' => $forceId]);
+            if (!$stmt->fetchColumn()) {
+                $stmt = db()->prepare("UPDATE seg_menu SET id = :force_id WHERE id = :id");
+                $stmt->execute(['force_id' => $forceId, 'id' => $id]);
+
+                $stmt = db()->prepare("UPDATE seg_aplicacoes SET menu_id = :force_id WHERE menu_id = :id");
+                $stmt->execute(['force_id' => $forceId, 'id' => $id]);
+
+                return $forceId;
+            }
+        }
+
+        $stmt = db()->prepare("UPDATE seg_menu SET menu = :menu WHERE id = :id");
+        $stmt->execute(['id' => $id, 'menu' => $menu]);
+
+        return $id;
+    }
+
+    if ($forceId !== null) {
+        $stmt = db()->prepare("SELECT id FROM seg_menu WHERE id = :id LIMIT 1");
+        $stmt->execute(['id' => $forceId]);
+        if ($stmt->fetchColumn()) {
+            $stmt = db()->prepare("UPDATE seg_menu SET menu = :menu WHERE id = :id");
+            $stmt->execute(['id' => $forceId, 'menu' => $menu]);
+            return $forceId;
+        }
+    }
+
+    $id = $forceId ?? nextMenuId();
+    $stmt = db()->prepare("INSERT INTO seg_menu (id, menu) VALUES (:id, :menu)");
+    $stmt->execute(['id' => $id, 'menu' => $menu]);
+    return $id;
+}
+
+function deleteAplicacaoByRoute(string $route): void
+{
+    $aplicacaoId = findId('seg_aplicacoes', 'rota', $route);
+    if (!$aplicacaoId) {
+        return;
+    }
+
+    $stmt = db()->prepare("DELETE FROM seg_perfil_permissoes WHERE aplicacao_id = :id");
+    $stmt->execute(['id' => $aplicacaoId]);
+
+    $stmt = db()->prepare("DELETE FROM seg_usuarios_permissoes WHERE aplicacao_id = :id");
+    $stmt->execute(['id' => $aplicacaoId]);
+
+    $stmt = db()->prepare("DELETE FROM seg_aplicacoes WHERE id = :id");
+    $stmt->execute(['id' => $aplicacaoId]);
+}
+
+function deleteMenuByName(string $menu): void
+{
+    $stmt = db()->prepare(
+        "DELETE m
+           FROM seg_menu m
+           LEFT JOIN seg_aplicacoes a ON a.menu_id = m.id
+          WHERE m.menu = :menu
+            AND a.id IS NULL"
+    );
+    $stmt->execute(['menu' => $menu]);
+}
+
+function renameMenuIfExists(string $from, string $to): void
+{
+    $menuId = findId('seg_menu', 'menu', $from);
+    if (!$menuId || findId('seg_menu', 'menu', $to)) {
+        return;
+    }
+
+    $stmt = db()->prepare("UPDATE seg_menu SET menu = :to WHERE id = :id");
+    $stmt->execute(['to' => $to, 'id' => $menuId]);
+}
+
+function saveAplicacao(array $app): int
+{
+    $id = findId('seg_aplicacoes', 'rota', $app['rota']);
+    if ($id) {
+        $stmt = db()->prepare(
+            "UPDATE seg_aplicacoes
+                SET nome = :nome,
+                    menu_id = :menu_id,
+                    ordem = :ordem
+              WHERE id = :id"
+        );
+        $stmt->execute([
+            'nome' => $app['nome'],
+            'menu_id' => $app['menu_id'],
+            'ordem' => $app['ordem'],
+            'id' => $id,
+        ]);
+        return $id;
+    }
+
+    $stmt = db()->prepare(
+        "INSERT INTO seg_aplicacoes (nome, rota, menu_id, ordem)
+         VALUES (:nome, :rota, :menu_id, :ordem)"
+    );
+    $stmt->execute($app);
+    return (int) db()->lastInsertId();
+}
+
+function ensurePerfilPermissao(int $perfilId, int $aplicacaoId): void
+{
+    $stmt = db()->prepare(
+        "SELECT id
+           FROM seg_perfil_permissoes
+          WHERE perfil_id = :perfil_id
+            AND aplicacao_id = :aplicacao_id
+          LIMIT 1"
+    );
+    $stmt->execute(['perfil_id' => $perfilId, 'aplicacao_id' => $aplicacaoId]);
+
+    if ($stmt->fetchColumn()) {
+        return;
+    }
+
+    $stmt = db()->prepare(
+        "INSERT INTO seg_perfil_permissoes
+            (aplicacao_id, perfil_id, visualizar, inserir, editar, excluir, imprimir, exportar, processar)
+         VALUES
+            (:aplicacao_id, :perfil_id, 1, 1, 1, 1, 1, 1, 1)"
+    );
+    $stmt->execute(['aplicacao_id' => $aplicacaoId, 'perfil_id' => $perfilId]);
+}
+
+$perfilId = findId('seg_perfil', 'nome', 'Administrador');
+if (!$perfilId) {
+    $stmt = db()->prepare("INSERT INTO seg_perfil (nome) VALUES (:nome)");
+    $stmt->execute(['nome' => 'Administrador']);
+    $perfilId = (int) db()->lastInsertId();
+}
+
+deleteAplicacaoByRoute('dashboard.php');
+deleteMenuByName('Principal');
+deleteMenuByName('Sair');
+renameMenuIfExists('Seguranca', 'Segurança');
+
+$menuConfiguracoesId = saveMenu('Configurações', 10);
+$menuProdutosId = saveMenu('Produtos', 20);
+$menuCadastrosId = saveMenu('Cadastros', 30);
+$menuComprasId = saveMenu('Compras', 40);
+$menuOperacionalId = saveMenu('Operacional', 50);
+$menuGerencialId = saveMenu('Gerencial', 60);
+$menuSegurancaId = saveMenu('Segurança', 90);
+$menuAjudaId = saveMenu('Ajuda', 98);
+
+$empresasRoute = 'mod/configuracoes/empresas/empresas_lista.php';
+$empresasCdRoute = 'mod/configuracoes/empresas_cd/empresas_cd_lista.php';
+$emailRoute = 'mod/configuracoes/configuracoes_email/configuracoes_email_lista.php';
+$oldEmailRoutes = [
+    'mod/configuracoes_email/email_lista.php',
+    'mod/configuracoes/email_lista.php',
+];
+
+foreach ($oldEmailRoutes as $oldEmailRoute) {
+    $oldEmailRouteId = findId('seg_aplicacoes', 'rota', $oldEmailRoute);
+    if (!$oldEmailRouteId) {
+        continue;
+    }
+
+    $emailRouteId = findId('seg_aplicacoes', 'rota', $emailRoute);
+    if ($emailRouteId && $emailRouteId !== $oldEmailRouteId) {
+        $stmt = db()->prepare("DELETE FROM seg_perfil_permissoes WHERE aplicacao_id = :id");
+        $stmt->execute(['id' => $oldEmailRouteId]);
+        $stmt = db()->prepare("DELETE FROM seg_usuarios_permissoes WHERE aplicacao_id = :id");
+        $stmt->execute(['id' => $oldEmailRouteId]);
+        $stmt = db()->prepare("DELETE FROM seg_aplicacoes WHERE id = :id");
+        $stmt->execute(['id' => $oldEmailRouteId]);
+        continue;
+    }
+
+    $stmt = db()->prepare("UPDATE seg_aplicacoes SET rota = :rota WHERE id = :id");
+    $stmt->execute([
+        'rota' => $emailRoute,
+        'id' => $oldEmailRouteId,
+    ]);
+}
+
+$aplicacoes = [
+    ['nome' => 'Usuarios', 'rota' => 'mod/seguranca/usuarios_lista.php', 'menu_id' => $menuSegurancaId, 'ordem' => 10],
+    ['nome' => 'Perfis', 'rota' => 'mod/seguranca/perfis_lista.php', 'menu_id' => $menuSegurancaId, 'ordem' => 20],
+    ['nome' => 'Aplicacoes', 'rota' => 'mod/seguranca/aplicacoes_lista.php', 'menu_id' => $menuSegurancaId, 'ordem' => 30],
+    ['nome' => 'Perfil x Aplicacoes', 'rota' => 'mod/seguranca/perfil_aplicacoes_lista.php', 'menu_id' => $menuSegurancaId, 'ordem' => 40],
+    ['nome' => 'Usuario x Aplicacoes', 'rota' => 'mod/seguranca/usuarios_permissoes_lista.php', 'menu_id' => $menuSegurancaId, 'ordem' => 50],
+    ['nome' => 'Empresas CD', 'rota' => $empresasCdRoute, 'menu_id' => $menuConfiguracoesId, 'ordem' => 5],
+    ['nome' => 'Empresas', 'rota' => $empresasRoute, 'menu_id' => $menuConfiguracoesId, 'ordem' => 6],
+    ['nome' => 'E-mail', 'rota' => $emailRoute, 'menu_id' => $menuConfiguracoesId, 'ordem' => 10],
+];
+
+foreach ($aplicacoes as $app) {
+    $appId = saveAplicacao($app);
+    ensurePerfilPermissao($perfilId, $appId);
+}
+
+if (!findId('seg_usuarios', 'login', 'admin')) {
+    $stmt = db()->prepare(
+        "INSERT INTO seg_usuarios (perfil_id, nome, login, senha, ativo)
+         VALUES (:perfil_id, :nome, :login, :senha, 1)"
+    );
+    $stmt->execute([
+        'perfil_id' => $perfilId,
+        'nome' => 'Administrador',
+        'login' => 'admin',
+        'senha' => password_hash('Allop@E7ti', PASSWORD_DEFAULT),
+    ]);
+}
+
+// Garante a existencia da tabela de empresas CD
+db()->exec("CREATE TABLE IF NOT EXISTS `empresas_cd` (
+    `Codigo` int(11) NOT NULL,
+    `NomeCD` varchar(50) NOT NULL,
+    `Status` varchar(8) NOT NULL,
+    PRIMARY KEY (`Codigo`),
+    UNIQUE KEY `IDXNomeCD` (`NomeCD`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+
+// Garante a existencia da tabela de empresas
+db()->exec("CREATE TABLE IF NOT EXISTS `empresas` (
+    `Codigo` int(11) NOT NULL,
+    `EmpresaCD` int(11) NOT NULL,
+    `Nome` varchar(50) NOT NULL,
+    `Fantasia` varchar(50) NOT NULL,
+    `CNPJ` varchar(14) NOT NULL,
+    `IE` varchar(15) NOT NULL DEFAULT '',
+    `CEP` varchar(8) NOT NULL DEFAULT '',
+    `TipoEndereco` varchar(25) NOT NULL DEFAULT '',
+    `Endereco` varchar(60) NOT NULL DEFAULT '',
+    `Numero` varchar(10) NOT NULL DEFAULT '',
+    `Complemento` varchar(40) NOT NULL DEFAULT '',
+    `Bairro` varchar(50) NOT NULL DEFAULT '',
+    `Cidade` varchar(60) NOT NULL DEFAULT '',
+    `UF` varchar(2) NOT NULL DEFAULT '',
+    `FoneDDD` varchar(2) NOT NULL DEFAULT '',
+    `FoneNro` varchar(10) NOT NULL DEFAULT '',
+    `CelularDDD` varchar(2) NOT NULL DEFAULT '',
+    `CelularNro` varchar(10) NOT NULL DEFAULT '',
+    `Responsavel` varchar(60) NOT NULL DEFAULT '',
+    `Observacoes` varchar(250) NOT NULL DEFAULT '',
+    `CRT` varchar(1) NOT NULL DEFAULT '3',
+    `Status` varchar(8) NOT NULL DEFAULT '',
+    `Usuario` varchar(60) NOT NULL DEFAULT '',
+    `Inclusao` date DEFAULT NULL,
+    `Alteracao` date DEFAULT NULL,
+    PRIMARY KEY (`Codigo`),
+    UNIQUE KEY `IDXNome` (`Nome`),
+    UNIQUE KEY `IDXFantasia` (`Fantasia`),
+    UNIQUE KEY `IDXCnpj` (`CNPJ`),
+    KEY `FK_empresas_empresas_cd` (`EmpresaCD`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+
+// Garante a existencia da tabela de configuracoes de e-mail
+db()->exec("CREATE TABLE IF NOT EXISTS `configuracoes_email` (
+    `Codigo` int(11) NOT NULL AUTO_INCREMENT,
+    `cd_id` int(11) NOT NULL,
+    `empresa_id` int(11) NOT NULL,
+    `NomeConta` varchar(40) NOT NULL DEFAULT '',
+    `Habilitado` tinyint(4) NOT NULL DEFAULT '0' COMMENT '1-habilitado, 0-desabilitado',
+    `Servidor` varchar(120) NOT NULL DEFAULT '' COMMENT 'Servidor de email',
+    `Porta` varchar(10) NOT NULL DEFAULT '' COMMENT 'Porta',
+    `ModoAutenticado` varchar(1) NOT NULL DEFAULT '' COMMENT 'Autenticacao S/N',
+    `ModoSSL` varchar(1) NOT NULL DEFAULT '' COMMENT ' Modo SSL S/N',
+    `Email` varchar(120) NOT NULL DEFAULT '' COMMENT 'Usuario',
+    `Senha` varchar(120) NOT NULL DEFAULT '' COMMENT 'Senha',
+    `Status` varchar(8) NOT NULL,
+    PRIMARY KEY (`Codigo`),
+    UNIQUE KEY `IDXNomeConta` (`NomeConta`),
+    UNIQUE KEY `IDXCdEmpresaCodigo` (`cd_id`,`empresa_id`,`Codigo`),
+    KEY `FK_config_email_empresas` (`empresa_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+
+echo "Seed executado com sucesso.\n";
+?>

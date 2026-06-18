@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 260 76" role="img" aria-labelledby="title desc">
+  <title id="title">Allop</title>
+  <desc id="desc">Logo do sistema Allop</desc>
+  <defs>
+    <linearGradient id="mark" x1="12" y1="8" x2="66" y2="68" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ff9a1f"/>
+      <stop offset="1" stop-color="#e86f00"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="28" y1="19" x2="57" y2="54" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#c8f3dc"/>
+      <stop offset="1" stop-color="#009ec3"/>
+    </linearGradient>
+  </defs>
+  <rect x="6" y="6" width="64" height="64" rx="17" fill="url(#mark)"/>
+  <path d="M25 53 37.5 22h8.2L58 53h-8.1l-2.1-5.8H35.1L33 53h-8Zm12.4-12.5h8.1l-4-11.1-4.1 11.1Z" fill="#fff"/>
+  <circle cx="57" cy="19" r="8" fill="url(#accent)"/>
+  <text x="86" y="47" fill="#263238" font-family="Segoe UI, Arial, sans-serif" font-size="35" font-weight="800" letter-spacing="0">Allop</text>
+  <path d="M88 56h72" stroke="#ff8500" stroke-width="5" stroke-linecap="round"/>
+</svg>

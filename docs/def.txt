@@ -1,0 +1,52 @@
+Voce sera meu arquiteto engenheiro de software.
+Vamos criar um projeto
+- PHP puro
+- CRUD - todos as aplicacoes PHP devem ficar na pasta mod/
+	     ex: mod/clientes, mod/produtos 
+		 deve ter as aplicacoes de listar e editar inserir ex: clientes_lista, clientes_form 
+		 vamos manter esse padrao
+- É essencial que todas as aplicacoes sejam criadas no mod/
+- Leia o style.css que esta na pasta raiz, crie uma pasta para o style.css e retire ele da raiz
+- Deve usar php,css,bootstrap o mais atual, Js, JQuery
+- Todas a bibliotecas usadas deve ser baixada, nao deve usar link para bootstrap ou JQuery
+- Todas as telas, menus e painel deve ser totalmente responsivas, e deve funcionar em qualquer tamanho de tela, no celular, tablet e computador
+- Vamos utilizar o card slim para todas as telas inclusive grid, que cada linha deve ser um slim card
+- Em todas as aplicacoes deve usar api feitas em php para listar, editar, inserir dados tudo que for acessar banco deve ser feito via api
+- Nas telas de listar dados, deve ter um campo SELECT2 para pode ir digitando e mostrando os dados.
+- Botoes devem seguir sempre o mesmo padrao de cores e aspectos
+- Deve ter um painel que sera o dashboard do sistema, porem o painel vai ser alterado conforme perfil de usuario ou permissoes
+- O modulo de seguranca deve ser usuarios, aplicacoes, perfil, perfil_aplicacoes, onde a tabela perfil_aplicacao deve ter as seguintes
+  permissoes Incluir, Editar, Excluir, Imprimir, Exportar, Processar - estes campos deve ta na tabela
+- Nao crie o banco ou tabelas, tudo no banco sera criado manual, voce apenas podera inserir dados nas tabelas
+- Mantenha um header onde o menu e mensagens ou algo que tenha a ver com o usuario deve ta no header
+- crie um footer
+- O Menu deve ser dinamico, vamos ter uma tabela para o menu principal, e ai será carregado via a tabela de aplicacoes e com as permissoes
+- O SubMenu deve ser carregado conforme permissao, e na ordem que estiver na tabela, vai der um campo ordem na tabela de aplicacoes
+- Apos criar o projeto crie um plaintext para podermos acompanhar e ir atualizando para novas criacoes.
+- Todas as aplicacoes criadas deve ter 
+	/*
+		Autor: Claudio Barto
+		Data : 01/06/2026
+	*/
+	. $aplicacao_nome = "nome da aplicacao com a extensao do arquivo".
+	. $aplicacao_descricao = "Descricao do que faz a aplicacao".
+
+- leia o banco.sql que esta na pasta raiz do projeto e memorize as tabelas
+- Tem permissao para acessar o banco de dados
+server : g.gcompdv.com.br
+banco  : allop_new
+usuario: allopdevel
+senha  : Allop@Devel##2022
+
+- Crie um script php seed_aplicacoes para inserir e alterar aplicacoes e dar permissao ao administrador
+- Crie o perfil Administrador
+- Crie um usuario inicial como administrador e defina o perfil dele como Administrador
+Usuario: admin
+Senha  : Allop@E7ti
+
+Tem permissao para criar pasta, arquivos e o que for necessario para o desenvolvimento
+Faça somente o que for solicitado
+
+
+
+		   
