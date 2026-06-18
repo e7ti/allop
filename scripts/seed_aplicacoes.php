@@ -179,6 +179,7 @@ $menuAjudaId = saveMenu('Ajuda', 98);
 $empresasRoute = 'mod/configuracoes/empresas/empresas_lista.php';
 $empresasCdRoute = 'mod/configuracoes/empresas_cd/empresas_cd_lista.php';
 $emailRoute = 'mod/configuracoes/configuracoes_email/configuracoes_email_lista.php';
+$cpComprasRoute = 'mod/compras/cp_compras_lista.php';
 $oldEmailRoutes = [
     'mod/configuracoes_email/email_lista.php',
     'mod/configuracoes/email_lista.php',
@@ -217,6 +218,7 @@ $aplicacoes = [
     ['nome' => 'Empresas CD', 'rota' => $empresasCdRoute, 'menu_id' => $menuConfiguracoesId, 'ordem' => 5],
     ['nome' => 'Empresas', 'rota' => $empresasRoute, 'menu_id' => $menuConfiguracoesId, 'ordem' => 6],
     ['nome' => 'E-mail', 'rota' => $emailRoute, 'menu_id' => $menuConfiguracoesId, 'ordem' => 10],
+    ['nome' => 'Pedidos de Compra', 'rota' => $cpComprasRoute, 'menu_id' => $menuComprasId, 'ordem' => 10],
 ];
 
 foreach ($aplicacoes as $app) {
@@ -299,6 +301,18 @@ db()->exec("CREATE TABLE IF NOT EXISTS `configuracoes_email` (
     UNIQUE KEY `IDXCdEmpresaCodigo` (`cd_id`,`empresa_id`,`Codigo`),
     KEY `FK_config_email_empresas` (`empresa_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
+
+// Garante a existencia da tabela de percentuais por tamanho e cor dos itens de compra
+db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_percentuais` (
+    `ID` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+    `compras_itens_id` bigint(20) unsigned NOT NULL,
+    `tamanho` varchar(20) NOT NULL DEFAULT '',
+    `cor` varchar(30) NOT NULL DEFAULT '',
+    `percentual` decimal(6,2) NOT NULL DEFAULT '0.00',
+    PRIMARY KEY (`ID`),
+    UNIQUE KEY `IDXItemTamanhoCor` (`compras_itens_id`,`tamanho`,`cor`),
+    CONSTRAINT `FK_cp_compras_itens_percentuais_item` FOREIGN KEY (`compras_itens_id`) REFERENCES `cp_compras_itens` (`ID`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
 
 echo "Seed executado com sucesso.\n";
 ?>

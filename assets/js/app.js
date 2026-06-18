@@ -70,6 +70,14 @@ $(function () {
         initEmpresasForm();
     }
 
+    if (window.cpComprasListaConfig) {
+        initCpComprasLista();
+    }
+
+    if (window.cpComprasFormConfig) {
+        initCpComprasForm();
+    }
+
     const $form = $('#entity-form');
     if ($form.length) {
         const id = Number($form.data('id'));
@@ -398,6 +406,10 @@ function savePerfilAplicacoes() {
 
 function escapeHtml(value) {
     return $('<div>').text(value).html();
+}
+
+function escapeAttr(value) {
+    return escapeHtml(value).replace(/"/g, '&quot;');
 }
 
 function initConfiguracoesEmailLista() {
@@ -846,4 +858,444 @@ function formatCnpj(value) {
         return value;
     }
     return cnpj.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, '$1.$2.$3/$4-$5');
+}
+
+let cpCompraItens = [];
+let cpCompraItensOpen = {};
+
+function initCpComprasLista() {
+    $('#filtro-cp-compras').select2({
+        width: '100%',
+        placeholder: 'Digite para pesquisar',
+        allowClear: true,
+        ajax: {
+            url: window.cpComprasListaConfig.api,
+            dataType: 'json',
+            delay: 250,
+            data: params => ({ action: 'list', q: params.term || '' }),
+            processResults: response => ({
+                results: (response.data || []).map(row => ({
+                    id: row.id,
+                    text: 'Pedido ' + row.ID + ' - ' + (row.empresa_nome || row.fornecedor_nome || row.Sts || '')
+                }))
+            })
+        }
+    });
+
+    loadCpComprasGrid();
+    $('#btn-filtrar-cp-compras').on('click', loadCpComprasGrid);
+}
+
+function loadCpComprasGrid() {
+    const cfg = window.cpComprasListaConfig;
+    const selected = $('#filtro-cp-compras').select2('data')[0] || null;
+    $.getJSON(cfg.api, { action: 'list', q: selected && selected.id ? selected.text : '' })
+        .done(function (response) {
+            const rows = response.data || [];
+            const html = rows.map(function (row) {
+                return '<tr>' +
+                    '<td data-label="Pedido">' + escapeHtml(row.ID || '') + '</td>' +
+                    '<td data-label="Data">' + escapeHtml(formatDateBr(row.DataPedido || '')) + '</td>' +
+                    '<td data-label="CD">' + escapeHtml(row.cd_nome || '') + '</td>' +
+                    '<td data-label="Empresa">' + escapeHtml(row.empresa_nome || '') + '</td>' +
+                    '<td data-label="Fornecedor">' + escapeHtml(row.fornecedor_nome || '') + '</td>' +
+                    '<td data-label="Total">' + escapeHtml(formatMoneyBr(row.ValorTotalPedido || 0)) + '</td>' +
+                    '<td data-label="Status">' + escapeHtml(row.Sts || '') + '</td>' +
+                    '<td data-label="Acoes" class="text-end">' +
+                    '<a class="btn btn-sm btn-outline-secondary btn-edit btn-icon-only me-1" title="Editar" aria-label="Editar" href="' + cfg.form + '?id=' + row.id + '"></a>' +
+                    '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" onclick="deleteCpCompra(' + row.id + ')"></button>' +
+                    '</td>' +
+                    '</tr>';
+            }).join('');
+            $('#cp-compras-grid').html(html || '<tr><td colspan="8" class="text-center text-muted">Nenhum registro encontrado.</td></tr>');
+        })
+        .fail(function (xhr) {
+            appAlert(xhr.responseJSON?.message || 'Nao foi possivel carregar os pedidos.', 'danger');
+        });
+}
+
+function deleteCpCompra(id) {
+    if (!confirm('Excluir este pedido?')) {
+        return;
+    }
+
+    $.post(window.cpComprasListaConfig.api + '?action=delete', { id: id }, function (response) {
+        appAlert(response.message || 'Pedido excluido.', 'success');
+        loadCpComprasGrid();
+    }, 'json').fail(function (xhr) {
+        appAlert(xhr.responseJSON?.message || 'Nao foi possivel excluir.', 'danger');
+    });
+}
+
+function initCpComprasForm() {
+    const $form = $('#cp-compras-form');
+    const id = Number($form.data('id'));
+
+    $form.find('.js-cp-compra-select').each(function () {
+        const $select = $(this);
+        $select.select2({
+            width: '100%',
+            ajax: {
+                url: window.cpComprasFormConfig.api,
+                dataType: 'json',
+                delay: 250,
+                data: params => ({ action: 'options', type: $select.data('type'), q: params.term || '' }),
+                processResults: response => ({ results: response.results || [] })
+            }
+        });
+    });
+
+    $('#btn-add-cp-item').on('click', function () {
+        syncCpCompraItensFromDom();
+        cpCompraItens.push(emptyCpCompraItem());
+        cpCompraItensOpen[cpCompraItens.length - 1] = true;
+        renderCpCompraItens();
+    });
+
+    $form.on('shown.bs.collapse hidden.bs.collapse', '.cp-compra-item-collapse', function (event) {
+        cpCompraItensOpen[$(this).data('item-index')] = event.type === 'shown';
+    });
+
+    if (id > 0) {
+        $.getJSON(window.cpComprasFormConfig.api, { action: 'get', id: id })
+            .done(function (response) {
+                const row = response.data || {};
+                fillCpCompraHeader($form, row);
+                cpCompraItens = (row.items || []).map(mapCpCompraItemFromApi);
+                cpCompraItensOpen = {};
+                renderCpCompraItens();
+                recalcCpCompraTotal();
+            })
+            .fail(function (xhr) {
+                appAlert(xhr.responseJSON?.message || 'Nao foi possivel carregar o pedido.', 'danger');
+            });
+    } else {
+        $form.find('[name="DataPedido"]').val(new Date().toISOString().slice(0, 10));
+        cpCompraItens = [emptyCpCompraItem()];
+        cpCompraItensOpen = {};
+        renderCpCompraItens();
+    }
+
+    $form.on('submit', function (event) {
+        event.preventDefault();
+        syncCpCompraItensFromDom();
+        const message = validarCpCompraForm($form);
+        if (message) {
+            appAlert(message, 'danger');
+            return;
+        }
+        recalcCpCompraTotal();
+        const data = $form.serializeArray();
+        data.push({ name: 'items_json', value: JSON.stringify(cpCompraItens) });
+        $.post(window.cpComprasFormConfig.api + '?action=save', $.param(data), function (response) {
+            appAlert(response.message || 'Pedido salvo.', 'success');
+            if (response.id && Number($form.data('id')) === 0) {
+                $form.find('[name="id"]').val(response.id);
+                $form.find('[name="ID"]').val(response.id);
+                $form.data('id', response.id);
+            }
+        }, 'json').fail(function (xhr) {
+            appAlert(xhr.responseJSON?.message || 'Nao foi possivel salvar o pedido.', 'danger');
+        });
+    });
+}
+
+function fillCpCompraHeader($form, row) {
+    Object.keys(row).forEach(function (name) {
+        if (name === 'items') {
+            return;
+        }
+        const $field = $form.find('[name="' + name + '"]');
+        if (!$field.length) {
+            return;
+        }
+        if ($field.hasClass('js-cp-compra-select') && row[name]) {
+            const option = new Option(row[name + '_text'] || row[name], row[name], true, true);
+            $field.append(option).trigger('change');
+            return;
+        }
+        $field.val(row[name]).trigger('change');
+    });
+}
+
+function emptyCpCompraItem() {
+    return {
+        referencia_fornecedor: '',
+        descricao: '',
+        composicao: '',
+        ncm: '',
+        entrega: '',
+        total_qtde: 0,
+        total_produto: 0,
+        Foto: 0,
+        Sts: 1,
+        detalhes: [emptyCpCompraDetalhe()]
+    };
+}
+
+function emptyCpCompraDetalhe() {
+    return {
+        sku: '',
+        tamanho: '',
+        cor: '',
+        Qtde: 0,
+        preco_fornecedor: 0,
+        preco_proposta: 0,
+        valor_total_produto: 0,
+        preco_franqueado: 0,
+        markup_franquia: 0,
+        preco_loja: 0,
+        markup_loja: 0,
+        markup_total: 0,
+        Sts: 1
+    };
+}
+
+function mapCpCompraItemFromApi(row) {
+    return {
+        referencia_fornecedor: row.referencia_fornecedor || '',
+        descricao: row.descricao || '',
+        composicao: row.composicao || '',
+        ncm: row.ncm || '',
+        entrega: row.entrega || '',
+        total_qtde: Number(row.total_qtde || 0),
+        total_produto: Number(row.total_produto || 0),
+        Foto: Number(row.Foto || 0),
+        Sts: Number(row.Sts || 1),
+        detalhes: (row.detalhes || []).map(function (detail) {
+            return Object.assign(emptyCpCompraDetalhe(), {
+                sku: detail.sku || '',
+                tamanho: detail.tamanho || '',
+                cor: detail.cor || '',
+                Qtde: Number(detail.Qtde || 0),
+                preco_fornecedor: Number(detail.preco_fornecedor || 0),
+                preco_proposta: Number(detail.preco_proposta || 0),
+                valor_total_produto: Number(detail.valor_total_produto || 0),
+                preco_franqueado: Number(detail.preco_franqueado || 0),
+                markup_franquia: Number(detail.markup_franquia || 0),
+                preco_loja: Number(detail.preco_loja || 0),
+                markup_loja: Number(detail.markup_loja || 0),
+                markup_total: Number(detail.markup_total || 0),
+                Sts: Number(detail.Sts || 1)
+            });
+        })
+    };
+}
+
+function renderCpCompraItens() {
+    const html = cpCompraItens.map(function (item, index) {
+        const collapseId = 'cp-compra-item-collapse-' + index;
+        const isOpen = cpCompraItensOpen[index] !== false;
+        const collapseClass = isOpen ? ' show' : '';
+        const collapsedClass = isOpen ? '' : ' collapsed';
+        const referencia = item.referencia_fornecedor || 'Item ' + (index + 1);
+        const descricao = item.descricao || 'Sem descricao';
+        const composicao = item.composicao || 'N/A';
+        const entrega = item.entrega ? formatDateBr(item.entrega) : 'Nao definida';
+        return '<section class="card card-slim mb-3 cp-compra-item" data-item-index="' + index + '">' +
+            '<div class="card-header bg-table-header cp-compra-item-header cursor-pointer' + collapsedClass + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + collapseId + '">' +
+            '<div class="d-flex align-items-center cp-compra-item-title">' +
+            '<span class="cp-compra-chevron transition-icon" aria-hidden="true"></span>' +
+            '<div>' +
+            '<span class="fw-bold text-dark">' + escapeHtml(referencia) + '</span>' +
+            '<div class="extra-small text-muted">' + escapeHtml(descricao) + '</div>' +
+            '<div class="extra-small text-muted">Composicao: ' + escapeHtml(composicao) + '</div>' +
+            '</div>' +
+            '</div>' +
+            '<div class="d-flex align-items-center gap-4 cp-compra-item-summary">' +
+            '<div class="text-end d-none d-md-block">' +
+            '<small class="text-muted d-block extra-small text-uppercase">Entrega do Item</small>' +
+            '<span>' + escapeHtml(entrega) + '</span>' +
+            '</div>' +
+            '<div class="text-end d-none d-md-block">' +
+            '<small class="text-muted d-block extra-small text-uppercase">Total do Item</small>' +
+            '<span class="fw-bold text-success">R$ ' + escapeHtml(formatMoneyBr(item.total_produto || 0)) + '</span>' +
+            '</div>' +
+            '<div class="d-flex flex-wrap gap-2 cp-compra-item-actions" onclick="event.stopPropagation();">' +
+            '<button class="btn btn-sm btn-orange btn-new" type="button" onclick="addCpCompraDetalhe(' + index + ')">Subitem</button>' +
+            '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraItem(' + index + ')"></button>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '<div id="' + collapseId + '" class="collapse cp-compra-item-collapse' + collapseClass + '" data-item-index="' + index + '">' +
+            '<div class="card-body border-top table-responsive">' +
+            '<div class="row g-3 mb-3">' +
+            fieldHtml(index, null, 'referencia_fornecedor', 'Referencia', item.referencia_fornecedor, 'col-12 col-md-2') +
+            fieldHtml(index, null, 'descricao', 'Descricao', item.descricao, 'col-12 col-md-4') +
+            fieldHtml(index, null, 'composicao', 'Composicao', item.composicao, 'col-12 col-md-3') +
+            fieldHtml(index, null, 'ncm', 'NCM', item.ncm, 'col-12 col-md-2') +
+            fieldHtml(index, null, 'entrega', 'Entrega', item.entrega, 'col-12 col-md-2', 'date') +
+            fieldHtml(index, null, 'total_qtde', 'Qtde Rateio', item.total_qtde, 'col-12 col-md-2', 'number', '0.01') +
+            fieldHtml(index, null, 'total_produto', 'Total Item', item.total_produto, 'col-12 col-md-2', 'number', '0.01', true) +
+            selectHtml(index, null, 'Foto', 'Foto', item.Foto, 'col-12 col-md-2', [{ id: 0, text: 'Nao' }, { id: 1, text: 'Sim' }]) +
+            selectHtml(index, null, 'Sts', 'Status', item.Sts, 'col-12 col-md-2', [{ id: 1, text: 'Ativo' }, { id: 0, text: 'Inativo' }]) +
+            '</div>' +
+            '<div class="table-responsive">' +
+            '<table class="table table-custom align-middle mb-0 cp-compra-detalhes-table">' +
+            '<thead><tr><th>SKU</th><th>Tamanho</th><th>Cor</th><th>Qtde</th><th>Preco Forn.</th><th>Preco Prop.</th><th>Total</th><th class="text-end">Acoes</th></tr></thead>' +
+            '<tbody>' + renderCpCompraDetalhes(index, item.detalhes || []) + '</tbody>' +
+            '</table>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</section>';
+    }).join('');
+    $('#cp-compras-itens').html(html || '<div class="text-center text-muted py-3">Nenhum item informado.</div>');
+}
+
+function renderCpCompraDetalhes(itemIndex, detalhes) {
+    return detalhes.map(function (detail, detailIndex) {
+        return '<tr data-item-index="' + itemIndex + '" data-detail-index="' + detailIndex + '">' +
+            '<td data-label="SKU">' + detailInput(itemIndex, detailIndex, 'sku', detail.sku) + '</td>' +
+            '<td data-label="Tamanho">' + detailInput(itemIndex, detailIndex, 'tamanho', detail.tamanho) + '</td>' +
+            '<td data-label="Cor">' + detailInput(itemIndex, detailIndex, 'cor', detail.cor) + '</td>' +
+            '<td data-label="Qtde">' + detailInput(itemIndex, detailIndex, 'Qtde', detail.Qtde, 'number', '0.01') + '</td>' +
+            '<td data-label="Preco Forn.">' + detailInput(itemIndex, detailIndex, 'preco_fornecedor', detail.preco_fornecedor, 'number', '0.01') + '</td>' +
+            '<td data-label="Preco Prop.">' + detailInput(itemIndex, detailIndex, 'preco_proposta', detail.preco_proposta, 'number', '0.01') + '</td>' +
+            '<td data-label="Total">' + detailInput(itemIndex, detailIndex, 'valor_total_produto', detail.valor_total_produto, 'number', '0.01', true) + '</td>' +
+            '<td data-label="Acoes" class="text-end"><button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraDetalhe(' + itemIndex + ', ' + detailIndex + ')"></button></td>' +
+            '</tr>';
+    }).join('');
+}
+
+function fieldHtml(itemIndex, detailIndex, name, label, value, colClass, type, step, readonly) {
+    const attr = cpDataAttrs(itemIndex, detailIndex, name);
+    const inputType = type || 'text';
+    const stepAttr = step ? ' step="' + step + '"' : '';
+    const readonlyAttr = readonly ? ' readonly' : '';
+    return '<div class="' + colClass + '"><label class="form-label">' + label + '</label><input class="form-control cp-compra-field" type="' + inputType + '"' + stepAttr + readonlyAttr + ' value="' + escapeAttr(value || '') + '" ' + attr + '></div>';
+}
+
+function selectHtml(itemIndex, detailIndex, name, label, value, colClass, options) {
+    const attr = cpDataAttrs(itemIndex, detailIndex, name);
+    const opts = options.map(function (option) {
+        const selected = String(option.id) === String(value) ? ' selected' : '';
+        return '<option value="' + escapeHtml(option.id) + '"' + selected + '>' + escapeHtml(option.text) + '</option>';
+    }).join('');
+    return '<div class="' + colClass + '"><label class="form-label">' + label + '</label><select class="form-select cp-compra-field" ' + attr + '>' + opts + '</select></div>';
+}
+
+function detailInput(itemIndex, detailIndex, name, value, type, step, readonly) {
+    const inputType = type || 'text';
+    const stepAttr = step ? ' step="' + step + '"' : '';
+    const readonlyAttr = readonly ? ' readonly' : '';
+    return '<input class="form-control form-control-sm cp-compra-field" type="' + inputType + '"' + stepAttr + readonlyAttr + ' value="' + escapeAttr(value || '') + '" ' + cpDataAttrs(itemIndex, detailIndex, name) + '>';
+}
+
+function cpDataAttrs(itemIndex, detailIndex, name) {
+    const detail = detailIndex === null ? '' : ' data-detail-index="' + detailIndex + '"';
+    return 'data-item-index="' + itemIndex + '"' + detail + ' data-field="' + name + '"';
+}
+
+function addCpCompraDetalhe(itemIndex) {
+    syncCpCompraItensFromDom();
+    cpCompraItensOpen[itemIndex] = true;
+    cpCompraItens[itemIndex].detalhes.push(emptyCpCompraDetalhe());
+    renderCpCompraItens();
+}
+
+function removeCpCompraItem(itemIndex) {
+    syncCpCompraItensFromDom();
+    cpCompraItens.splice(itemIndex, 1);
+    cpCompraItensOpen = {};
+    renderCpCompraItens();
+    recalcCpCompraTotal();
+}
+
+function removeCpCompraDetalhe(itemIndex, detailIndex) {
+    syncCpCompraItensFromDom();
+    cpCompraItens[itemIndex].detalhes.splice(detailIndex, 1);
+    renderCpCompraItens();
+    recalcCpCompraTotal();
+}
+
+function syncCpCompraItensFromDom() {
+    $('.cp-compra-field').each(function () {
+        const $field = $(this);
+        const itemIndex = Number($field.data('item-index'));
+        const detailIndexRaw = $field.attr('data-detail-index');
+        const name = $field.data('field');
+        const value = $field.val();
+        if (!cpCompraItens[itemIndex]) {
+            return;
+        }
+        if (detailIndexRaw !== undefined) {
+            const detailIndex = Number(detailIndexRaw);
+            cpCompraItens[itemIndex].detalhes[detailIndex][name] = normalizeCpCompraValue(name, value);
+            return;
+        }
+        cpCompraItens[itemIndex][name] = normalizeCpCompraValue(name, value);
+    });
+
+    cpCompraItens.forEach(function (item) {
+        item.detalhes.sort(function (a, b) {
+            return String(a.tamanho || '').localeCompare(String(b.tamanho || ''), 'pt-BR', { numeric: true }) ||
+                String(a.cor || '').localeCompare(String(b.cor || ''), 'pt-BR');
+        });
+        recalcCpCompraItem(item);
+    });
+}
+
+function normalizeCpCompraValue(name, value) {
+    const numeric = ['total_qtde', 'total_produto', 'Foto', 'Sts', 'Qtde', 'preco_fornecedor', 'preco_proposta', 'valor_total_produto', 'preco_franqueado', 'markup_franquia', 'preco_loja', 'markup_loja', 'markup_total'];
+    if (numeric.includes(name)) {
+        return Number(String(value || '0').replace(',', '.')) || 0;
+    }
+    return value || '';
+}
+
+function recalcCpCompraItem(item) {
+    let total = 0;
+    (item.detalhes || []).forEach(function (detail) {
+        detail.valor_total_produto = roundCpMoney(Number(detail.Qtde || 0) * Number(detail.preco_proposta || 0));
+        total += Number(detail.valor_total_produto || 0);
+    });
+    item.total_produto = roundCpMoney(total);
+}
+
+function recalcCpCompraTotal() {
+    syncCpCompraItensFromDom();
+    let total = 0;
+    cpCompraItens.forEach(function (item) {
+        total += Number(item.total_produto || 0);
+    });
+    $('#cp-compras-form [name="ValorTotalPedido"]').val(roundCpMoney(total).toFixed(2));
+}
+
+function validarCpCompraForm($form) {
+    if (!$form.find('[name="cd_id"]').val()) {
+        return 'Informe o CD.';
+    }
+    if (!$form.find('[name="empresa_id"]').val()) {
+        return 'Informe a empresa.';
+    }
+    if (!$form.find('[name="Fornecedor_id"]').val()) {
+        return 'Informe o fornecedor.';
+    }
+    if (!$form.find('[name="DataPedido"]').val()) {
+        return 'Informe a data do pedido.';
+    }
+    if (!cpCompraItens.length) {
+        return 'Informe ao menos um item.';
+    }
+    return '';
+}
+
+function roundCpMoney(value) {
+    return Math.round((Number(value) || 0) * 100) / 100;
+}
+
+function formatDateBr(value) {
+    if (!value) {
+        return '';
+    }
+    const parts = String(value).split('-');
+    if (parts.length !== 3) {
+        return value;
+    }
+    return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+function formatMoneyBr(value) {
+    return Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }

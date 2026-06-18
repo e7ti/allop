@@ -1,0 +1,77 @@
+<?php
+/*
+    Autor: Claudio Barto
+    Data : 18/06/2026
+*/
+$aplicacao_nome = "cp_compras_form.php";
+$aplicacao_descricao = "Insere e edita pedidos de compra, itens e subitens.";
+
+require_once __DIR__ . '/../../includes/layout.php';
+require_login();
+render_header('Pedido de Compra', [
+    ['label' => 'Voltar', 'href' => 'cp_compras_lista.php', 'class' => 'btn btn-outline-secondary btn-back'],
+]);
+$id = (int) ($_GET['id'] ?? 0);
+?>
+<form id="cp-compras-form" class="form-section cp-compras-form-wide" data-id="<?= $id ?>" novalidate>
+    <input type="hidden" name="id" value="<?= $id ?>">
+
+    <section class="card card-slim mb-3">
+        <div class="card-header"><strong>Pedido</strong></div>
+        <div class="card-body row g-3">
+            <div class="col-12 col-md-2"><label class="form-label">Codigo</label><input class="form-control" name="ID" type="number" readonly></div>
+            <div class="col-12 col-md-3"><label class="form-label">CD</label><select class="form-select js-cp-compra-select" name="cd_id" data-type="empresas_cd" required></select></div>
+            <div class="col-12 col-md-3"><label class="form-label">Empresa</label><select class="form-select js-cp-compra-select" name="empresa_id" data-type="empresas" required></select></div>
+            <div class="col-12 col-md-4"><label class="form-label">Fornecedor</label><select class="form-select js-cp-compra-select" name="Fornecedor_id" data-type="fornecedores" required></select></div>
+            <div class="col-12 col-md-2"><label class="form-label">Data Pedido</label><input class="form-control" name="DataPedido" type="date" required></div>
+            <div class="col-12 col-md-2"><label class="form-label">Markup Franqueadora</label><input class="form-control js-money" name="MarkupFranqueadora" type="number" step="0.01" value="0.00"></div>
+            <div class="col-12 col-md-2"><label class="form-label">Markup Franquia</label><input class="form-control js-money" name="MarkupFranquia" type="number" step="0.01" value="0.00"></div>
+            <div class="col-12 col-md-2"><label class="form-label">Markup Total</label><input class="form-control js-money" name="MarkupTotal" type="number" step="0.01" value="0.00"></div>
+            <div class="col-12 col-md-2"><label class="form-label">Valor Total</label><input class="form-control" name="ValorTotalPedido" type="number" step="0.01" readonly></div>
+            <div class="col-12 col-md-2"><label class="form-label">Status</label><select class="form-select" name="Sts"><option value="Aberto">Aberto</option><option value="Aprovado">Aprovado</option><option value="Recusado">Recusado</option><option value="Aprovado aguardando foto">Aprovado aguardando foto</option><option value="Consolidado">Consolidado</option></select></div>
+            <div class="col-12 col-md-2"><label class="form-label">Tem Fotos</label><select class="form-select" name="TemFotos"><option value="0">Nao</option><option value="1">Sim</option></select></div>
+            <div class="col-12 col-md-2"><label class="form-label">Localizacao</label><select class="form-select" name="Localizacao"><option value="KidStok">KidStok</option><option value="Allop">Allop</option><option value="Fornecedor">Fornecedor</option></select></div>
+            <div class="col-12 col-md-8"><label class="form-label">Motivo/Observacao</label><input class="form-control" name="StsMotivo" maxlength="500"></div>
+        </div>
+    </section>
+
+    <section class="card card-slim mb-3">
+        <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
+            <strong>Itens</strong>
+            <button class="btn btn-orange btn-new" id="btn-add-cp-item" type="button">Novo</button>
+        </div>
+        <div class="card-body" id="cp-compras-itens"></div>
+    </section>
+
+    <section class="card card-slim mb-3">
+        <div class="card-footer bg-white d-flex gap-2 justify-content-end">
+            <button class="btn btn-orange btn-save" type="submit">Salvar</button>
+        </div>
+    </section>
+</form>
+
+<div class="modal fade" id="cp-percentuais-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Percentuais por Cor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="cp-percentuais-alert" class="alert alert-warning d-none"></div>
+                <div id="cp-percentuais-content"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-back" data-bs-dismiss="modal">Voltar</button>
+                <button type="button" class="btn btn-orange btn-save" id="btn-aplicar-percentuais">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+window.cpComprasFormConfig = {
+    api: '../../api/compras/cp_compras.php'
+};
+</script>
+<?php render_footer(); ?>

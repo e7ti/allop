@@ -125,11 +125,42 @@ body {
     height: 32px;
     justify-content: center;
     padding: 0;
+    position: relative;
     width: 32px;
 }
 
 .btn-icon-only::before {
     margin-right: 0;
+}
+
+.btn-delete.btn-icon-only::before {
+    background: transparent;
+    border: 2px solid currentColor;
+    border-radius: 0 0 2px 2px;
+    border-top: 0;
+    content: "";
+    height: 12px;
+    left: 50%;
+    margin: 0;
+    position: absolute;
+    top: 13px;
+    transform: translateX(-50%);
+    -webkit-mask: none;
+    mask: none;
+    width: 12px;
+}
+
+.btn-delete.btn-icon-only::after {
+    background:
+        linear-gradient(currentColor, currentColor) center 0 / 6px 2px no-repeat,
+        linear-gradient(currentColor, currentColor) center 4px / 16px 2px no-repeat;
+    content: "";
+    height: 6px;
+    left: 50%;
+    position: absolute;
+    top: 7px;
+    transform: translateX(-50%);
+    width: 16px;
 }
 
 .card-footer .btn-save,
@@ -628,6 +659,10 @@ body {
     width: 100%;
 }
 
+.cp-compras-form-wide {
+    max-width: 1520px;
+}
+
 .form-section .card-header {
     border-bottom: 1px solid var(--ks-light);
     color: var(--appf-block-title-gray);
@@ -637,6 +672,71 @@ body {
 .form-section .card-body {
     min-height: 360px;
     padding: 1.5rem;
+}
+
+.cp-compras-form-wide > .card-slim > .card-body {
+    padding: 1.35rem 1.5rem;
+}
+
+.cp-compras-form-wide .cp-compra-item-collapse > .card-body {
+    min-height: 0;
+    padding: 1rem;
+}
+
+.cp-compras-form-wide .cp-compra-item-header {
+    align-items: center;
+    display: flex;
+    gap: 0.75rem;
+    justify-content: space-between;
+    padding: 0.5rem 0.9rem;
+}
+
+.cp-compras-form-wide .cp-compra-item-title {
+    flex: 1 1 auto;
+    min-width: 260px;
+}
+
+.cp-compras-form-wide .cp-compra-chevron {
+    border-bottom: 2px solid var(--ks-orange);
+    border-right: 2px solid var(--ks-orange);
+    display: inline-block;
+    flex: 0 0 auto;
+    height: 0.62rem;
+    margin-right: 0.9rem;
+    transform: rotate(45deg);
+    width: 0.62rem;
+}
+
+.cp-compras-form-wide .cp-compra-item-header.collapsed .cp-compra-chevron {
+    transform: rotate(-45deg);
+}
+
+.cp-compras-form-wide .cp-compra-item-summary {
+    flex: 0 0 auto;
+}
+
+.cp-compras-form-wide .cp-compra-item-actions {
+    flex: 0 0 auto;
+}
+
+.cp-compras-form-wide .cp-compra-detalhes-table {
+    min-width: 1120px;
+}
+
+.cp-compras-form-wide .cp-compra-item .table-responsive {
+    overflow-x: auto !important;
+}
+
+.cp-compras-form-wide .cp-compra-detalhes-table th,
+.cp-compras-form-wide .cp-compra-detalhes-table td {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+}
+
+.cp-compras-form-wide .cp-compra-detalhes-table .form-control-sm {
+    min-height: 38px;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
 }
 
 .form-label {
@@ -873,5 +973,19 @@ body {
     .table-custom tbody td::before {
         flex: 0 0 42%;
         text-align: left;
+    }
+
+    .cp-compras-form-wide .cp-compra-item-header,
+    .cp-compras-form-wide .cp-compra-item-summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .cp-compras-form-wide .cp-compra-item-actions {
+        width: 100%;
+    }
+
+    .cp-compras-form-wide .cp-compra-item-actions .btn:not(.btn-icon-only) {
+        flex: 1 1 auto;
     }
 }

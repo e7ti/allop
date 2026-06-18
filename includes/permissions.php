@@ -24,13 +24,13 @@ function menu_items(): array
             FROM seg_aplicacoes a
             JOIN seg_menu m ON a.menu_id = m.id
             JOIN seg_perfil_permissoes p ON a.id = p.aplicacao_id
-            WHERE p.perfil_id = ?
+            WHERE p.perfil_id = :perfil_id
               AND p.visualizar = 1
               AND m.menu NOT IN ('Principal', 'Sair')
             ORDER BY m.id ASC, a.ordem ASC, a.nome ASC";
 
     $stmt = db()->prepare($sql);
-    $stmt->execute([$user['perfil_id']]);
+    $stmt->execute(['perfil_id' => $user['perfil_id']]);
     
     $menu = [];
     while ($row = $stmt->fetch()) {
