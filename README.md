@@ -38,7 +38,8 @@ $aplicacao_nome = "nome_do_arquivo.php";
 $aplicacao_descricao = "Descricao do que faz a aplicacao.";
 
 
-BANCO DE DADOS - SEGURANCA
+BANCO DE DADOS - SEGURANCA 
+- Leia o arquivo banco.sql
 Usar as tabelas do banco.sql:
 - seg_menu
 - seg_aplicacoes
