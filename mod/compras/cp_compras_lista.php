@@ -33,6 +33,7 @@ render_header('Pedidos de Compra', [
                     <th>CD</th>
                     <th>Empresa</th>
                     <th>Fornecedor</th>
+                    <th>Localizacao</th>
                     <th>Total</th>
                     <th>Status</th>
                     <th class="text-end">Acoes</th>

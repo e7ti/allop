@@ -97,6 +97,7 @@ body {
 .btn-filter::before,
 .btn-login::before,
 .btn-key::before,
+.btn-view::before,
 .btn-exit::before {
     background-color: currentColor;
     content: "";
@@ -118,6 +119,7 @@ body {
 .btn-login,
 .btn-exit { --btn-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='black' viewBox='0 0 16 16'%3E%3Cpath fill-rule='evenodd' d='M6 3.5a.5.5 0 0 1 .5-.5h6A1.5 1.5 0 0 1 14 4.5v7a1.5 1.5 0 0 1-1.5 1.5h-6a.5.5 0 0 1 0-1h6a.5.5 0 0 0 .5-.5v-7a.5.5 0 0 0-.5-.5h-6a.5.5 0 0 1-.5-.5z'/%3E%3Cpath fill-rule='evenodd' d='M11.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H2.5a.5.5 0 0 0 0 1h7.793l-2.147 2.146a.5.5 0 0 0 .708.708l3-3z'/%3E%3C/svg%3E"); }
 .btn-key { --btn-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='black' viewBox='0 0 16 16'%3E%3Cpath d='M3.5 11.5a3.5 3.5 0 1 1 3.163-5H14a.5.5 0 0 1 .354.146l1.5 1.5a.5.5 0 0 1 0 .708l-1.5 1.5A.5.5 0 0 1 14 10h-1.5v1.5a.5.5 0 0 1-1 0V10H10v1.5a.5.5 0 0 1-1 0V10H6.663a3.5 3.5 0 0 1-3.163 1.5zM2 8a1.5 1.5 0 1 0 3 0 1.5 1.5 0 0 0-3 0z'/%3E%3C/svg%3E"); }
+.btn-view { --btn-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='black' viewBox='0 0 16 16'%3E%3Cpath d='M16 8s-3-5.5-8-5.5S0 8 0 8s3 5.5 8 5.5S16 8 16 8zM1.2 8C2 6.8 4.5 3.5 8 3.5S14 6.8 14.8 8C14 9.2 11.5 12.5 8 12.5S2 9.2 1.2 8z'/%3E%3Cpath d='M8 5.5A2.5 2.5 0 1 0 8 10.5 2.5 2.5 0 0 0 8 5.5z'/%3E%3C/svg%3E"); }
 
 .btn-icon-only {
     align-items: center;
@@ -217,6 +219,29 @@ body {
 
 .navbar-text {
     font-size: 0.78rem;
+}
+
+.app-user-badge {
+    align-items: center;
+    background: rgba(255, 255, 255, 0.18);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 999px;
+    color: var(--ks-white) !important;
+    display: inline-flex;
+    font-size: 0.82rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0.48rem 0.75rem;
+}
+
+.app-user-badge::before {
+    background: var(--ks-yellow);
+    border-radius: 50%;
+    content: "";
+    display: inline-block;
+    height: 0.5rem;
+    margin-right: 0.5rem;
+    width: 0.5rem;
 }
 
 .navbar-dark .navbar-nav .nav-link:hover {
@@ -406,6 +431,29 @@ body {
     color: #5a1438 !important;
 }
 
+.cp-localizacao-badge {
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    padding: 0.42rem 0.65rem;
+}
+
+.badge-localizacao-kidstok {
+    background-color: #d1e7dd !important;
+    color: #0f5132 !important;
+}
+
+.badge-localizacao-fornecedor {
+    background-color: #fff3cd !important;
+    color: #664d03 !important;
+}
+
+.badge-localizacao-allop {
+    background-color: #cff4fc !important;
+    color: #055160 !important;
+}
+
 /* ==========================================================================
    DASHBOARD CARDS SLIM
    ========================================================================== */
@@ -552,7 +600,7 @@ body {
     border-bottom-left-radius: 0;
     border-top-left-radius: 0;
     flex: 0 0 auto;
-    min-height: 44px;
+    min-height: 38px;
     padding-left: 0.95rem;
     padding-right: 1rem;
 }
@@ -734,7 +782,7 @@ body {
 }
 
 .cp-compras-form-wide .cp-compra-detalhes-table .form-control-sm {
-    min-height: 38px;
+    min-height: 34px;
     padding-left: 0.5rem;
     padding-right: 0.5rem;
 }
@@ -751,9 +799,9 @@ body {
     background-color: var(--appf-input-bg);
     border-color: var(--appf-form-border);
     border-radius: 4px;
-    min-height: 44px;
-    padding-bottom: 0.58rem;
-    padding-top: 0.58rem;
+    min-height: 38px;
+    padding-bottom: 0.38rem;
+    padding-top: 0.38rem;
 }
 
 .form-control:focus,
@@ -789,17 +837,17 @@ body {
     border-top-right-radius: 4px;
     border-bottom-left-radius: 4px;
     border-top-left-radius: 4px;
-    height: 44px;
+    height: 38px;
 }
 
 .select2-container--default .select2-selection--single .select2-selection__rendered {
     color: var(--ks-text);
-    line-height: 42px;
+    line-height: 36px;
     padding-left: 12px;
 }
 
 .select2-container--default .select2-selection--single .select2-selection__arrow {
-    height: 42px;
+    height: 36px;
 }
 
 .select2-container--default.select2-container--focus .select2-selection--single,
@@ -820,45 +868,76 @@ body {
 
 
 .login-page {
-    align-items: center;
-    background:
-        radial-gradient(circle at 18% 18%, rgba(255, 226, 138, 0.8), transparent 30%),
-        radial-gradient(circle at 84% 24%, rgba(200, 243, 220, 0.8), transparent 32%),
-        linear-gradient(135deg, rgba(0, 158, 195, 0.12), rgba(255, 133, 0, 0.12)),
-        var(--ks-light);
-    display: flex;
-    justify-content: center;
+    background: linear-gradient(135deg, #eef8fb 0%, #f8f9fa 44%, #fff6ed 100%);
     min-height: 100vh;
-    overflow: hidden;
-    padding: 1rem;
-    position: relative;
-}
-
-.login-backdrop {
-    background:
-        linear-gradient(135deg, rgba(0, 158, 195, 0.18), rgba(255, 133, 0, 0.16)),
-        var(--ks-white);
-    border-radius: 26px;
-    bottom: 8%;
-    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.08);
-    left: max(1rem, 8vw);
-    position: absolute;
-    right: max(1rem, 8vw);
-    top: 8%;
+    min-height: 100dvh;
+    padding: clamp(1rem, 3vw, 2.5rem);
 }
 
 .login-wrap {
+    align-items: center;
+    display: grid;
+    min-height: calc(100vh - clamp(2rem, 6vw, 5rem));
+    min-height: calc(100dvh - clamp(2rem, 6vw, 5rem));
     margin: 0 auto;
-    max-width: 450px;
-    position: relative;
+    max-width: 980px;
     width: 100%;
-    z-index: 1;
+}
+
+.login-shell {
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(0, 158, 195, 0.14);
+    border-radius: 18px;
+    box-shadow: 0 24px 70px rgba(22, 63, 78, 0.14);
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(340px, 0.95fr);
+    min-height: 520px;
+    overflow: hidden;
+    width: 100%;
+}
+
+.login-showcase {
+    align-items: flex-start;
+    background:
+        linear-gradient(145deg, rgba(0, 158, 195, 0.94), rgba(0, 127, 160, 0.96)),
+        var(--ks-blue);
+    color: var(--ks-white);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: clamp(2rem, 4vw, 3.2rem);
+}
+
+.login-showcase h1 {
+    font-size: clamp(2.1rem, 4vw, 3.6rem);
+    font-weight: 800;
+    letter-spacing: 0;
+    margin: 0 0 0.85rem;
+}
+
+.login-showcase p {
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 1.02rem;
+    line-height: 1.7;
+    margin: 0;
+    max-width: 360px;
+}
+
+.login-logo-allop {
+    background: rgba(255, 255, 255, 0.96);
+    border-radius: 10px;
+    display: block;
+    height: auto;
+    max-width: 176px;
+    padding: 0.72rem 0.9rem;
 }
 
 .login-card {
     background: var(--ks-white);
-    border: 1px solid rgba(0, 158, 195, 0.12);
-    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(1.6rem, 4vw, 3.25rem);
 }
 
 .login-brand {
@@ -870,24 +949,19 @@ body {
 
 .login-brand-stacked {
     align-items: center;
+    display: flex;
     flex-direction: column;
     gap: 0.5rem;
-    margin-bottom: 1.4rem;
+    margin-bottom: 1.75rem;
     text-align: center;
 }
 
 .login-logo {
     display: block;
     height: auto;
-    max-width: 210px;
-    width: 72%;
+    max-width: 190px;
+    width: 68%;
     margin: 0 auto;
-}
-
-.login-logo-external {
-    display: block;
-    margin: 0 auto 2rem;
-    max-width: 180px;
 }
 
 .login-logo + .login-logo {
@@ -905,12 +979,19 @@ body {
     margin: 0;
 }
 
+.login-brand-stacked p {
+    color: var(--ks-muted);
+    margin: 0.3rem 0 0;
+}
+
 .login-card .form-control {
-    min-height: 44px;
+    border-radius: 8px;
+    min-height: 42px;
 }
 
 .login-card .btn {
-    min-height: 44px;
+    border-radius: 8px;
+    min-height: 42px;
 }
 
 .brand-mark {
@@ -932,20 +1013,48 @@ body {
 }
 
 @media (max-width: 768px) {
-    .login-backdrop {
-        border-radius: 18px;
-        bottom: 1rem;
-        left: 1rem;
-        right: 1rem;
-        top: 1rem;
+    .login-page {
+        padding: 1rem;
+    }
+
+    .login-wrap {
+        align-items: start;
+        min-height: calc(100vh - 2rem);
+        min-height: calc(100dvh - 2rem);
+    }
+
+    .login-shell {
+        grid-template-columns: 1fr;
+        min-height: 0;
+    }
+
+    .login-showcase {
+        gap: 1.25rem;
+        padding: 1.35rem;
+    }
+
+    .login-showcase h1 {
+        font-size: 1.8rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .login-showcase p {
+        font-size: 0.92rem;
+        line-height: 1.55;
+        max-width: none;
+    }
+
+    .login-logo-allop {
+        max-width: 132px;
+        padding: 0.55rem 0.7rem;
     }
 
     .login-card {
-        padding: 1.15rem;
+        padding: 1.35rem;
     }
 
     .login-logo {
-        max-width: 180px;
+        max-width: 170px;
     }
 
     .table-responsive {

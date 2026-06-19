@@ -1,6 +1,6 @@
 ALLOP - PADROES DO SISTEMA
 Data: 01/06/2026
-Atualizacao visual: 02/06/2026
+Atualizacao visual: 19/06/2026
 
 OBJETIVO
 Este arquivo serve como referencia para novas implementacoes no sistema Allop.
@@ -132,6 +132,8 @@ Todo formulario deve ter:
 - A descricao da aplicacao deve aparecer abaixo do titulo.
 - Card/formulario deve manter fundo branco.
 - Inputs, selects, input-group-text e Select2 devem usar fundo cinza claro #f8f9fa.
+- Inputs, selects, input-group-text e Select2 devem usar altura compacta de 38px.
+- Campos pequenos dentro de grids/formularios densos devem usar altura compacta de 34px quando aplicavel.
 - Bordas dos campos devem usar cinza neutro #dee2e6.
 - Foco de campos e Select2 deve usar laranja #ff4500 com sombra leve.
 

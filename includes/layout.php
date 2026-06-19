@@ -69,7 +69,10 @@ function render_header(string $titulo, array $actions = []): void
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="collapse navbar-collapse" id="mainMenu">
-                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <?php if ($user): ?>
+                        <span class="navbar-text app-user-badge me-lg-3"><?= h($user['nome']) ?></span>
+                    <?php endif; ?>
+                    <ul class="navbar-nav ms-lg-auto mb-2 mb-lg-0">
                         <?php foreach (menu_items() as $grupo => $itens): ?>
                             <li class="nav-item dropdown">
                                 <a class="nav-link dropdown-toggle menu-main-link" href="#" role="button" data-bs-toggle="dropdown">
@@ -95,9 +98,6 @@ function render_header(string $titulo, array $actions = []): void
                             </a>
                         </li>
                     </ul>
-                    <?php if ($user): ?>
-                        <span class="navbar-text text-white me-3"><?= h($user['nome']) ?></span>
-                    <?php endif; ?>
                 </div>
             </div>
         </nav>
@@ -127,7 +127,7 @@ function render_footer(): void
     ?>
     </main>
     <footer class="border-top py-2 text-center small text-muted">
-        <?= h(APP_NAME) ?> - <?= h(APP_DATE) ?>
+        &copy; <?= date('Y') ?> Allop E7ti - Informatica. Todos os direitos reservados.
     </footer>
 </div>
 <script src="<?= app_url('assets/vendor/jquery/jquery.min.js') ?>"></script>

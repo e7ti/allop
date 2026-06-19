@@ -187,6 +187,25 @@ function cp_load_pedido(int $id): ?array
     return $pedido;
 }
 
+function cp_pedido_localizacao(int $id): ?string
+{
+    $stmt = db()->prepare("SELECT Localizacao FROM cp_compras WHERE ID = :id");
+    $stmt->execute(['id' => $id]);
+    $localizacao = $stmt->fetchColumn();
+    return $localizacao === false ? null : (string) $localizacao;
+}
+
+function cp_require_kidstok(int $id, string $operation): void
+{
+    $localizacao = cp_pedido_localizacao($id);
+    if ($localizacao === null) {
+        api_response(false, ['message' => 'Pedido nao encontrado.'], 404);
+    }
+    if ($localizacao !== 'KidStok') {
+        api_response(false, ['message' => "Pedido com localizacao $localizacao nao permite $operation. Apenas visualizacao."], 403);
+    }
+}
+
 function cp_delete_children(int $pedidoId): void
 {
     $stmt = db()->prepare(
@@ -298,11 +317,13 @@ try {
         if ($term !== '') {
             $where = "WHERE CAST(c.ID AS CHAR) LIKE :q_id
                          OR c.Sts LIKE :q_sts
+                         OR c.Localizacao LIKE :q_localizacao
                          OR COALESCE(NULLIF(e.Fantasia, ''), e.Nome) LIKE :q_empresa
                          OR cd.NomeCD LIKE :q_cd";
             $params = [
                 'q_id' => '%' . $term . '%',
                 'q_sts' => '%' . $term . '%',
+                'q_localizacao' => '%' . $term . '%',
                 'q_empresa' => '%' . $term . '%',
                 'q_cd' => '%' . $term . '%',
             ];
@@ -325,6 +346,7 @@ try {
                     c.DataPedido,
                     c.ValorTotalPedido,
                     c.Sts,
+                    c.Localizacao,
                     cd.NomeCD AS cd_nome,
                     COALESCE(NULLIF(e.Fantasia, ''), e.Nome) AS empresa_nome,
                     $fornecedorLabel AS fornecedor_nome
@@ -347,6 +369,7 @@ try {
 
     if ($action === 'delete') {
         $id = (int) ($data['id'] ?? 0);
+        cp_require_kidstok($id, 'excluir');
         $stmt = db()->prepare("DELETE FROM cp_compras WHERE ID = :id");
         $stmt->execute(['id' => $id]);
         api_response(true, ['message' => 'Pedido excluido.']);
@@ -368,6 +391,10 @@ try {
 
         $user = current_user();
         $payload['Usuario'] = (string) ($user['login'] ?? $user['nome'] ?? '');
+
+        if ($id > 0) {
+            cp_require_kidstok($id, 'editar');
+        }
 
         db()->beginTransaction();
 

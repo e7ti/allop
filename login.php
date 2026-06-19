@@ -20,26 +20,33 @@ require_once __DIR__ . '/config/app.php';
     <link rel="stylesheet" href="<?= app_url('assets/css/style.css') ?>">
 </head>
 <body class="login-page">
-<div class="login-backdrop"></div>
 <main class="login-wrap">
-    <img src="<?= app_url('assets/img/Allop.png') ?>" alt="Allop" class="login-logo-external">
-    <section class="login-card card-slim">
-        <div class="login-brand-stacked">
-            <img src="<?= app_url('assets/img/logo_kidstok.png') ?>" alt="Kidstok" class="login-logo">
-            <p class="mt-3">Acesse o painel do sistema</p>
+    <section class="login-shell">
+        <div class="login-showcase">
+            <img src="<?= app_url('assets/img/Allop.png') ?>" alt="Allop" class="login-logo-allop">
+            <div>
+                <h1>Allop</h1>
+                <p>Gestao integrada para operacoes mais simples, rapidas e seguras.</p>
+            </div>
         </div>
-        <div id="login-alert" class="alert alert-danger d-none"></div>
-        <form id="login-form">
-            <div class="mb-3">
-                <label class="form-label" for="login">Usuario</label>
-                <input class="form-control" id="login" name="login" autocomplete="username" required>
+        <div class="login-card">
+            <div class="login-brand-stacked">
+                <img src="<?= app_url('assets/img/logo_kidstok.png') ?>" alt="Kidstok" class="login-logo">
+                <p>Acesse o painel do sistema</p>
             </div>
-            <div class="mb-3">
-                <label class="form-label" for="senha">Senha</label>
-                <input class="form-control" id="senha" name="senha" type="password" autocomplete="current-password" required>
-            </div>
-            <button class="btn btn-orange btn-login w-100" type="submit">Entrar</button>
-        </form>
+            <div id="login-alert" class="alert alert-danger d-none"></div>
+            <form id="login-form">
+                <div class="mb-3">
+                    <label class="form-label" for="login">Usuario</label>
+                    <input class="form-control" id="login" name="login" autocomplete="username" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="senha">Senha</label>
+                    <input class="form-control" id="senha" name="senha" type="password" autocomplete="current-password" required>
+                </div>
+                <button class="btn btn-orange btn-login w-100" type="submit">Entrar</button>
+            </form>
+        </div>
     </section>
 </main>
 <script src="<?= app_url('assets/vendor/jquery/jquery.min.js') ?>"></script>

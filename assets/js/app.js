@@ -862,6 +862,8 @@ function formatCnpj(value) {
 
 let cpCompraItens = [];
 let cpCompraItensOpen = {};
+let cpCompraReadonly = false;
+let cpCompraReadonlyLocalizacao = '';
 
 function initCpComprasLista() {
     $('#filtro-cp-compras').select2({
@@ -876,7 +878,7 @@ function initCpComprasLista() {
             processResults: response => ({
                 results: (response.data || []).map(row => ({
                     id: row.id,
-                    text: 'Pedido ' + row.ID + ' - ' + (row.empresa_nome || row.fornecedor_nome || row.Sts || '')
+                    text: 'Pedido ' + row.ID + ' - ' + (row.empresa_nome || row.fornecedor_nome || row.Sts || '') + ' - ' + (row.Localizacao || '')
                 }))
             })
         }
@@ -893,21 +895,27 @@ function loadCpComprasGrid() {
         .done(function (response) {
             const rows = response.data || [];
             const html = rows.map(function (row) {
+                const localizacao = row.Localizacao || 'KidStok';
+                const canEdit = localizacao === 'KidStok';
+                const actions = canEdit
+                    ? '<a class="btn btn-sm btn-outline-secondary btn-edit btn-icon-only me-1" title="Editar" aria-label="Editar" href="' + cfg.form + '?id=' + row.id + '"></a>' +
+                        '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" onclick="deleteCpCompra(' + row.id + ')"></button>'
+                    : '<a class="btn btn-sm btn-outline-secondary btn-view btn-icon-only" title="Visualizar" aria-label="Visualizar" href="' + cfg.form + '?id=' + row.id + '"></a>';
                 return '<tr>' +
                     '<td data-label="Pedido">' + escapeHtml(row.ID || '') + '</td>' +
                     '<td data-label="Data">' + escapeHtml(formatDateBr(row.DataPedido || '')) + '</td>' +
                     '<td data-label="CD">' + escapeHtml(row.cd_nome || '') + '</td>' +
                     '<td data-label="Empresa">' + escapeHtml(row.empresa_nome || '') + '</td>' +
                     '<td data-label="Fornecedor">' + escapeHtml(row.fornecedor_nome || '') + '</td>' +
+                    '<td data-label="Localizacao">' + cpLocalizacaoBadge(localizacao) + '</td>' +
                     '<td data-label="Total">' + escapeHtml(formatMoneyBr(row.ValorTotalPedido || 0)) + '</td>' +
                     '<td data-label="Status">' + escapeHtml(row.Sts || '') + '</td>' +
                     '<td data-label="Acoes" class="text-end">' +
-                    '<a class="btn btn-sm btn-outline-secondary btn-edit btn-icon-only me-1" title="Editar" aria-label="Editar" href="' + cfg.form + '?id=' + row.id + '"></a>' +
-                    '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" onclick="deleteCpCompra(' + row.id + ')"></button>' +
+                    actions +
                     '</td>' +
                     '</tr>';
             }).join('');
-            $('#cp-compras-grid').html(html || '<tr><td colspan="8" class="text-center text-muted">Nenhum registro encontrado.</td></tr>');
+            $('#cp-compras-grid').html(html || '<tr><td colspan="9" class="text-center text-muted">Nenhum registro encontrado.</td></tr>');
         })
         .fail(function (xhr) {
             appAlert(xhr.responseJSON?.message || 'Nao foi possivel carregar os pedidos.', 'danger');
@@ -930,6 +938,8 @@ function deleteCpCompra(id) {
 function initCpComprasForm() {
     const $form = $('#cp-compras-form');
     const id = Number($form.data('id'));
+    cpCompraReadonly = false;
+    cpCompraReadonlyLocalizacao = '';
 
     $form.find('.js-cp-compra-select').each(function () {
         const $select = $(this);
@@ -961,8 +971,11 @@ function initCpComprasForm() {
             .done(function (response) {
                 const row = response.data || {};
                 fillCpCompraHeader($form, row);
+                cpCompraReadonlyLocalizacao = row.Localizacao || 'KidStok';
+                cpCompraReadonly = cpCompraReadonlyLocalizacao !== 'KidStok';
                 cpCompraItens = (row.items || []).map(mapCpCompraItemFromApi);
                 cpCompraItensOpen = {};
+                applyCpCompraReadonly($form);
                 renderCpCompraItens();
                 recalcCpCompraTotal();
             })
@@ -978,6 +991,10 @@ function initCpComprasForm() {
 
     $form.on('submit', function (event) {
         event.preventDefault();
+        if (cpCompraReadonly) {
+            appAlert('Pedido com localizacao ' + cpCompraReadonlyLocalizacao + ' permite apenas visualizacao.', 'warning');
+            return;
+        }
         syncCpCompraItensFromDom();
         const message = validarCpCompraForm($form);
         if (message) {
@@ -998,6 +1015,18 @@ function initCpComprasForm() {
             appAlert(xhr.responseJSON?.message || 'Nao foi possivel salvar o pedido.', 'danger');
         });
     });
+}
+
+function applyCpCompraReadonly($form) {
+    if (!cpCompraReadonly) {
+        return;
+    }
+    $form.addClass('cp-compra-readonly');
+    $form.find('input, select, textarea, button[type="submit"]').prop('disabled', true);
+    $form.find('[name="ID"], [name="ValorTotalPedido"]').prop('disabled', false).prop('readonly', true);
+    $form.find('.js-cp-compra-select').prop('disabled', true).trigger('change.select2');
+    $('#btn-add-cp-item, #btn-aplicar-percentuais').prop('disabled', true);
+    appAlert('Pedido com localizacao ' + cpCompraReadonlyLocalizacao + ' esta disponivel apenas para visualizacao.', 'warning');
 }
 
 function fillCpCompraHeader($form, row) {
@@ -1111,10 +1140,10 @@ function renderCpCompraItens() {
             '<small class="text-muted d-block extra-small text-uppercase">Total do Item</small>' +
             '<span class="fw-bold text-success">R$ ' + escapeHtml(formatMoneyBr(item.total_produto || 0)) + '</span>' +
             '</div>' +
-            '<div class="d-flex flex-wrap gap-2 cp-compra-item-actions" onclick="event.stopPropagation();">' +
-            '<button class="btn btn-sm btn-orange btn-new" type="button" onclick="addCpCompraDetalhe(' + index + ')">Subitem</button>' +
-            '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraItem(' + index + ')"></button>' +
-            '</div>' +
+            (cpCompraReadonly ? '' : '<div class="d-flex flex-wrap gap-2 cp-compra-item-actions" onclick="event.stopPropagation();">' +
+                '<button class="btn btn-sm btn-orange btn-new" type="button" onclick="addCpCompraDetalhe(' + index + ')">Subitem</button>' +
+                '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraItem(' + index + ')"></button>' +
+                '</div>') +
             '</div>' +
             '</div>' +
             '<div id="' + collapseId + '" class="collapse cp-compra-item-collapse' + collapseClass + '" data-item-index="' + index + '">' +
@@ -1132,7 +1161,7 @@ function renderCpCompraItens() {
             '</div>' +
             '<div class="table-responsive">' +
             '<table class="table table-custom align-middle mb-0 cp-compra-detalhes-table">' +
-            '<thead><tr><th>SKU</th><th>Tamanho</th><th>Cor</th><th>Qtde</th><th>Preco Forn.</th><th>Preco Prop.</th><th>Total</th><th class="text-end">Acoes</th></tr></thead>' +
+            '<thead><tr><th>SKU</th><th>Tamanho</th><th>Cor</th><th>Qtde</th><th>Preco Forn.</th><th>Preco Prop.</th><th>Total</th>' + (cpCompraReadonly ? '' : '<th class="text-end">Acoes</th>') + '</tr></thead>' +
             '<tbody>' + renderCpCompraDetalhes(index, item.detalhes || []) + '</tbody>' +
             '</table>' +
             '</div>' +
@@ -1153,7 +1182,7 @@ function renderCpCompraDetalhes(itemIndex, detalhes) {
             '<td data-label="Preco Forn.">' + detailInput(itemIndex, detailIndex, 'preco_fornecedor', detail.preco_fornecedor, 'number', '0.01') + '</td>' +
             '<td data-label="Preco Prop.">' + detailInput(itemIndex, detailIndex, 'preco_proposta', detail.preco_proposta, 'number', '0.01') + '</td>' +
             '<td data-label="Total">' + detailInput(itemIndex, detailIndex, 'valor_total_produto', detail.valor_total_produto, 'number', '0.01', true) + '</td>' +
-            '<td data-label="Acoes" class="text-end"><button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraDetalhe(' + itemIndex + ', ' + detailIndex + ')"></button></td>' +
+            (cpCompraReadonly ? '' : '<td data-label="Acoes" class="text-end"><button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraDetalhe(' + itemIndex + ', ' + detailIndex + ')"></button></td>') +
             '</tr>';
     }).join('');
 }
@@ -1162,7 +1191,7 @@ function fieldHtml(itemIndex, detailIndex, name, label, value, colClass, type, s
     const attr = cpDataAttrs(itemIndex, detailIndex, name);
     const inputType = type || 'text';
     const stepAttr = step ? ' step="' + step + '"' : '';
-    const readonlyAttr = readonly ? ' readonly' : '';
+    const readonlyAttr = (readonly || cpCompraReadonly) ? ' readonly' : '';
     return '<div class="' + colClass + '"><label class="form-label">' + label + '</label><input class="form-control cp-compra-field" type="' + inputType + '"' + stepAttr + readonlyAttr + ' value="' + escapeAttr(value || '') + '" ' + attr + '></div>';
 }
 
@@ -1172,14 +1201,22 @@ function selectHtml(itemIndex, detailIndex, name, label, value, colClass, option
         const selected = String(option.id) === String(value) ? ' selected' : '';
         return '<option value="' + escapeHtml(option.id) + '"' + selected + '>' + escapeHtml(option.text) + '</option>';
     }).join('');
-    return '<div class="' + colClass + '"><label class="form-label">' + label + '</label><select class="form-select cp-compra-field" ' + attr + '>' + opts + '</select></div>';
+    const disabledAttr = cpCompraReadonly ? ' disabled' : '';
+    return '<div class="' + colClass + '"><label class="form-label">' + label + '</label><select class="form-select cp-compra-field" ' + attr + disabledAttr + '>' + opts + '</select></div>';
 }
 
 function detailInput(itemIndex, detailIndex, name, value, type, step, readonly) {
     const inputType = type || 'text';
     const stepAttr = step ? ' step="' + step + '"' : '';
-    const readonlyAttr = readonly ? ' readonly' : '';
+    const readonlyAttr = (readonly || cpCompraReadonly) ? ' readonly' : '';
     return '<input class="form-control form-control-sm cp-compra-field" type="' + inputType + '"' + stepAttr + readonlyAttr + ' value="' + escapeAttr(value || '') + '" ' + cpDataAttrs(itemIndex, detailIndex, name) + '>';
+}
+
+function cpLocalizacaoBadge(localizacao) {
+    const value = localizacao || 'KidStok';
+    const className = value === 'KidStok' ? 'badge-localizacao-kidstok' :
+        value === 'Fornecedor' ? 'badge-localizacao-fornecedor' : 'badge-localizacao-allop';
+    return '<span class="badge cp-localizacao-badge ' + className + '">' + escapeHtml(value) + '</span>';
 }
 
 function cpDataAttrs(itemIndex, detailIndex, name) {
