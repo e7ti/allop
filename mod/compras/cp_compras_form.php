@@ -28,8 +28,8 @@ $id = (int) ($_GET['id'] ?? 0);
             <div class="col-12 col-md-2"><label class="form-label">Markup Franquia</label><input class="form-control js-money" name="MarkupFranquia" type="number" step="0.01" value="0.00"></div>
             <div class="col-12 col-md-2"><label class="form-label">Markup Total</label><input class="form-control js-money" name="MarkupTotal" type="number" step="0.01" value="0.00"></div>
             <div class="col-12 col-md-2"><label class="form-label">Valor Total</label><input class="form-control" name="ValorTotalPedido" type="number" step="0.01" readonly></div>
-            <div class="col-12 col-md-2"><label class="form-label">Status</label><select class="form-select" name="Sts"><option value="Aberto">Aberto</option><option value="Aprovado">Aprovado</option><option value="Recusado">Recusado</option><option value="Aprovado aguardando foto">Aprovado aguardando foto</option><option value="Consolidado">Consolidado</option></select></div>
-            <div class="col-12 col-md-2"><label class="form-label">Tem Fotos</label><select class="form-select" name="TemFotos"><option value="0">Nao</option><option value="1">Sim</option></select></div>
+            <input type="hidden" name="Sts" value="Aberto">
+            <div class="col-12 col-md-2"><label class="form-label">Status</label><input class="form-control" name="Sts_display" value="Aberto" readonly></div>
             <div class="col-12 col-md-2"><label class="form-label">Localizacao</label><select class="form-select" name="Localizacao"><option value="KidStok">KidStok</option><option value="Allop">Allop</option><option value="Fornecedor">Fornecedor</option></select></div>
             <div class="col-12 col-md-8"><label class="form-label">Motivo/Observacao</label><input class="form-control" name="StsMotivo" maxlength="500"></div>
         </div>
@@ -64,6 +64,30 @@ $id = (int) ($_GET['id'] ?? 0);
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary btn-back" data-bs-dismiss="modal">Voltar</button>
                 <button type="button" class="btn btn-orange btn-save" id="btn-aplicar-percentuais">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="cp-fotos-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div>
+                    <h5 class="modal-title">Fotos do Item</h5>
+                    <div class="text-muted small">Referencia <span id="cp-foto-referencia"></span> - <span id="cp-foto-count">0 fotos</span></div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div id="cp-foto-upload-block" class="mb-3">
+                    <label class="form-label">Inserir fotos</label>
+                    <input class="form-control" id="cp-foto-input" type="file" accept="image/*" multiple>
+                </div>
+                <div id="cp-fotos-list" class="cp-fotos-grid"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary btn-back" data-bs-dismiss="modal">Voltar</button>
             </div>
         </div>
     </div>

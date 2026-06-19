@@ -25,6 +25,30 @@ function cp_trim($value): string
     return trim((string) ($value ?? ''));
 }
 
+function cp_fix_text_encoding($value): string
+{
+    $text = (string) ($value ?? '');
+    if ($text === '' || (strpos($text, 'Ã') === false && strpos($text, 'Â') === false)) {
+        return $text;
+    }
+
+    if (function_exists('mb_convert_encoding')) {
+        return mb_convert_encoding(mb_convert_encoding($text, 'ISO-8859-1', 'UTF-8'), 'UTF-8', 'ISO-8859-1');
+    }
+
+    if (function_exists('iconv')) {
+        $decoded = iconv('UTF-8', 'ISO-8859-1//IGNORE', $text);
+        if ($decoded !== false) {
+            $encoded = iconv('ISO-8859-1', 'UTF-8//IGNORE', $decoded);
+            if ($encoded !== false) {
+                return $encoded;
+            }
+        }
+    }
+
+    return $text;
+}
+
 function cp_table_exists(string $table): bool
 {
     $stmt = db()->prepare(
@@ -57,7 +81,7 @@ function cp_fornecedor_label_expression(string $alias): string
 {
     $columns = cp_columns('produtos_fornecedor');
     $parts = [];
-    foreach (['Nome', 'Fantasia', 'RazaoSocial', 'Descricao', 'descricao', 'Fornecedor'] as $column) {
+    foreach (['NomeFornecedor', 'Nome', 'Fantasia', 'RazaoSocial', 'Descricao', 'descricao', 'Fornecedor'] as $column) {
         if (in_array($column, $columns, true)) {
             $parts[] = "NULLIF($alias.`$column`, '')";
         }
@@ -85,13 +109,75 @@ function cp_option_select(string $type, string $q): void
         if (!cp_table_exists('produtos_fornecedor')) {
             api_response(true, ['results' => []]);
         }
-        $label = cp_fornecedor_label_expression('f');
-        $stmt = db()->prepare("SELECT f.Codigo AS id, $label AS text FROM produtos_fornecedor f WHERE CAST(f.Codigo AS CHAR) LIKE :q_codigo OR $label LIKE :q_label ORDER BY text LIMIT 30");
-        $stmt->execute(['q_codigo' => $term, 'q_label' => $term]);
+        $stmt = db()->prepare(
+            "SELECT f.Codigo AS id,
+                    CONCAT(f.Codigo, ' - ', f.NomeFornecedor) AS text,
+                    f.MarkUpCompra AS markup_compra
+               FROM produtos_fornecedor f
+              WHERE CAST(f.Codigo AS CHAR) LIKE :q_codigo
+                 OR f.NomeFornecedor LIKE :q_nome
+              ORDER BY f.NomeFornecedor
+              LIMIT 30"
+        );
+        $stmt->execute(['q_codigo' => $term, 'q_nome' => $term]);
         api_response(true, ['results' => $stmt->fetchAll()]);
     }
 
+    if ($type === 'referencias') {
+        $fornecedorId = cp_trim($_GET['fornecedor_id'] ?? $_POST['fornecedor_id'] ?? '');
+        if ($fornecedorId === '') {
+            api_response(true, ['results' => []]);
+        }
+        if (!cp_table_exists('pf_colecao')) {
+            api_response(true, ['results' => []]);
+        }
+        $stmt = db()->prepare(
+            "SELECT pc.codigo_referencia AS id,
+                    COALESCE(NULLIF(MIN(pc.descricao), ''), 'Sem descricao') AS descricao
+               FROM pf_colecao pc
+              WHERE pc.id_fornecedor = :fornecedor_id
+                AND pc.codigo_referencia IS NOT NULL
+                AND pc.codigo_referencia <> ''
+                AND (
+                    pc.codigo_referencia LIKE :q_codigo
+                    OR pc.descricao LIKE :q_descricao
+                    OR pc.tamanho LIKE :q_tamanho
+                    OR pc.cor_produto LIKE :q_cor
+                )
+              GROUP BY pc.codigo_referencia
+              ORDER BY pc.codigo_referencia
+              LIMIT 30"
+        );
+        $stmt->execute([
+            'fornecedor_id' => $fornecedorId,
+            'q_codigo' => $term,
+            'q_descricao' => $term,
+            'q_tamanho' => $term,
+            'q_cor' => $term,
+        ]);
+        $results = array_map(static function (array $row): array {
+            $descricao = cp_fix_text_encoding($row['descricao'] ?? 'Sem descricao');
+            return [
+                'id' => $row['id'],
+                'text' => $row['id'] . ' - ' . $descricao,
+            ];
+        }, $stmt->fetchAll());
+        api_response(true, ['results' => $results]);
+    }
+
     api_response(false, ['message' => 'Tipo invalido.'], 404);
+}
+
+function cp_single_option(string $table, string $idColumn, string $textColumn): ?array
+{
+    $stmt = db()->query("SELECT COUNT(*) FROM `$table`");
+    if ((int) $stmt->fetchColumn() !== 1) {
+        return null;
+    }
+
+    $stmt = db()->query("SELECT `$idColumn` AS id, $textColumn AS text FROM `$table` LIMIT 1");
+    $row = $stmt->fetch();
+    return $row ?: null;
 }
 
 function cp_validate_header(array $payload): void
@@ -143,13 +229,16 @@ function cp_load_pedido(int $id): ?array
     $fornecedorLabel = cp_table_exists('produtos_fornecedor')
         ? cp_fornecedor_label_expression('f')
         : 'c.Fornecedor_id';
+    $fornecedorText = cp_table_exists('produtos_fornecedor')
+        ? "CONCAT(c.Fornecedor_id, ' - ', $fornecedorLabel)"
+        : 'c.Fornecedor_id';
 
     $stmt = db()->prepare(
         "SELECT c.*,
                 c.ID AS id,
                 cd.NomeCD AS cd_id_text,
                 COALESCE(NULLIF(e.Fantasia, ''), e.Nome) AS empresa_id_text,
-                $fornecedorLabel AS Fornecedor_id_text
+                $fornecedorText AS Fornecedor_id_text
            FROM cp_compras c
            LEFT JOIN empresas_cd cd ON cd.Codigo = c.cd_id
            LEFT JOIN empresas e ON e.Codigo = c.empresa_id
@@ -187,6 +276,62 @@ function cp_load_pedido(int $id): ?array
     return $pedido;
 }
 
+function cp_load_referencia_item(string $fornecedorId, string $codigoReferencia): ?array
+{
+    if (!cp_table_exists('pf_colecao')) {
+        return null;
+    }
+
+    $stmt = db()->prepare(
+        "SELECT *
+           FROM pf_colecao
+          WHERE id_fornecedor = :fornecedor_id
+            AND codigo_referencia = :codigo_referencia
+          ORDER BY tamanho ASC, cor_produto ASC, id_item ASC"
+    );
+    $stmt->execute([
+        'fornecedor_id' => $fornecedorId,
+        'codigo_referencia' => $codigoReferencia,
+    ]);
+    $rows = $stmt->fetchAll();
+    if (!$rows) {
+        return null;
+    }
+
+    $first = $rows[0];
+    $detalhes = [];
+    foreach ($rows as $row) {
+        $detalhes[] = [
+            'sku' => (string) ($row['sku'] ?? ''),
+            'tamanho' => (string) ($row['tamanho'] ?? ''),
+            'cor' => cp_fix_text_encoding($row['cor_produto'] ?? ''),
+            'Qtde' => 0,
+            'preco_fornecedor' => cp_decimal($row['valor_unitario'] ?? 0),
+            'preco_proposta' => cp_decimal($row['valor_unitario'] ?? 0),
+            'valor_total_produto' => 0,
+            'preco_franqueado' => 0,
+            'markup_franquia' => 0,
+            'preco_loja' => 0,
+            'markup_loja' => 0,
+            'markup_total' => 0,
+            'Sts' => 1,
+        ];
+    }
+
+    return [
+        'referencia_fornecedor' => (string) ($first['codigo_referencia'] ?? ''),
+        'descricao' => cp_fix_text_encoding($first['descricao'] ?? ''),
+        'composicao' => cp_fix_text_encoding($first['composicao'] ?? ''),
+        'ncm' => (string) ($first['ncm'] ?? ''),
+        'entrega' => '',
+        'total_qtde' => 0,
+        'total_produto' => 0,
+        'Foto' => 0,
+        'Sts' => 1,
+        'detalhes' => $detalhes,
+    ];
+}
+
 function cp_pedido_localizacao(int $id): ?string
 {
     $stmt = db()->prepare("SELECT Localizacao FROM cp_compras WHERE ID = :id");
@@ -204,6 +349,152 @@ function cp_require_kidstok(int $id, string $operation): void
     if ($localizacao !== 'KidStok') {
         api_response(false, ['message' => "Pedido com localizacao $localizacao nao permite $operation. Apenas visualizacao."], 403);
     }
+}
+
+function cp_image_mime_from_base64(string $base64): string
+{
+    $prefix = substr($base64, 0, 12);
+    if (substr($prefix, 0, 3) === '/9j') {
+        return 'image/jpeg';
+    }
+    if (substr($prefix, 0, 5) === 'iVBOR') {
+        return 'image/png';
+    }
+    if (substr($prefix, 0, 6) === 'R0lGOD') {
+        return 'image/gif';
+    }
+    if (substr($prefix, 0, 5) === 'UklGR') {
+        return 'image/webp';
+    }
+    return 'image/jpeg';
+}
+
+function cp_validate_foto_context(int $pedidoId, string $referencia, string $fornecedorId): void
+{
+    if ($pedidoId <= 0 || $referencia === '' || $fornecedorId === '') {
+        api_response(false, ['message' => 'Informe pedido, referencia e fornecedor para as fotos.'], 422);
+    }
+    if (!cp_table_exists('cp_compras_fotos_ks')) {
+        api_response(false, ['message' => 'Tabela cp_compras_fotos_ks nao encontrada.'], 500);
+    }
+}
+
+function cp_list_fotos_ks(int $pedidoId, string $referencia, string $fornecedorId): array
+{
+    cp_validate_foto_context($pedidoId, $referencia, $fornecedorId);
+    $stmt = db()->prepare(
+        "SELECT id, Sequencia, foto
+           FROM cp_compras_fotos_ks
+          WHERE cp_compras_id = :pedido_id
+            AND ref_fornecedor = :referencia
+            AND fornecedor_id = :fornecedor_id
+          ORDER BY Sequencia ASC, id ASC"
+    );
+    $stmt->execute([
+        'pedido_id' => $pedidoId,
+        'referencia' => $referencia,
+        'fornecedor_id' => $fornecedorId,
+    ]);
+
+    return array_map(static function (array $row): array {
+        $base64 = trim((string) ($row['foto'] ?? ''));
+        if (substr($base64, 0, 11) === 'data:image/') {
+            $src = $base64;
+        } else {
+            $src = 'data:' . cp_image_mime_from_base64($base64) . ';base64,' . $base64;
+        }
+        return [
+            'id' => (int) $row['id'],
+            'Sequencia' => (int) $row['Sequencia'],
+            'src' => $src,
+        ];
+    }, $stmt->fetchAll());
+}
+
+function cp_next_foto_sequencia(int $pedidoId, string $referencia, string $fornecedorId): int
+{
+    $stmt = db()->prepare(
+        "SELECT COALESCE(MAX(Sequencia), 0) + 1
+           FROM cp_compras_fotos_ks
+          WHERE cp_compras_id = :pedido_id
+            AND ref_fornecedor = :referencia
+            AND fornecedor_id = :fornecedor_id"
+    );
+    $stmt->execute([
+        'pedido_id' => $pedidoId,
+        'referencia' => $referencia,
+        'fornecedor_id' => $fornecedorId,
+    ]);
+    return (int) $stmt->fetchColumn();
+}
+
+function cp_upload_fotos_ks(int $pedidoId, string $referencia, string $fornecedorId): void
+{
+    cp_validate_foto_context($pedidoId, $referencia, $fornecedorId);
+    cp_require_kidstok($pedidoId, 'inserir fotos');
+
+    $files = $_FILES['fotos'] ?? null;
+    if (!$files || empty($files['name'])) {
+        api_response(false, ['message' => 'Selecione ao menos uma foto.'], 422);
+    }
+
+    $names = is_array($files['name']) ? $files['name'] : [$files['name']];
+    $tmpNames = is_array($files['tmp_name']) ? $files['tmp_name'] : [$files['tmp_name']];
+    $errors = is_array($files['error']) ? $files['error'] : [$files['error']];
+
+    $stmt = db()->prepare(
+        "INSERT INTO cp_compras_fotos_ks
+            (cp_compras_id, ref_fornecedor, fornecedor_id, Sequencia, foto)
+         VALUES
+            (:pedido_id, :referencia, :fornecedor_id, :sequencia, :foto)"
+    );
+
+    $inserted = 0;
+    $sequencia = cp_next_foto_sequencia($pedidoId, $referencia, $fornecedorId);
+    db()->beginTransaction();
+    foreach ($names as $index => $name) {
+        if (($errors[$index] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            continue;
+        }
+        $tmpName = (string) ($tmpNames[$index] ?? '');
+        if ($tmpName === '' || !is_uploaded_file($tmpName) || !getimagesize($tmpName)) {
+            continue;
+        }
+        $contents = file_get_contents($tmpName);
+        if ($contents === false || $contents === '') {
+            continue;
+        }
+        $stmt->execute([
+            'pedido_id' => $pedidoId,
+            'referencia' => $referencia,
+            'fornecedor_id' => $fornecedorId,
+            'sequencia' => $sequencia++,
+            'foto' => base64_encode($contents),
+        ]);
+        $inserted++;
+    }
+
+    if ($inserted === 0) {
+        db()->rollBack();
+        api_response(false, ['message' => 'Nenhuma imagem valida foi enviada.'], 422);
+    }
+
+    $updateStmt = db()->prepare(
+        "UPDATE cp_compras_itens
+            SET Foto = 1
+          WHERE cp_compras_id = :pedido_id
+            AND referencia_fornecedor = :referencia"
+    );
+    $updateStmt->execute([
+        'pedido_id' => $pedidoId,
+        'referencia' => $referencia,
+    ]);
+    db()->commit();
+
+    api_response(true, [
+        'message' => $inserted === 1 ? 'Foto inserida.' : 'Fotos inseridas.',
+        'count' => count(cp_list_fotos_ks($pedidoId, $referencia, $fornecedorId)),
+    ]);
 }
 
 function cp_delete_children(int $pedidoId): void
@@ -310,6 +601,13 @@ try {
         cp_option_select((string) ($_GET['type'] ?? ''), trim((string) ($_GET['q'] ?? '')));
     }
 
+    if ($action === 'defaults') {
+        api_response(true, [
+            'cd' => cp_single_option('empresas_cd', 'Codigo', '`NomeCD`'),
+            'empresa' => cp_single_option('empresas', 'Codigo', "COALESCE(NULLIF(`Fantasia`, ''), `Nome`)"),
+        ]);
+    }
+
     if ($action === 'list') {
         $term = trim((string) ($data['q'] ?? ''));
         $where = '';
@@ -365,6 +663,34 @@ try {
     if ($action === 'get') {
         $id = (int) ($data['id'] ?? 0);
         api_response(true, ['data' => cp_load_pedido($id)]);
+    }
+
+    if ($action === 'referencia') {
+        $fornecedorId = cp_trim($data['fornecedor_id'] ?? '');
+        $codigoReferencia = cp_trim($data['codigo_referencia'] ?? '');
+        if ($fornecedorId === '' || $codigoReferencia === '') {
+            api_response(false, ['message' => 'Informe fornecedor e referencia.'], 422);
+        }
+        $item = cp_load_referencia_item($fornecedorId, $codigoReferencia);
+        if (!$item) {
+            api_response(false, ['message' => 'Referencia nao encontrada para este fornecedor.'], 404);
+        }
+        api_response(true, ['data' => $item]);
+    }
+
+    if ($action === 'fotos_list') {
+        $pedidoId = (int) ($data['pedido_id'] ?? 0);
+        $referencia = cp_trim($data['referencia'] ?? '');
+        $fornecedorId = cp_trim($data['fornecedor_id'] ?? '');
+        $fotos = cp_list_fotos_ks($pedidoId, $referencia, $fornecedorId);
+        api_response(true, ['data' => $fotos, 'count' => count($fotos)]);
+    }
+
+    if ($action === 'fotos_upload') {
+        $pedidoId = (int) ($data['pedido_id'] ?? 0);
+        $referencia = cp_trim($data['referencia'] ?? '');
+        $fornecedorId = cp_trim($data['fornecedor_id'] ?? '');
+        cp_upload_fotos_ks($pedidoId, $referencia, $fornecedorId);
     }
 
     if ($action === 'delete') {

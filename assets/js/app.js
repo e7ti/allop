@@ -864,6 +864,7 @@ let cpCompraItens = [];
 let cpCompraItensOpen = {};
 let cpCompraReadonly = false;
 let cpCompraReadonlyLocalizacao = '';
+let cpCompraFotoItemIndex = null;
 
 function initCpComprasLista() {
     $('#filtro-cp-compras').select2({
@@ -955,12 +956,25 @@ function initCpComprasForm() {
         });
     });
 
+    $form.find('[name="Fornecedor_id"]').on('select2:select', function (event) {
+        const markup = event.params.data.markup_compra;
+        if (markup !== undefined && markup !== null && markup !== '') {
+            $form.find('[name="MarkupFranqueadora"]').val(Number(markup || 0).toFixed(2));
+        }
+    });
+
     $('#btn-add-cp-item').on('click', function () {
+        if (!$form.find('[name="Fornecedor_id"]').val()) {
+            appAlert('Informe o fornecedor antes de adicionar itens.', 'warning');
+            return;
+        }
         syncCpCompraItensFromDom();
         cpCompraItens.push(emptyCpCompraItem());
         cpCompraItensOpen[cpCompraItens.length - 1] = true;
         renderCpCompraItens();
     });
+
+    $('#cp-foto-input').on('change', uploadCpCompraFotos);
 
     $form.on('shown.bs.collapse hidden.bs.collapse', '.cp-compra-item-collapse', function (event) {
         cpCompraItensOpen[$(this).data('item-index')] = event.type === 'shown';
@@ -984,6 +998,9 @@ function initCpComprasForm() {
             });
     } else {
         $form.find('[name="DataPedido"]').val(new Date().toISOString().slice(0, 10));
+        $form.find('[name="Sts"]').val('Aberto');
+        $form.find('[name="Sts_display"]').val('Aberto');
+        loadCpCompraDefaults($form);
         cpCompraItens = [emptyCpCompraItem()];
         cpCompraItensOpen = {};
         renderCpCompraItens();
@@ -1017,6 +1034,26 @@ function initCpComprasForm() {
     });
 }
 
+function loadCpCompraDefaults($form) {
+    $.getJSON(window.cpComprasFormConfig.api, { action: 'defaults' })
+        .done(function (response) {
+            if (response.cd) {
+                setSelect2Option($form.find('[name="cd_id"]'), response.cd.id, response.cd.text);
+            }
+            if (response.empresa) {
+                setSelect2Option($form.find('[name="empresa_id"]'), response.empresa.id, response.empresa.text);
+            }
+        });
+}
+
+function setSelect2Option($field, id, text) {
+    if (!$field.length || !id) {
+        return;
+    }
+    const option = new Option(text || id, id, true, true);
+    $field.append(option).trigger('change');
+}
+
 function applyCpCompraReadonly($form) {
     if (!cpCompraReadonly) {
         return;
@@ -1044,6 +1081,9 @@ function fillCpCompraHeader($form, row) {
             return;
         }
         $field.val(row[name]).trigger('change');
+        if (name === 'Sts') {
+            $form.find('[name="Sts_display"]').val(row[name] || 'Aberto');
+        }
     });
 }
 
@@ -1149,19 +1189,19 @@ function renderCpCompraItens() {
             '<div id="' + collapseId + '" class="collapse cp-compra-item-collapse' + collapseClass + '" data-item-index="' + index + '">' +
             '<div class="card-body border-top table-responsive">' +
             '<div class="row g-3 mb-3">' +
-            fieldHtml(index, null, 'referencia_fornecedor', 'Referencia', item.referencia_fornecedor, 'col-12 col-md-2') +
-            fieldHtml(index, null, 'descricao', 'Descricao', item.descricao, 'col-12 col-md-4') +
-            fieldHtml(index, null, 'composicao', 'Composicao', item.composicao, 'col-12 col-md-3') +
-            fieldHtml(index, null, 'ncm', 'NCM', item.ncm, 'col-12 col-md-2') +
-            fieldHtml(index, null, 'entrega', 'Entrega', item.entrega, 'col-12 col-md-2', 'date') +
+            referenceSelectHtml(index, item.referencia_fornecedor, 'col-12 col-lg-5') +
+            fieldHtml(index, null, 'descricao', 'Descricao', item.descricao, 'col-12 col-lg-5', 'text', null, true) +
+            fieldHtml(index, null, 'entrega', 'Entrega', item.entrega, 'col-12 col-lg-2', 'date') +
+            fieldHtml(index, null, 'composicao', 'Composicao', item.composicao, 'col-12 col-md-3', 'text', null, true) +
+            fieldHtml(index, null, 'ncm', 'NCM', item.ncm, 'col-12 col-md-2', 'text', null, true) +
             fieldHtml(index, null, 'total_qtde', 'Qtde Rateio', item.total_qtde, 'col-12 col-md-2', 'number', '0.01') +
             fieldHtml(index, null, 'total_produto', 'Total Item', item.total_produto, 'col-12 col-md-2', 'number', '0.01', true) +
-            selectHtml(index, null, 'Foto', 'Foto', item.Foto, 'col-12 col-md-2', [{ id: 0, text: 'Nao' }, { id: 1, text: 'Sim' }]) +
-            selectHtml(index, null, 'Sts', 'Status', item.Sts, 'col-12 col-md-2', [{ id: 1, text: 'Ativo' }, { id: 0, text: 'Inativo' }]) +
+            photoButtonHtml(index, item, 'col-12 col-md-2') +
+            itemStatusReadonlyHtml(index, item.Sts, 'col-12 col-md-2') +
             '</div>' +
             '<div class="table-responsive">' +
             '<table class="table table-custom align-middle mb-0 cp-compra-detalhes-table">' +
-            '<thead><tr><th>SKU</th><th>Tamanho</th><th>Cor</th><th>Qtde</th><th>Preco Forn.</th><th>Preco Prop.</th><th>Total</th>' + (cpCompraReadonly ? '' : '<th class="text-end">Acoes</th>') + '</tr></thead>' +
+            '<thead><tr><th>Tamanho</th><th>Cor</th><th>Qtde</th><th>Preco Prop.</th><th>Preco Forn.</th><th>Preco Franq.</th><th>Preco Loja</th><th>Total</th><th>Status</th>' + (cpCompraReadonly ? '' : '<th class="text-end">Acoes</th>') + '</tr></thead>' +
             '<tbody>' + renderCpCompraDetalhes(index, item.detalhes || []) + '</tbody>' +
             '</table>' +
             '</div>' +
@@ -1170,18 +1210,22 @@ function renderCpCompraItens() {
             '</section>';
     }).join('');
     $('#cp-compras-itens').html(html || '<div class="text-center text-muted py-3">Nenhum item informado.</div>');
+    initCpCompraReferenciaSelects();
+    initCpCompraDetalheFields();
 }
 
 function renderCpCompraDetalhes(itemIndex, detalhes) {
     return detalhes.map(function (detail, detailIndex) {
         return '<tr data-item-index="' + itemIndex + '" data-detail-index="' + detailIndex + '">' +
-            '<td data-label="SKU">' + detailInput(itemIndex, detailIndex, 'sku', detail.sku) + '</td>' +
-            '<td data-label="Tamanho">' + detailInput(itemIndex, detailIndex, 'tamanho', detail.tamanho) + '</td>' +
-            '<td data-label="Cor">' + detailInput(itemIndex, detailIndex, 'cor', detail.cor) + '</td>' +
-            '<td data-label="Qtde">' + detailInput(itemIndex, detailIndex, 'Qtde', detail.Qtde, 'number', '0.01') + '</td>' +
-            '<td data-label="Preco Forn.">' + detailInput(itemIndex, detailIndex, 'preco_fornecedor', detail.preco_fornecedor, 'number', '0.01') + '</td>' +
-            '<td data-label="Preco Prop.">' + detailInput(itemIndex, detailIndex, 'preco_proposta', detail.preco_proposta, 'number', '0.01') + '</td>' +
-            '<td data-label="Total">' + detailInput(itemIndex, detailIndex, 'valor_total_produto', detail.valor_total_produto, 'number', '0.01', true) + '</td>' +
+            '<td data-label="Tamanho">' + detailInput(itemIndex, detailIndex, 'tamanho', detail.tamanho, 'text', null, true) + '</td>' +
+            '<td data-label="Cor">' + detailInput(itemIndex, detailIndex, 'cor', detail.cor, 'text', null, true) + '</td>' +
+            '<td data-label="Qtde">' + detailInput(itemIndex, detailIndex, 'Qtde', parseInt(detail.Qtde || 0, 10), 'number', '1') + '</td>' +
+            '<td data-label="Preco Prop.">' + detailInput(itemIndex, detailIndex, 'preco_proposta', detail.preco_proposta, 'money') + '</td>' +
+            '<td data-label="Preco Forn.">' + detailInput(itemIndex, detailIndex, 'preco_fornecedor', detail.preco_fornecedor, 'money', null, true) + '</td>' +
+            '<td data-label="Preco Franq.">' + detailInput(itemIndex, detailIndex, 'preco_franqueado', detail.preco_franqueado, 'money', null, true) + '</td>' +
+            '<td data-label="Preco Loja">' + detailInput(itemIndex, detailIndex, 'preco_loja', detail.preco_loja, 'money', null, true) + '</td>' +
+            '<td data-label="Total">' + detailInput(itemIndex, detailIndex, 'valor_total_produto', detail.valor_total_produto, 'money', null, true) + '</td>' +
+            '<td data-label="Status">' + detailStatusSelect(itemIndex, detailIndex, detail.Sts) + '</td>' +
             (cpCompraReadonly ? '' : '<td data-label="Acoes" class="text-end"><button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraDetalhe(' + itemIndex + ', ' + detailIndex + ')"></button></td>') +
             '</tr>';
     }).join('');
@@ -1195,6 +1239,82 @@ function fieldHtml(itemIndex, detailIndex, name, label, value, colClass, type, s
     return '<div class="' + colClass + '"><label class="form-label">' + label + '</label><input class="form-control cp-compra-field" type="' + inputType + '"' + stepAttr + readonlyAttr + ' value="' + escapeAttr(value || '') + '" ' + attr + '></div>';
 }
 
+function referenceSelectHtml(itemIndex, value, colClass) {
+    const selected = value ? '<option value="' + escapeAttr(value) + '" selected>' + escapeHtml(value) + '</option>' : '';
+    const disabledAttr = cpCompraReadonly ? ' disabled' : '';
+    return '<div class="' + colClass + '">' +
+        '<label class="form-label">Referencia</label>' +
+        '<select class="form-select cp-compra-field cp-compra-referencia-select" data-item-index="' + itemIndex + '" data-field="referencia_fornecedor"' + disabledAttr + '>' +
+        selected +
+        '</select>' +
+        '</div>';
+}
+
+function initCpCompraReferenciaSelects() {
+    if (cpCompraReadonly) {
+        return;
+    }
+
+    $('.cp-compra-referencia-select').each(function () {
+        const $select = $(this);
+        if ($select.data('select2')) {
+            return;
+        }
+        $select.select2({
+            width: '100%',
+            placeholder: 'Digite a referencia',
+            allowClear: true,
+            ajax: {
+                url: window.cpComprasFormConfig.api,
+                dataType: 'json',
+                delay: 250,
+                data: params => ({
+                    action: 'options',
+                    type: 'referencias',
+                    fornecedor_id: $('#cp-compras-form [name="Fornecedor_id"]').val() || '',
+                    q: params.term || ''
+                }),
+                processResults: response => ({ results: response.results || [] })
+            }
+        });
+    });
+
+    $('.cp-compra-referencia-select').off('select2:opening.cpReferencia').on('select2:opening.cpReferencia', function (event) {
+        if (!$('#cp-compras-form [name="Fornecedor_id"]').val()) {
+            event.preventDefault();
+            appAlert('Informe o fornecedor antes de pesquisar referencias.', 'warning');
+        }
+    });
+
+    $('.cp-compra-referencia-select').off('select2:select.cpReferencia').on('select2:select.cpReferencia', function (event) {
+        const itemIndex = Number($(this).data('item-index'));
+        const codigoReferencia = event.params.data.id;
+        loadCpCompraReferenciaItem(itemIndex, codigoReferencia);
+    });
+}
+
+function loadCpCompraReferenciaItem(itemIndex, codigoReferencia) {
+    const fornecedorId = $('#cp-compras-form [name="Fornecedor_id"]').val();
+    if (!fornecedorId) {
+        appAlert('Informe o fornecedor antes de selecionar referencias.', 'warning');
+        return;
+    }
+
+    syncCpCompraItensFromDom();
+    $.getJSON(window.cpComprasFormConfig.api, {
+        action: 'referencia',
+        fornecedor_id: fornecedorId,
+        codigo_referencia: codigoReferencia
+    }).done(function (response) {
+        cpCompraItens[itemIndex] = Object.assign(emptyCpCompraItem(), response.data || {});
+        cpCompraItensOpen[itemIndex] = true;
+        renderCpCompraItens();
+        recalcCpCompraTotal();
+    }).fail(function (xhr) {
+        appAlert(xhr.responseJSON?.message || 'Nao foi possivel carregar a referencia.', 'danger');
+    });
+}
+
 function selectHtml(itemIndex, detailIndex, name, label, value, colClass, options) {
     const attr = cpDataAttrs(itemIndex, detailIndex, name);
     const opts = options.map(function (option) {
@@ -1205,11 +1325,215 @@ function selectHtml(itemIndex, detailIndex, name, label, value, colClass, option
     return '<div class="' + colClass + '"><label class="form-label">' + label + '</label><select class="form-select cp-compra-field" ' + attr + disabledAttr + '>' + opts + '</select></div>';
 }
 
+function photoButtonHtml(itemIndex, item, colClass) {
+    const hasPhoto = Number(item.Foto || 0) === 1;
+    const label = hasPhoto ? 'Ver fotos' : 'Inserir fotos';
+    const badge = hasPhoto ? '<span class="badge text-bg-light ms-2">Sim</span>' : '<span class="badge text-bg-secondary ms-2">Nao</span>';
+    return '<div class="' + colClass + '">' +
+        '<label class="form-label">Foto</label>' +
+        '<input type="hidden" class="cp-compra-field" value="' + (hasPhoto ? 1 : 0) + '" ' + cpDataAttrs(itemIndex, null, 'Foto') + '>' +
+        '<button class="btn btn-sm btn-photo w-100" type="button" onclick="openCpCompraFotos(' + itemIndex + ')">' +
+        label + badge +
+        '</button>' +
+        '</div>';
+}
+
+function openCpCompraFotos(itemIndex) {
+    syncCpCompraItensFromDom();
+    const $form = $('#cp-compras-form');
+    const pedidoId = Number($form.data('id') || $form.find('[name="id"]').val() || 0);
+    const fornecedorId = $form.find('[name="Fornecedor_id"]').val() || '';
+    const item = cpCompraItens[itemIndex] || null;
+    const referencia = item ? (item.referencia_fornecedor || '') : '';
+
+    if (!pedidoId) {
+        appAlert('Salve o pedido antes de inserir ou visualizar fotos.', 'warning');
+        return;
+    }
+    if (!fornecedorId || !referencia) {
+        appAlert('Informe fornecedor e referencia antes de acessar fotos.', 'warning');
+        return;
+    }
+
+    cpCompraFotoItemIndex = itemIndex;
+    $('#cp-foto-referencia').text(referencia);
+    $('#cp-foto-input').val('').prop('disabled', cpCompraReadonly);
+    $('#cp-foto-upload-block').toggleClass('d-none', cpCompraReadonly);
+    $('#cp-fotos-list').html('<div class="text-center text-muted py-4">Carregando fotos...</div>');
+
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-fotos-modal'));
+    modal.show();
+    loadCpCompraFotos();
+}
+
+function loadCpCompraFotos() {
+    const context = cpCompraFotoContext();
+    if (!context) {
+        return;
+    }
+
+    $.getJSON(window.cpComprasFormConfig.api, {
+        action: 'fotos_list',
+        pedido_id: context.pedidoId,
+        referencia: context.referencia,
+        fornecedor_id: context.fornecedorId
+    }).done(function (response) {
+        renderCpCompraFotos(response.data || []);
+        updateCpCompraFotoFlag(context.itemIndex, Number(response.count || 0) > 0 ? 1 : 0);
+    }).fail(function (xhr) {
+        $('#cp-fotos-list').html('<div class="alert alert-danger mb-0">' + escapeHtml(xhr.responseJSON?.message || 'Nao foi possivel carregar as fotos.') + '</div>');
+    });
+}
+
+function uploadCpCompraFotos() {
+    const context = cpCompraFotoContext();
+    if (!context || cpCompraReadonly) {
+        return;
+    }
+
+    const files = this.files || [];
+    if (!files.length) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('pedido_id', context.pedidoId);
+    formData.append('referencia', context.referencia);
+    formData.append('fornecedor_id', context.fornecedorId);
+    Array.from(files).forEach(function (file) {
+        formData.append('fotos[]', file);
+    });
+
+    $('#cp-fotos-list').html('<div class="text-center text-muted py-4">Enviando fotos...</div>');
+    $.ajax({
+        url: window.cpComprasFormConfig.api + '?action=fotos_upload',
+        method: 'POST',
+        data: formData,
+        dataType: 'json',
+        processData: false,
+        contentType: false
+    }).done(function (response) {
+        appAlert(response.message || 'Fotos inseridas.', 'success');
+        updateCpCompraFotoFlag(context.itemIndex, 1);
+        $('#cp-foto-input').val('');
+        loadCpCompraFotos();
+    }).fail(function (xhr) {
+        $('#cp-fotos-list').html('<div class="alert alert-danger mb-0">' + escapeHtml(xhr.responseJSON?.message || 'Nao foi possivel inserir as fotos.') + '</div>');
+    });
+}
+
+function cpCompraFotoContext() {
+    const $form = $('#cp-compras-form');
+    const itemIndex = cpCompraFotoItemIndex;
+    const item = cpCompraItens[itemIndex] || null;
+    if (!item) {
+        return null;
+    }
+    return {
+        itemIndex: itemIndex,
+        pedidoId: Number($form.data('id') || $form.find('[name="id"]').val() || 0),
+        fornecedorId: $form.find('[name="Fornecedor_id"]').val() || '',
+        referencia: item.referencia_fornecedor || ''
+    };
+}
+
+function renderCpCompraFotos(fotos) {
+    const $list = $('#cp-fotos-list');
+    $('#cp-foto-count').text(fotos.length + (fotos.length === 1 ? ' foto' : ' fotos'));
+    if (!fotos.length) {
+        $list.html('<div class="text-center text-muted py-4">Nenhuma foto inserida para esta referencia.</div>');
+        return;
+    }
+
+    $list.html(fotos.map(function (foto) {
+        return '<figure class="cp-foto-card">' +
+            '<img src="' + escapeAttr(foto.src || '') + '" alt="Foto ' + escapeAttr(foto.Sequencia || '') + '">' +
+            '<figcaption>Foto ' + escapeHtml(foto.Sequencia || '') + '</figcaption>' +
+            '</figure>';
+    }).join(''));
+}
+
+function updateCpCompraFotoFlag(itemIndex, value) {
+    if (!cpCompraItens[itemIndex]) {
+        return;
+    }
+    cpCompraItens[itemIndex].Foto = value;
+    $('.cp-compra-field[data-item-index="' + itemIndex + '"][data-field="Foto"]').val(value);
+    const $button = $('.cp-compra-item[data-item-index="' + itemIndex + '"] .btn-photo');
+    if ($button.length) {
+        $button.html((value ? 'Ver fotos' : 'Inserir fotos') + (value ? '<span class="badge text-bg-light ms-2">Sim</span>' : '<span class="badge text-bg-secondary ms-2">Nao</span>'));
+    }
+}
+
+function itemStatusReadonlyHtml(itemIndex, value, colClass) {
+    const statusValue = String(value) === '0' ? 0 : 1;
+    const statusText = statusValue === 1 ? 'Ativo' : 'Inativo';
+    return '<div class="' + colClass + '">' +
+        '<label class="form-label">Status</label>' +
+        '<input class="form-control" value="' + statusText + '" readonly>' +
+        '<input type="hidden" class="cp-compra-field" value="' + statusValue + '" ' + cpDataAttrs(itemIndex, null, 'Sts') + '>' +
+        '</div>';
+}
+
 function detailInput(itemIndex, detailIndex, name, value, type, step, readonly) {
-    const inputType = type || 'text';
+    const isMoney = type === 'money';
+    const inputType = isMoney ? 'text' : (type || 'text');
     const stepAttr = step ? ' step="' + step + '"' : '';
     const readonlyAttr = (readonly || cpCompraReadonly) ? ' readonly' : '';
-    return '<input class="form-control form-control-sm cp-compra-field" type="' + inputType + '"' + stepAttr + readonlyAttr + ' value="' + escapeAttr(value || '') + '" ' + cpDataAttrs(itemIndex, detailIndex, name) + '>';
+    const inputModeAttr = inputType === 'number' ? ' inputmode="numeric"' : (isMoney ? ' inputmode="numeric"' : '');
+    const className = 'form-control form-control-sm cp-compra-field' + (isMoney ? ' cp-money-field text-end' : '');
+    const displayValue = isMoney ? formatMoneyInput(value || 0) : escapeAttr(value || '');
+    return '<input class="' + className + '" type="' + inputType + '"' + stepAttr + inputModeAttr + readonlyAttr + ' value="' + displayValue + '" ' + cpDataAttrs(itemIndex, detailIndex, name) + '>';
+}
+
+function detailStatusSelect(itemIndex, detailIndex, value) {
+    const disabledAttr = cpCompraReadonly ? ' disabled' : '';
+    const activeSelected = String(value) !== '0' ? ' selected' : '';
+    const inactiveSelected = String(value) === '0' ? ' selected' : '';
+    return '<select class="form-select form-select-sm cp-compra-field" ' + cpDataAttrs(itemIndex, detailIndex, 'Sts') + disabledAttr + '>' +
+        '<option value="1"' + activeSelected + '>Ativo</option>' +
+        '<option value="0"' + inactiveSelected + '>Inativo</option>' +
+        '</select>';
+}
+
+function initCpCompraDetalheFields() {
+    $('.cp-compra-detalhes-table input.cp-compra-field').off('focus.cpDetalhe').on('focus.cpDetalhe', function () {
+        this.select();
+    });
+
+    $('.cp-money-field').off('input.cpMoney').on('input.cpMoney', function () {
+        this.value = formatMoneyInput(this.value);
+        updateCpCompraDetalheFromField($(this));
+    });
+
+    $('.cp-compra-detalhes-table [data-field="Qtde"], .cp-compra-detalhes-table [data-field="preco_proposta"]')
+        .off('input.cpRecalc change.cpRecalc')
+        .on('input.cpRecalc change.cpRecalc', function () {
+            updateCpCompraDetalheFromField($(this));
+        });
+
+    $('.cp-compra-detalhes-table [data-field="Sts"]')
+        .off('change.cpStatus')
+        .on('change.cpStatus', function () {
+            updateCpCompraDetalheFromField($(this));
+        });
+}
+
+function updateCpCompraDetalheFromField($field) {
+    const itemIndex = Number($field.data('item-index'));
+    const detailIndex = Number($field.attr('data-detail-index'));
+    const name = $field.data('field');
+    if (!cpCompraItens[itemIndex] || !cpCompraItens[itemIndex].detalhes[detailIndex]) {
+        return;
+    }
+
+    cpCompraItens[itemIndex].detalhes[detailIndex][name] = normalizeCpCompraValue(name, $field.val());
+    recalcCpCompraItem(cpCompraItens[itemIndex]);
+
+    const detail = cpCompraItens[itemIndex].detalhes[detailIndex];
+    const $row = $field.closest('tr');
+    $row.find('[data-field="valor_total_produto"]').val(formatMoneyInput(detail.valor_total_produto || 0));
+    $('#cp-compras-form [name="ValorTotalPedido"]').val(roundCpMoney(sumCpCompraTotal()).toFixed(2));
 }
 
 function cpLocalizacaoBadge(localizacao) {
@@ -1274,7 +1598,14 @@ function syncCpCompraItensFromDom() {
 }
 
 function normalizeCpCompraValue(name, value) {
-    const numeric = ['total_qtde', 'total_produto', 'Foto', 'Sts', 'Qtde', 'preco_fornecedor', 'preco_proposta', 'valor_total_produto', 'preco_franqueado', 'markup_franquia', 'preco_loja', 'markup_loja', 'markup_total'];
+    if (name === 'Qtde') {
+        return parseInt(String(value || '0').replace(/\D/g, ''), 10) || 0;
+    }
+    const moneyColumns = ['preco_fornecedor', 'preco_proposta', 'valor_total_produto', 'preco_franqueado', 'preco_loja'];
+    if (moneyColumns.includes(name)) {
+        return parseMoneyInput(value);
+    }
+    const numeric = ['total_qtde', 'total_produto', 'Foto', 'Sts', 'markup_franquia', 'markup_loja', 'markup_total'];
     if (numeric.includes(name)) {
         return Number(String(value || '0').replace(',', '.')) || 0;
     }
@@ -1292,11 +1623,33 @@ function recalcCpCompraItem(item) {
 
 function recalcCpCompraTotal() {
     syncCpCompraItensFromDom();
+    $('#cp-compras-form [name="ValorTotalPedido"]').val(roundCpMoney(sumCpCompraTotal()).toFixed(2));
+}
+
+function sumCpCompraTotal() {
     let total = 0;
     cpCompraItens.forEach(function (item) {
         total += Number(item.total_produto || 0);
     });
-    $('#cp-compras-form [name="ValorTotalPedido"]').val(roundCpMoney(total).toFixed(2));
+    return total;
+}
+
+function parseMoneyInput(value) {
+    if (typeof value === 'number') {
+        return value;
+    }
+    const raw = String(value || '').replace(/\D/g, '');
+    if (raw === '') {
+        return 0;
+    }
+    return Number(raw) / 100;
+}
+
+function formatMoneyInput(value) {
+    return parseMoneyInput(value).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 }
 
 function validarCpCompraForm($form) {

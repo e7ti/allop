@@ -466,6 +466,21 @@ CREATE TABLE IF NOT EXISTS `cp_compras_emails` (
   CONSTRAINT `FK_cp_compras_emails_config_email` FOREIGN KEY (`config_email_id`) REFERENCES `config_email` (`Codigo`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=latin1;
 
+-- Copiando estrutura para tabela allop_devel.produtos_fornecedor
+CREATE TABLE IF NOT EXISTS `produtos_fornecedor` (
+  `Codigo` varchar(2) NOT NULL,
+  `NomeFornecedor` varchar(30) NOT NULL,
+  `ProducaoProria` varchar(1) NOT NULL DEFAULT 'N' COMMENT 'Indica se é producao propria',
+  `MarkUpCompra` double NOT NULL DEFAULT '0',
+  `CFOP_PP` varchar(4) NOT NULL DEFAULT '',
+  `Status` varchar(8) NOT NULL,
+  `Inclusao` date NOT NULL,
+  `Alteracao` date NOT NULL,
+  `Usuario` varchar(30) NOT NULL,
+  PRIMARY KEY (`Codigo`) USING BTREE,
+  UNIQUE KEY `IDXNome` (`NomeFornecedor`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='R1 -> tbProdutosFornecedor';
+
 -- Exportação de dados foi desmarcado.
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;
