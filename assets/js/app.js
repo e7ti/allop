@@ -959,9 +959,12 @@ function initCpComprasForm() {
     $form.find('[name="Fornecedor_id"]').on('select2:select', function (event) {
         const markup = event.params.data.markup_compra;
         if (markup !== undefined && markup !== null && markup !== '') {
-            $form.find('[name="MarkupFranqueadora"]').val(Number(markup || 0).toFixed(2));
+            $form.find('[name="MarkupFranqueadora"]').val(formatMoneyInput(markup || 0));
+            recalcCpCompraMarkupTotal($form);
         }
     });
+
+    initCpCompraHeaderMoney($form);
 
     $('#btn-add-cp-item').on('click', function () {
         if (!$form.find('[name="Fornecedor_id"]').val()) {
@@ -1080,11 +1083,40 @@ function fillCpCompraHeader($form, row) {
             $field.append(option).trigger('change');
             return;
         }
-        $field.val(row[name]).trigger('change');
+        if ($field.hasClass('cp-header-money-field')) {
+            $field.val(formatMoneyInput(row[name] || 0)).trigger('change');
+        } else {
+            $field.val(row[name]).trigger('change');
+        }
         if (name === 'Sts') {
             $form.find('[name="Sts_display"]').val(row[name] || 'Aberto');
         }
     });
+    recalcCpCompraMarkupTotal($form);
+}
+
+function initCpCompraHeaderMoney($form) {
+    $form.find('.cp-header-money-field').each(function () {
+        this.value = formatMoneyInput(this.value || 0);
+    });
+
+    $form.find('[name="MarkupFranqueadora"], [name="MarkupFranquia"]')
+        .off('input.cpHeaderMoney focus.cpHeaderMoney')
+        .on('input.cpHeaderMoney', function () {
+            this.value = formatMoneyInput(this.value);
+            recalcCpCompraMarkupTotal($form);
+        })
+        .on('focus.cpHeaderMoney', function () {
+            this.select();
+        });
+
+    recalcCpCompraMarkupTotal($form);
+}
+
+function recalcCpCompraMarkupTotal($form) {
+    const total = parseMoneyInput($form.find('[name="MarkupFranqueadora"]').val()) +
+        parseMoneyInput($form.find('[name="MarkupFranquia"]').val());
+    $form.find('[name="MarkupTotal"]').val(formatMoneyInput(roundCpMoney(total)));
 }
 
 function emptyCpCompraItem() {

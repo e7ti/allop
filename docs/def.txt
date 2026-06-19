@@ -38,6 +38,13 @@ banco  : allop_new
 usuario: allopdevel
 senha  : Allop@Devel##2022
 
+- leia o banco_fotos.sql que esta na pasta raiz do projeto e memorize as tabelas
+- Tem permissao para acessar o banco de dados, este banco é das fotos
+server : g.gcompdv.com.br
+banco  : allop_devel_fotos
+usuario: allopdevel
+senha  : Allop@Devel##2022
+
 - Crie um script php seed_aplicacoes para inserir e alterar aplicacoes e dar permissao ao administrador
 - Crie o perfil Administrador
 - Crie um usuario inicial como administrador e defina o perfil dele como Administrador

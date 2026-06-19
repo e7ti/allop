@@ -17,7 +17,14 @@ function cp_decimal($value): float
     if ($value === null || $value === '') {
         return 0.0;
     }
-    return (float) str_replace(',', '.', (string) $value);
+
+    $value = trim((string) $value);
+    if (strpos($value, ',') !== false) {
+        $value = str_replace('.', '', $value);
+        $value = str_replace(',', '.', $value);
+    }
+
+    return (float) $value;
 }
 
 function cp_trim($value): string
@@ -52,6 +59,18 @@ function cp_fix_text_encoding($value): string
 function cp_table_exists(string $table): bool
 {
     $stmt = db()->prepare(
+        'SELECT COUNT(*)
+           FROM information_schema.TABLES
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = :table_name'
+    );
+    $stmt->execute(['table_name' => $table]);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function cp_fotos_table_exists(string $table): bool
+{
+    $stmt = db_fotos()->prepare(
         'SELECT COUNT(*)
            FROM information_schema.TABLES
           WHERE TABLE_SCHEMA = DATABASE()
@@ -374,7 +393,7 @@ function cp_validate_foto_context(int $pedidoId, string $referencia, string $for
     if ($pedidoId <= 0 || $referencia === '' || $fornecedorId === '') {
         api_response(false, ['message' => 'Informe pedido, referencia e fornecedor para as fotos.'], 422);
     }
-    if (!cp_table_exists('cp_compras_fotos_ks')) {
+    if (!cp_fotos_table_exists('cp_compras_fotos_ks')) {
         api_response(false, ['message' => 'Tabela cp_compras_fotos_ks nao encontrada.'], 500);
     }
 }
@@ -382,7 +401,7 @@ function cp_validate_foto_context(int $pedidoId, string $referencia, string $for
 function cp_list_fotos_ks(int $pedidoId, string $referencia, string $fornecedorId): array
 {
     cp_validate_foto_context($pedidoId, $referencia, $fornecedorId);
-    $stmt = db()->prepare(
+    $stmt = db_fotos()->prepare(
         "SELECT id, Sequencia, foto
            FROM cp_compras_fotos_ks
           WHERE cp_compras_id = :pedido_id
@@ -413,7 +432,7 @@ function cp_list_fotos_ks(int $pedidoId, string $referencia, string $fornecedorI
 
 function cp_next_foto_sequencia(int $pedidoId, string $referencia, string $fornecedorId): int
 {
-    $stmt = db()->prepare(
+    $stmt = db_fotos()->prepare(
         "SELECT COALESCE(MAX(Sequencia), 0) + 1
            FROM cp_compras_fotos_ks
           WHERE cp_compras_id = :pedido_id
@@ -442,7 +461,10 @@ function cp_upload_fotos_ks(int $pedidoId, string $referencia, string $fornecedo
     $tmpNames = is_array($files['tmp_name']) ? $files['tmp_name'] : [$files['tmp_name']];
     $errors = is_array($files['error']) ? $files['error'] : [$files['error']];
 
-    $stmt = db()->prepare(
+    $fotosDb = db_fotos();
+    $mainDb = db();
+
+    $stmt = $fotosDb->prepare(
         "INSERT INTO cp_compras_fotos_ks
             (cp_compras_id, ref_fornecedor, fornecedor_id, Sequencia, foto)
          VALUES
@@ -451,45 +473,59 @@ function cp_upload_fotos_ks(int $pedidoId, string $referencia, string $fornecedo
 
     $inserted = 0;
     $sequencia = cp_next_foto_sequencia($pedidoId, $referencia, $fornecedorId);
-    db()->beginTransaction();
-    foreach ($names as $index => $name) {
-        if (($errors[$index] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-            continue;
+    $fotosDb->beginTransaction();
+    $mainDb->beginTransaction();
+    try {
+        foreach ($names as $index => $name) {
+            if (($errors[$index] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                continue;
+            }
+            $tmpName = (string) ($tmpNames[$index] ?? '');
+            if ($tmpName === '' || !is_uploaded_file($tmpName) || !getimagesize($tmpName)) {
+                continue;
+            }
+            $contents = file_get_contents($tmpName);
+            if ($contents === false || $contents === '') {
+                continue;
+            }
+            $stmt->execute([
+                'pedido_id' => $pedidoId,
+                'referencia' => $referencia,
+                'fornecedor_id' => $fornecedorId,
+                'sequencia' => $sequencia++,
+                'foto' => base64_encode($contents),
+            ]);
+            $inserted++;
         }
-        $tmpName = (string) ($tmpNames[$index] ?? '');
-        if ($tmpName === '' || !is_uploaded_file($tmpName) || !getimagesize($tmpName)) {
-            continue;
+
+        if ($inserted === 0) {
+            $fotosDb->rollBack();
+            $mainDb->rollBack();
+            api_response(false, ['message' => 'Nenhuma imagem valida foi enviada.'], 422);
         }
-        $contents = file_get_contents($tmpName);
-        if ($contents === false || $contents === '') {
-            continue;
-        }
-        $stmt->execute([
+
+        $updateStmt = $mainDb->prepare(
+            "UPDATE cp_compras_itens
+                SET Foto = 1
+              WHERE cp_compras_id = :pedido_id
+                AND referencia_fornecedor = :referencia"
+        );
+        $updateStmt->execute([
             'pedido_id' => $pedidoId,
             'referencia' => $referencia,
-            'fornecedor_id' => $fornecedorId,
-            'sequencia' => $sequencia++,
-            'foto' => base64_encode($contents),
         ]);
-        $inserted++;
-    }
 
-    if ($inserted === 0) {
-        db()->rollBack();
-        api_response(false, ['message' => 'Nenhuma imagem valida foi enviada.'], 422);
+        $fotosDb->commit();
+        $mainDb->commit();
+    } catch (Throwable $e) {
+        if ($fotosDb->inTransaction()) {
+            $fotosDb->rollBack();
+        }
+        if ($mainDb->inTransaction()) {
+            $mainDb->rollBack();
+        }
+        throw $e;
     }
-
-    $updateStmt = db()->prepare(
-        "UPDATE cp_compras_itens
-            SET Foto = 1
-          WHERE cp_compras_id = :pedido_id
-            AND referencia_fornecedor = :referencia"
-    );
-    $updateStmt->execute([
-        'pedido_id' => $pedidoId,
-        'referencia' => $referencia,
-    ]);
-    db()->commit();
 
     api_response(true, [
         'message' => $inserted === 1 ? 'Foto inserida.' : 'Fotos inseridas.',
