@@ -1,10 +1,61 @@
 ALLOP - PADROES DO SISTEMA
 Data: 01/06/2026
-Atualizacao visual: 02/06/2026
+Atualizacao visual: 19/06/2026
+Atualizacao bancos: 19/06/2026
 
 OBJETIVO
 Este arquivo serve como referencia para novas implementacoes no sistema Allop.
 Antes de criar novas telas, APIs ou modulos, seguir estes padroes.
+
+
+REFERENCIA DOS BANCOS
+Ler e considerar os arquivos da raiz do projeto como referencia de estrutura:
+- banco.sql: estrutura do banco principal.
+- banco_fotos.sql: estrutura do banco separado de fotos.
+
+Banco principal:
+- server: g.gcompdv.com.br
+- banco: allop_new
+- usuario: allopdevel
+- senha: Allop@Devel##2022
+- arquivo de referencia: banco.sql
+
+Tabelas conhecidas no banco principal, conforme banco.sql:
+- config_email
+- cp_compras
+- cp_compras_emails
+- cp_compras_itens
+- cp_compras_itens_detalhe
+- cp_compras_itens_detalhe_log
+- cp_compras_itens_percentuais
+- pf_colecao
+- pf_usuario_fornecedor
+- pf_usuarios
+- produtos_fornecedor
+- seg_aplicacoes
+- seg_menu
+- seg_perfil
+- seg_perfil_permissoes
+- seg_usuarios
+- seg_usuarios_permissoes
+
+Banco de fotos:
+- server: g.gcompdv.com.br
+- banco: allop_devel_fotos
+- usuario: allopdevel
+- senha: Allop@Devel##2022
+- arquivo de referencia: banco_fotos.sql
+
+Tabelas conhecidas no banco de fotos, conforme banco_fotos.sql:
+- cp_compras_fotos
+- cp_compras_fotos_ks
+
+Regras de acesso aos bancos:
+- O sistema tem permissao para acessar os dois bancos.
+- Usar a conexao principal para tabelas do banco principal.
+- Usar conexao separada para tabelas de fotos.
+- Fotos de compras KidStok usam cp_compras_fotos_ks no banco allop_devel_fotos.
+- Nao procurar tabelas de fotos no banco principal.
 
 
 ESTRUTURA DO PROJETO
@@ -38,8 +89,7 @@ $aplicacao_nome = "nome_do_arquivo.php";
 $aplicacao_descricao = "Descricao do que faz a aplicacao.";
 
 
-BANCO DE DADOS - SEGURANCA 
-- Leia o arquivo banco.sql
+BANCO DE DADOS - SEGURANCA
 Usar as tabelas do banco.sql:
 - seg_menu
 - seg_aplicacoes
@@ -133,6 +183,8 @@ Todo formulario deve ter:
 - A descricao da aplicacao deve aparecer abaixo do titulo.
 - Card/formulario deve manter fundo branco.
 - Inputs, selects, input-group-text e Select2 devem usar fundo cinza claro #f8f9fa.
+- Inputs, selects, input-group-text e Select2 devem usar altura compacta de 38px.
+- Campos pequenos dentro de grids/formularios densos devem usar altura compacta de 34px quando aplicavel.
 - Bordas dos campos devem usar cinza neutro #dee2e6.
 - Foco de campos e Select2 deve usar laranja #ff4500 com sombra leve.
 
