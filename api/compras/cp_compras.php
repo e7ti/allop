@@ -235,6 +235,7 @@ function cp_header_payload(array $data): array
         'ValorTotalPedido' => cp_decimal($data['ValorTotalPedido'] ?? 0),
         'Sts' => cp_trim($data['Sts'] ?? 'Aberto') ?: 'Aberto',
         'TemFotos' => (int) ($data['TemFotos'] ?? 0),
+        'Publicado' => (int) ($data['Publicado'] ?? 0),
         'StsMotivo' => cp_trim($data['StsMotivo'] ?? ''),
         'Localizacao' => cp_trim($data['Localizacao'] ?? 'KidStok') ?: 'KidStok',
     ];
@@ -365,7 +366,7 @@ function cp_require_kidstok(int $id, string $operation): void
     if ($localizacao === null) {
         api_response(false, ['message' => 'Pedido nao encontrado.'], 404);
     }
-    if ($localizacao !== 'KidStok') {
+    if ($localizacao === 'Fornecedor') {
         api_response(false, ['message' => "Pedido com localizacao $localizacao nao permite $operation. Apenas visualizacao."], 403);
     }
 }
@@ -428,6 +429,49 @@ function cp_list_fotos_ks(int $pedidoId, string $referencia, string $fornecedorI
             'src' => $src,
         ];
     }, $stmt->fetchAll());
+}
+
+function cp_count_fotos_ks(int $pedidoId, string $referencia, string $fornecedorId): int
+{
+    cp_validate_foto_context($pedidoId, $referencia, $fornecedorId);
+    $stmt = db_fotos()->prepare(
+        "SELECT COUNT(*)
+           FROM cp_compras_fotos_ks
+          WHERE cp_compras_id = :pedido_id
+            AND ref_fornecedor = :referencia
+            AND fornecedor_id = :fornecedor_id"
+    );
+    $stmt->execute([
+        'pedido_id' => $pedidoId,
+        'referencia' => $referencia,
+        'fornecedor_id' => $fornecedorId,
+    ]);
+    return (int) $stmt->fetchColumn();
+}
+
+function cp_sync_foto_flag_ks(int $pedidoId, string $referencia, string $fornecedorId): int
+{
+    $count = cp_count_fotos_ks($pedidoId, $referencia, $fornecedorId);
+    $stmt = db()->prepare(
+        "UPDATE cp_compras_itens
+            SET Foto = :foto
+          WHERE cp_compras_id = :pedido_id
+            AND referencia_fornecedor = :referencia"
+    );
+    $stmt->execute([
+        'foto' => $count > 0 ? 1 : 0,
+        'pedido_id' => $pedidoId,
+        'referencia' => $referencia,
+    ]);
+    return $count;
+}
+
+function cp_has_fotos_ks(int $pedidoId, string $referencia, string $fornecedorId): bool
+{
+    if ($pedidoId <= 0 || $referencia === '' || $fornecedorId === '' || !cp_fotos_table_exists('cp_compras_fotos_ks')) {
+        return false;
+    }
+    return cp_count_fotos_ks($pedidoId, $referencia, $fornecedorId) > 0;
 }
 
 function cp_next_foto_sequencia(int $pedidoId, string $referencia, string $fornecedorId): int
@@ -504,16 +548,7 @@ function cp_upload_fotos_ks(int $pedidoId, string $referencia, string $fornecedo
             api_response(false, ['message' => 'Nenhuma imagem valida foi enviada.'], 422);
         }
 
-        $updateStmt = $mainDb->prepare(
-            "UPDATE cp_compras_itens
-                SET Foto = 1
-              WHERE cp_compras_id = :pedido_id
-                AND referencia_fornecedor = :referencia"
-        );
-        $updateStmt->execute([
-            'pedido_id' => $pedidoId,
-            'referencia' => $referencia,
-        ]);
+        cp_sync_foto_flag_ks($pedidoId, $referencia, $fornecedorId);
 
         $fotosDb->commit();
         $mainDb->commit();
@@ -533,6 +568,36 @@ function cp_upload_fotos_ks(int $pedidoId, string $referencia, string $fornecedo
     ]);
 }
 
+function cp_delete_foto_ks(int $pedidoId, string $referencia, string $fornecedorId, int $fotoId): void
+{
+    cp_validate_foto_context($pedidoId, $referencia, $fornecedorId);
+    cp_require_kidstok($pedidoId, 'excluir fotos');
+    if ($fotoId <= 0) {
+        api_response(false, ['message' => 'Informe a foto para excluir.'], 422);
+    }
+
+    $stmt = db_fotos()->prepare(
+        "DELETE FROM cp_compras_fotos_ks
+          WHERE id = :id
+            AND cp_compras_id = :pedido_id
+            AND ref_fornecedor = :referencia
+            AND fornecedor_id = :fornecedor_id"
+    );
+    $stmt->execute([
+        'id' => $fotoId,
+        'pedido_id' => $pedidoId,
+        'referencia' => $referencia,
+        'fornecedor_id' => $fornecedorId,
+    ]);
+
+    if ($stmt->rowCount() === 0) {
+        api_response(false, ['message' => 'Foto nao encontrada.'], 404);
+    }
+
+    $count = cp_sync_foto_flag_ks($pedidoId, $referencia, $fornecedorId);
+    api_response(true, ['message' => 'Foto excluida.', 'count' => $count]);
+}
+
 function cp_delete_children(int $pedidoId): void
 {
     $stmt = db()->prepare(
@@ -547,7 +612,7 @@ function cp_delete_children(int $pedidoId): void
     $stmt->execute(['pedido_id' => $pedidoId]);
 }
 
-function cp_save_items(int $pedidoId, array $items): void
+function cp_save_items(int $pedidoId, array $items, string $fornecedorId): void
 {
     $itemStmt = db()->prepare(
         "INSERT INTO cp_compras_itens
@@ -577,16 +642,17 @@ function cp_save_items(int $pedidoId, array $items): void
             continue;
         }
 
+        $referencia = cp_trim($item['referencia_fornecedor'] ?? '');
         $itemPayload = [
             'cp_compras_id' => $pedidoId,
-            'referencia_fornecedor' => cp_trim($item['referencia_fornecedor'] ?? ''),
+            'referencia_fornecedor' => $referencia,
             'descricao' => cp_trim($item['descricao'] ?? ''),
             'composicao' => cp_trim($item['composicao'] ?? ''),
             'ncm' => cp_trim($item['ncm'] ?? ''),
             'entrega' => cp_trim($item['entrega'] ?? '') ?: null,
             'total_qtde' => cp_decimal($item['total_qtde'] ?? 0),
             'total_produto' => cp_decimal($item['total_produto'] ?? 0),
-            'Foto' => (int) ($item['Foto'] ?? 0),
+            'Foto' => cp_has_fotos_ks($pedidoId, $referencia, $fornecedorId) ? 1 : (int) ($item['Foto'] ?? 0),
             'Sts' => (int) ($item['Sts'] ?? 1),
         ];
         $itemStmt->execute($itemPayload);
@@ -729,6 +795,14 @@ try {
         cp_upload_fotos_ks($pedidoId, $referencia, $fornecedorId);
     }
 
+    if ($action === 'fotos_delete') {
+        $pedidoId = (int) ($data['pedido_id'] ?? 0);
+        $referencia = cp_trim($data['referencia'] ?? '');
+        $fornecedorId = cp_trim($data['fornecedor_id'] ?? '');
+        $fotoId = (int) ($data['foto_id'] ?? 0);
+        cp_delete_foto_ks($pedidoId, $referencia, $fornecedorId, $fotoId);
+    }
+
     if ($action === 'delete') {
         $id = (int) ($data['id'] ?? 0);
         cp_require_kidstok($id, 'excluir');
@@ -753,9 +827,17 @@ try {
 
         $user = current_user();
         $payload['Usuario'] = (string) ($user['login'] ?? $user['nome'] ?? '');
+        if ($payload['Sts'] !== 'Recusado') {
+            $payload['StsMotivo'] = '';
+        }
 
         if ($id > 0) {
             cp_require_kidstok($id, 'editar');
+        } else {
+            $payload['Sts'] = 'Aberto';
+            $payload['Publicado'] = 0;
+            $payload['StsMotivo'] = '';
+            $payload['Localizacao'] = 'KidStok';
         }
 
         db()->beginTransaction();
@@ -775,6 +857,7 @@ try {
                         ValorTotalPedido = :ValorTotalPedido,
                         Sts = :Sts,
                         TemFotos = :TemFotos,
+                        Publicado = :Publicado,
                         StsMotivo = :StsMotivo,
                         Localizacao = :Localizacao,
                         Alteracao = :Alteracao,
@@ -783,7 +866,7 @@ try {
             );
             $stmt->execute($payload);
             cp_delete_children($id);
-            cp_save_items($id, $items);
+            cp_save_items($id, $items, $payload['Fornecedor_id']);
             db()->commit();
             api_response(true, ['message' => 'Pedido atualizado.', 'id' => $id]);
         }
@@ -793,14 +876,14 @@ try {
         $stmt = db()->prepare(
             "INSERT INTO cp_compras
                 (cd_id, empresa_id, Fornecedor_id, DataPedido, MarkupFranqueadora, MarkupFranquia, MarkupTotal,
-                 ValorTotalPedido, Sts, TemFotos, StsMotivo, Localizacao, Inclusao, Alteracao, Usuario)
+                 ValorTotalPedido, Sts, TemFotos, Publicado, StsMotivo, Localizacao, Inclusao, Alteracao, Usuario)
              VALUES
                 (:cd_id, :empresa_id, :Fornecedor_id, :DataPedido, :MarkupFranqueadora, :MarkupFranquia, :MarkupTotal,
-                 :ValorTotalPedido, :Sts, :TemFotos, :StsMotivo, :Localizacao, :Inclusao, :Alteracao, :Usuario)"
+                 :ValorTotalPedido, :Sts, :TemFotos, :Publicado, :StsMotivo, :Localizacao, :Inclusao, :Alteracao, :Usuario)"
         );
         $stmt->execute($payload);
         $newId = (int) db()->lastInsertId();
-        cp_save_items($newId, $items);
+        cp_save_items($newId, $items, $payload['Fornecedor_id']);
         db()->commit();
         api_response(true, ['message' => 'Pedido inserido.', 'id' => $newId]);
     }

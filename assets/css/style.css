@@ -776,6 +776,10 @@ body {
     flex: 0 0 auto;
 }
 
+.cp-compras-form-wide .cp-compra-item-photo {
+    flex: 0 0 auto;
+}
+
 .cp-compras-form-wide .cp-compra-item-actions {
     flex: 0 0 auto;
 }
@@ -862,10 +866,20 @@ body {
 }
 
 .cp-foto-card figcaption {
+    align-items: center;
     color: #5f6f7a;
+    display: flex;
     font-size: 0.82rem;
     font-weight: 600;
+    justify-content: space-between;
+    min-height: 42px;
     padding: 0.5rem 0.65rem;
+}
+
+.cp-foto-delete {
+    flex: 0 0 auto;
+    min-height: 30px;
+    min-width: 30px;
 }
 
 .form-label {
@@ -1172,6 +1186,11 @@ body {
     }
 
     .cp-compras-form-wide .cp-compra-item-actions {
+        width: 100%;
+    }
+
+    .cp-compras-form-wide .cp-compra-item-photo,
+    .cp-compras-form-wide .cp-compra-item-photo .btn-photo {
         width: 100%;
     }
 

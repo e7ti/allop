@@ -29,9 +29,12 @@ $id = (int) ($_GET['id'] ?? 0);
             <div class="col-12 col-md-2"><label class="form-label">Markup Total</label><input class="form-control js-money cp-header-money-field text-end" name="MarkupTotal" type="text" inputmode="numeric" autocomplete="off" value="0,00" readonly></div>
             <div class="col-12 col-md-2"><label class="form-label">Valor Total</label><input class="form-control" name="ValorTotalPedido" type="number" step="0.01" readonly></div>
             <input type="hidden" name="Sts" value="Aberto">
+            <input type="hidden" name="Publicado" value="0">
+            <input type="hidden" name="Localizacao" value="KidStok">
             <div class="col-12 col-md-2"><label class="form-label">Status</label><input class="form-control" name="Sts_display" value="Aberto" readonly></div>
-            <div class="col-12 col-md-2"><label class="form-label">Localizacao</label><select class="form-select" name="Localizacao"><option value="KidStok">KidStok</option><option value="Allop">Allop</option><option value="Fornecedor">Fornecedor</option></select></div>
-            <div class="col-12 col-md-8"><label class="form-label">Motivo/Observacao</label><input class="form-control" name="StsMotivo" maxlength="500"></div>
+            <div class="col-12 col-md-2"><label class="form-label">Publicado</label><input class="form-control" name="Publicado_display" value="0 - Nao publicado" readonly></div>
+            <div class="col-12 col-md-2"><label class="form-label">Localizacao</label><input class="form-control" name="Localizacao_display" value="KidStok" readonly></div>
+            <div class="col-12 col-md-8 d-none" id="cp-sts-motivo-group"><label class="form-label">Motivo/Observacao</label><input class="form-control" name="StsMotivo" maxlength="500"></div>
         </div>
     </section>
 
