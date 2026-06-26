@@ -482,6 +482,21 @@ CREATE TABLE IF NOT EXISTS `produtos_fornecedor` (
   UNIQUE KEY `IDXNome` (`NomeFornecedor`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='R1 -> tbProdutosFornecedor';
 
+CREATE TABLE `cp_compras_itens_percentuais` (
+	`ID` BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+	`compras_itens_id` BIGINT(20) UNSIGNED NOT NULL,
+	`tamanho` VARCHAR(20) NOT NULL DEFAULT '' COLLATE 'latin1_swedish_ci',
+	`cor` VARCHAR(30) NOT NULL DEFAULT '' COLLATE 'latin1_swedish_ci',
+	`percentual` DECIMAL(6,2) NOT NULL DEFAULT '0.00',
+	PRIMARY KEY (`ID`) USING BTREE,
+	UNIQUE INDEX `IDXItemTamanhoCor` (`compras_itens_id`, `tamanho`, `cor`) USING BTREE,
+	CONSTRAINT `FK_cp_compras_itens_percentuais_item` FOREIGN KEY (`compras_itens_id`) REFERENCES `cp_compras_itens` (`ID`) ON UPDATE NO ACTION ON DELETE CASCADE
+)
+COLLATE='latin1_swedish_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=57
+;
+
 -- Exportação de dados foi desmarcado.
 
 /*!40103 SET TIME_ZONE=IFNULL(@OLD_TIME_ZONE, 'system') */;

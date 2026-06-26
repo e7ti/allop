@@ -54,7 +54,7 @@ $id = (int) ($_GET['id'] ?? 0);
 
     <section class="card card-slim mb-3">
         <div class="card-footer bg-white d-flex flex-wrap gap-2 justify-content-end">
-            <button class="btn btn-orange btn-save" type="submit">Salvar</button>
+            <button class="btn btn-orange btn-save btn-save-main" type="submit">Salvar</button>
         </div>
     </section>
 </form>
@@ -63,7 +63,7 @@ $id = (int) ($_GET['id'] ?? 0);
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Percentuais por Cor</h5>
+                <h5 class="modal-title">Rateio de Quantidades</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">

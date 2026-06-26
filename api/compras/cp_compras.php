@@ -224,7 +224,49 @@ function cp_items_from_request(array $data): array
     if (!is_array($items)) {
         api_response(false, ['message' => 'Itens invalidos.'], 422);
     }
+    cp_validate_unique_item_references($items);
     return $items;
+}
+
+function cp_validate_unique_item_references(array $items): void
+{
+    $used = [];
+    foreach ($items as $item) {
+        $referencia = cp_trim($item['referencia_fornecedor'] ?? '');
+        if ($referencia === '') {
+            continue;
+        }
+        if (isset($used[$referencia])) {
+            api_response(false, ['message' => "A referencia $referencia ja foi incluida neste pedido."], 422);
+        }
+        $used[$referencia] = true;
+    }
+}
+
+function cp_validate_item_percentuais(array $items): void
+{
+    foreach ($items as $item) {
+        $detalhes = is_array($item['detalhes'] ?? null) ? $item['detalhes'] : [];
+        $percentuais = [];
+        foreach ($detalhes as $detail) {
+            $percentual = cp_decimal($detail['percentual'] ?? 0);
+            if ($percentual < 0 || $percentual > 100) {
+                api_response(false, ['message' => 'Cada percentual de rateio deve estar entre 0% e 100%.'], 422);
+            }
+            if ($percentual <= 0) {
+                continue;
+            }
+            $key = cp_trim($detail['tamanho'] ?? '') . "\n" . cp_trim($detail['cor'] ?? '');
+            $percentuais[$key] = $percentual;
+        }
+        if ($percentuais) {
+            $total = array_sum($percentuais);
+            if (round($total, 2) !== 100.00) {
+                $referencia = cp_trim($item['referencia_fornecedor'] ?? '');
+                api_response(false, ['message' => "O rateio da referencia $referencia deve totalizar 100%."], 422);
+            }
+        }
+    }
 }
 
 function cp_header_payload(array $data): array
@@ -693,6 +735,7 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId): void
         ];
         $itemStmt->execute($itemPayload);
         $itemId = (int) db()->lastInsertId();
+        $percentuaisSalvos = [];
 
         foreach ($detalhes as $detail) {
             $tamanho = cp_trim($detail['tamanho'] ?? '');
@@ -721,14 +764,16 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId): void
             ];
             $detailStmt->execute($detailPayload);
 
+            $percentualKey = $tamanho . "\n" . $cor;
             $percentual = cp_decimal($detail['percentual'] ?? 0);
-            if ($percentual > 0 || $tamanho !== '' || $cor !== '') {
+            if (!isset($percentuaisSalvos[$percentualKey]) && ($percentual > 0 || $tamanho !== '' || $cor !== '')) {
                 $percentStmt->execute([
                     'compras_itens_id' => $itemId,
                     'tamanho' => $tamanho,
                     'cor' => $cor,
                     'percentual' => $percentual,
                 ]);
+                $percentuaisSalvos[$percentualKey] = true;
             }
         }
     }
@@ -946,6 +991,7 @@ try {
         $id = (int) ($data['id'] ?? 0);
         $payload = cp_header_payload($data);
         $items = cp_items_from_request($data);
+        cp_validate_item_percentuais($items);
         cp_validate_header($payload);
 
         $total = 0.0;

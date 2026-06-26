@@ -866,6 +866,7 @@ let cpCompraReadonly = false;
 let cpCompraReadonlyLocalizacao = '';
 let cpCompraFotoItemIndex = null;
 let cpCompraFotoOrigem = 'kidstok';
+let cpCompraRateioItemIndex = null;
 
 function initCpComprasLista() {
     $('#filtro-cp-compras').select2({
@@ -1009,6 +1010,7 @@ function initCpComprasForm() {
     });
 
     $('#cp-foto-input').on('change', uploadCpCompraFotos);
+    $('#btn-aplicar-percentuais').on('click', aplicarCpCompraPercentuais);
 
     $form.on('shown.bs.collapse hidden.bs.collapse', '.cp-compra-item-collapse', function (event) {
         cpCompraItensOpen[$(this).data('item-index')] = event.type === 'shown';
@@ -1307,6 +1309,7 @@ function emptyCpCompraDetalhe() {
         preco_loja: 0,
         markup_loja: 0,
         markup_total: 0,
+        percentual: 0,
         Sts: 1
     };
 }
@@ -1339,6 +1342,7 @@ function mapCpCompraItemFromApi(row) {
                 preco_loja: Number(detail.preco_loja || 0),
                 markup_loja: Number(detail.markup_loja || 0),
                 markup_total: Number(detail.markup_total || 0),
+                percentual: Number(detail.percentual || 0),
                 Sts: Number(detail.Sts || 1)
             });
         })
@@ -1376,7 +1380,7 @@ function renderCpCompraItens() {
             '<span class="fw-bold text-success cp-compra-item-total">R$ ' + escapeHtml(formatMoneyBr(item.total_produto || 0)) + '</span>' +
             '</div>' +
             (cpCompraReadonly ? '' : '<div class="d-flex flex-wrap gap-2 cp-compra-item-actions" onclick="event.stopPropagation();">' +
-                (item.item_confirmado ? '<button class="btn btn-sm btn-orange btn-new" type="button" onclick="addCpCompraDetalhe(' + index + ')">Subitem</button>' : '<button class="btn btn-sm btn-orange btn-save" type="button" onclick="confirmCpCompraItem(' + index + ')">Confirmar</button>') +
+                (item.item_confirmado ? '<button class="btn btn-sm btn-orange btn-new" type="button" onclick="addCpCompraDetalhe(' + index + ')">Subitem</button>' : '') +
                 '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraItem(' + index + ')"></button>' +
                 '</div>') +
             '</div>' +
@@ -1390,8 +1394,10 @@ function renderCpCompraItens() {
             fieldHtml(index, null, 'composicao', 'Composicao', item.composicao, 'col-12 col-md-3', 'text', null, true) +
             fieldHtml(index, null, 'ncm', 'NCM', item.ncm, 'col-12 col-md-2', 'text', null, true) +
             fieldHtml(index, null, 'total_qtde', 'Qtde Rateio', item.total_qtde, 'col-12 col-md-2', 'number', '1', false) +
+            rateioCpCompraItemButtonHtml(index, item, 'col-12 col-md-2') +
             fieldHtml(index, null, 'total_produto', 'Total Item', item.total_produto, 'col-12 col-md-2', 'money', null, true) +
             itemStatusReadonlyHtml(index, item.Sts, 'col-12 col-md-2') +
+            confirmCpCompraItemButtonHtml(index, item, 'col-12 col-md-2') +
             '</div>' +
             (item.item_confirmado ? '<div class="table-responsive">' +
             '<table class="table table-custom align-middle mb-0 cp-compra-detalhes-table">' +
@@ -1474,7 +1480,15 @@ function initCpCompraReferenciaSelects() {
                     fornecedor_id: $('#cp-compras-form [name="Fornecedor_id"]').val() || '',
                     q: params.term || ''
                 }),
-                processResults: response => ({ results: response.results || [] })
+                processResults: function (response) {
+                    const itemIndex = Number($select.data('item-index'));
+                    const used = cpCompraReferenciasUsadas(itemIndex);
+                    return {
+                        results: (response.results || []).filter(function (row) {
+                            return !used.includes(String(row.id || ''));
+                        })
+                    };
+                }
             }
         });
     });
@@ -1489,8 +1503,25 @@ function initCpCompraReferenciaSelects() {
     $('.cp-compra-referencia-select').off('select2:select.cpReferencia').on('select2:select.cpReferencia', function (event) {
         const itemIndex = Number($(this).data('item-index'));
         const codigoReferencia = event.params.data.id;
+        if (cpCompraReferenciaDuplicada(codigoReferencia, itemIndex)) {
+            $(this).val(null).trigger('change');
+            appAlert('A referencia ' + codigoReferencia + ' ja foi incluida neste pedido.', 'warning');
+            return;
+        }
         loadCpCompraReferenciaItem(itemIndex, codigoReferencia);
     });
+}
+
+function cpCompraReferenciasUsadas(ignoreIndex) {
+    return cpCompraItens
+        .map(function (item, index) {
+            return Number(ignoreIndex) === index ? '' : String(item.referencia_fornecedor || '').trim();
+        })
+        .filter(Boolean);
+}
+
+function cpCompraReferenciaDuplicada(referencia, ignoreIndex) {
+    return cpCompraReferenciasUsadas(ignoreIndex).includes(String(referencia || '').trim());
 }
 
 function initCpCompraItemFields() {
@@ -1509,6 +1540,154 @@ function initCpCompraItemFields() {
             updateCpCompraItemTotalDisplay(itemIndex);
             $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
         });
+}
+
+function openCpCompraPercentuais(itemIndex) {
+    syncCpCompraItensFromDom();
+    const item = cpCompraItens[itemIndex] || null;
+    if (!item || !item.item_confirmado) {
+        appAlert('Confirme o item antes de informar o rateio.', 'warning');
+        return;
+    }
+    if (!Number(item.total_qtde || 0)) {
+        appAlert('Informe a Qtde Rateio do item antes de aplicar percentuais.', 'warning');
+        return;
+    }
+
+    const grupos = cpCompraPercentuaisGrupos(item);
+    if (!grupos.length) {
+        appAlert('Nao ha subitens para ratear.', 'warning');
+        return;
+    }
+
+    cpCompraRateioItemIndex = itemIndex;
+    $('#cp-percentuais-alert').addClass('d-none').text('');
+    $('#cp-percentuais-content').html(
+        '<div class="table-responsive"><table class="table table-custom align-middle mb-0">' +
+        '<thead><tr><th>Tamanho</th><th>Cor</th><th class="text-end">Percentual</th></tr></thead>' +
+        '<tbody>' + grupos.map(function (grupo, index) {
+            return '<tr>' +
+                '<td>' + escapeHtml(grupo.tamanho || '') + '</td>' +
+                '<td>' + escapeHtml(grupo.cor || '') + '</td>' +
+                '<td><input class="form-control form-control-sm text-end cp-percentual-input" type="text" inputmode="decimal" value="' + escapeAttr(formatPercentInput(grupo.percentual || 0)) + '" data-rateio-index="' + index + '"></td>' +
+                '</tr>';
+        }).join('') + '</tbody>' +
+        '<tfoot><tr><th colspan="2" class="text-end">Total</th><th class="text-end"><span id="cp-percentuais-total">0,00</span>%</th></tr></tfoot>' +
+        '</table></div>'
+    );
+    $('#cp-percentuais-content').data('grupos', grupos);
+    $('.cp-percentual-input').on('input', updateCpCompraPercentuaisTotal);
+    updateCpCompraPercentuaisTotal();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-percentuais-modal')).show();
+}
+
+function cpCompraPercentuaisGrupos(item) {
+    const grupos = {};
+    (item.detalhes || []).forEach(function (detail, detailIndex) {
+        if (String(detail.Sts) === '0') {
+            return;
+        }
+        const tamanho = String(detail.tamanho || '');
+        const cor = String(detail.cor || '');
+        const key = tamanho + '\u0001' + cor;
+        if (!grupos[key]) {
+            grupos[key] = {
+                tamanho: tamanho,
+                cor: cor,
+                percentual: Number(detail.percentual || 0),
+                detailIndexes: []
+            };
+        }
+        grupos[key].detailIndexes.push(detailIndex);
+    });
+    return Object.keys(grupos).map(function (key) {
+        return grupos[key];
+    });
+}
+
+function updateCpCompraPercentuaisTotal() {
+    let total = 0;
+    $('.cp-percentual-input').each(function () {
+        total += parsePercentInput(this.value);
+    });
+    $('#cp-percentuais-total').text(formatPercentInput(total));
+}
+
+function aplicarCpCompraPercentuais() {
+    const item = cpCompraItens[cpCompraRateioItemIndex] || null;
+    const grupos = $('#cp-percentuais-content').data('grupos') || [];
+    if (!item || !grupos.length) {
+        return;
+    }
+
+    let totalPercentual = 0;
+    let invalidPercentual = false;
+    $('.cp-percentual-input').each(function () {
+        const index = Number($(this).data('rateio-index'));
+        const percentual = parsePercentInput(this.value);
+        if (percentual < 0 || percentual > 100) {
+            invalidPercentual = true;
+        }
+        grupos[index].percentual = percentual;
+        totalPercentual += percentual;
+    });
+
+    if (invalidPercentual) {
+        $('#cp-percentuais-alert').removeClass('d-none').text('Cada percentual deve estar entre 0% e 100%.');
+        return;
+    }
+    if (roundCpMoney(totalPercentual) !== 100) {
+        $('#cp-percentuais-alert').removeClass('d-none').text('O total dos percentuais deve atingir exatamente 100%. Total atual: ' + formatPercentInput(totalPercentual) + '%.');
+        return;
+    }
+
+    aplicarCpCompraRateioPorPercentual(item, grupos);
+    recalcCpCompraItem(item);
+    renderCpCompraItens();
+    recalcCpCompraTotal();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-percentuais-modal')).hide();
+}
+
+function aplicarCpCompraRateioPorPercentual(item, grupos) {
+    const totalQtde = Math.max(0, parseInt(Number(item.total_qtde || 0), 10) || 0);
+    let qtdeAplicada = 0;
+    let firstDetailIndex = null;
+
+    (item.detalhes || []).forEach(function (detail) {
+        if (String(detail.Sts) === '0') {
+            detail.percentual = 0;
+            detail.Qtde = 0;
+        }
+    });
+
+    grupos.forEach(function (grupo) {
+        const qtdeGrupo = Math.floor(totalQtde * Number(grupo.percentual || 0) / 100);
+        qtdeAplicada += qtdeGrupo;
+        grupo.detailIndexes.forEach(function (detailIndex, groupIndex) {
+            const detail = item.detalhes[detailIndex];
+            detail.percentual = Number(grupo.percentual || 0);
+            detail.Qtde = groupIndex === 0 ? qtdeGrupo : 0;
+            if (firstDetailIndex === null) {
+                firstDetailIndex = detailIndex;
+            }
+        });
+    });
+
+    const diferenca = totalQtde - qtdeAplicada;
+    if (firstDetailIndex !== null && diferenca !== 0) {
+        item.detalhes[firstDetailIndex].Qtde = Number(item.detalhes[firstDetailIndex].Qtde || 0) + diferenca;
+    }
+}
+
+function parsePercentInput(value) {
+    return Number(String(value || '0').replace(/\./g, '').replace(',', '.')) || 0;
+}
+
+function formatPercentInput(value) {
+    return Number(value || 0).toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
 }
 
 function loadCpCompraReferenciaItem(itemIndex, codigoReferencia) {
@@ -1770,6 +1949,25 @@ function itemStatusReadonlyHtml(itemIndex, value, colClass) {
         '</div>';
 }
 
+function rateioCpCompraItemButtonHtml(itemIndex, item, colClass) {
+    if (cpCompraReadonly || !item.item_confirmado) {
+        return '';
+    }
+    return '<div class="' + colClass + ' cp-compra-rateio-wrapper">' +
+        '<label class="form-label d-none d-md-block">&nbsp;</label>' +
+        '<button class="btn btn-sm btn-rateio-item w-100" type="button" onclick="openCpCompraPercentuais(' + itemIndex + ')">Rateio</button>' +
+        '</div>';
+}
+
+function confirmCpCompraItemButtonHtml(itemIndex, item, colClass) {
+    if (cpCompraReadonly || item.item_confirmado) {
+        return '';
+    }
+    return '<div class="' + colClass + ' cp-compra-confirm-wrapper">' +
+        '<button class="btn btn-sm btn-confirm-item" type="button" onclick="confirmCpCompraItem(' + itemIndex + ')">Confirmar</button>' +
+        '</div>';
+}
+
 function detailInput(itemIndex, detailIndex, name, value, type, step, readonly) {
     const isMoney = type === 'money';
     const inputType = isMoney ? 'text' : (type || 'text');
@@ -1978,6 +2176,17 @@ function applyCpCompraDetailMarkups(detail, markups) {
 }
 
 function ratearCpCompraItemQtde(item) {
+    const gruposPercentuais = cpCompraPercentuaisGrupos(item).filter(function (grupo) {
+        return Number(grupo.percentual || 0) > 0;
+    });
+    const totalPercentual = gruposPercentuais.reduce(function (total, grupo) {
+        return total + Number(grupo.percentual || 0);
+    }, 0);
+    if (gruposPercentuais.length && roundCpMoney(totalPercentual) === 100) {
+        aplicarCpCompraRateioPorPercentual(item, gruposPercentuais);
+        return;
+    }
+
     const detalhes = item.detalhes || [];
     const activeIndexes = [];
     detalhes.forEach(function (detail, index) {
@@ -2073,6 +2282,17 @@ function validarCpCompraForm($form) {
     });
     if (unconfirmedIndex >= 0) {
         return 'Confirme ou exclua o item ' + (unconfirmedIndex + 1) + ' antes de salvar.';
+    }
+    const referencias = {};
+    for (let index = 0; index < cpCompraItens.length; index++) {
+        const referencia = String(cpCompraItens[index].referencia_fornecedor || '').trim();
+        if (!referencia) {
+            continue;
+        }
+        if (referencias[referencia]) {
+            return 'A referencia ' + referencia + ' ja foi incluida neste pedido. Remova o item duplicado antes de salvar.';
+        }
+        referencias[referencia] = true;
     }
     return '';
 }
