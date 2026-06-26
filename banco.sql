@@ -472,6 +472,7 @@ CREATE TABLE IF NOT EXISTS `produtos_fornecedor` (
   `NomeFornecedor` varchar(30) NOT NULL,
   `ProducaoProria` varchar(1) NOT NULL DEFAULT 'N' COMMENT 'Indica se é producao propria',
   `MarkUpCompra` double NOT NULL DEFAULT '0',
+  `MarkupFranqueadora` double NOT NULL DEFAULT '0',
   `CFOP_PP` varchar(4) NOT NULL DEFAULT '',
   `Status` varchar(8) NOT NULL,
   `Inclusao` date NOT NULL,

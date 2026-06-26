@@ -16,6 +16,12 @@ $id = (int) ($_GET['id'] ?? 0);
 <form id="cp-compras-form" class="form-section cp-compras-form-wide" data-id="<?= $id ?>" novalidate>
     <input type="hidden" name="id" value="<?= $id ?>">
 
+    <div class="cp-compras-workflow-actions d-flex flex-wrap gap-2 justify-content-center mb-3">
+        <button class="btn btn-outline-secondary" id="btn-cp-enviar-proposta" type="button">Enviar Proposta</button>
+        <button class="btn btn-outline-success" id="btn-cp-aprovar" type="button">Aprovar</button>
+        <button class="btn btn-outline-danger" id="btn-cp-recusar" type="button">Recusar</button>
+    </div>
+
     <section class="card card-slim mb-3">
         <div class="card-header"><strong>Pedido</strong></div>
         <div class="card-body row g-3">
@@ -24,10 +30,10 @@ $id = (int) ($_GET['id'] ?? 0);
             <div class="col-12 col-md-3"><label class="form-label">Empresa</label><select class="form-select js-cp-compra-select" name="empresa_id" data-type="empresas" required></select></div>
             <div class="col-12 col-md-4"><label class="form-label">Fornecedor</label><select class="form-select js-cp-compra-select" name="Fornecedor_id" data-type="fornecedores" required></select></div>
             <div class="col-12 col-md-2"><label class="form-label">Data Pedido</label><input class="form-control" name="DataPedido" type="date" required></div>
-            <div class="col-12 col-md-2"><label class="form-label">Markup Franqueadora</label><input class="form-control js-money cp-header-money-field text-end" name="MarkupFranqueadora" type="text" inputmode="numeric" autocomplete="off" value="0,00"></div>
+            <div class="col-12 col-md-2"><label class="form-label">Markup Franqueadora</label><div class="input-group cp-money-input-group"><span class="input-group-text">R$</span><input class="form-control js-money cp-header-money-field text-end" name="MarkupFranqueadora" type="text" inputmode="numeric" autocomplete="off" value="0,00"></div></div>
             <div class="col-12 col-md-2"><label class="form-label">Markup Franquia</label><input class="form-control js-money cp-header-money-field text-end" name="MarkupFranquia" type="text" inputmode="numeric" autocomplete="off" value="0,00"></div>
             <div class="col-12 col-md-2"><label class="form-label">Markup Total</label><input class="form-control js-money cp-header-money-field text-end" name="MarkupTotal" type="text" inputmode="numeric" autocomplete="off" value="0,00" readonly></div>
-            <div class="col-12 col-md-2"><label class="form-label">Valor Total</label><input class="form-control" name="ValorTotalPedido" type="number" step="0.01" readonly></div>
+            <div class="col-12 col-md-2"><label class="form-label">Valor Total</label><div class="input-group cp-money-input-group"><span class="input-group-text">R$</span><input class="form-control js-money cp-header-money-field text-end" name="ValorTotalPedido" type="text" inputmode="numeric" autocomplete="off" value="0,00" readonly></div></div>
             <input type="hidden" name="Sts" value="Aberto">
             <input type="hidden" name="Publicado" value="0">
             <input type="hidden" name="Localizacao" value="KidStok">
@@ -47,7 +53,7 @@ $id = (int) ($_GET['id'] ?? 0);
     </section>
 
     <section class="card card-slim mb-3">
-        <div class="card-footer bg-white d-flex gap-2 justify-content-end">
+        <div class="card-footer bg-white d-flex flex-wrap gap-2 justify-content-end">
             <button class="btn btn-orange btn-save" type="submit">Salvar</button>
         </div>
     </section>
@@ -91,6 +97,20 @@ $id = (int) ($_GET['id'] ?? 0);
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary btn-back" data-bs-dismiss="modal">Voltar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="cp-foto-preview-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content cp-foto-preview-modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="cp-foto-preview-title">Foto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <img id="cp-foto-preview-img" class="cp-foto-preview-img" src="" alt="Foto ampliada">
             </div>
         </div>
     </div>

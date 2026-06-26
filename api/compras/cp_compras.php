@@ -128,10 +128,15 @@ function cp_option_select(string $type, string $q): void
         if (!cp_table_exists('produtos_fornecedor')) {
             api_response(true, ['results' => []]);
         }
+        $fornecedorColumns = cp_columns('produtos_fornecedor');
+        $markupFranqueadoraSelect = in_array('MarkupFranqueadora', $fornecedorColumns, true)
+            ? 'f.MarkupFranqueadora'
+            : '0';
         $stmt = db()->prepare(
             "SELECT f.Codigo AS id,
                     CONCAT(f.Codigo, ' - ', f.NomeFornecedor) AS text,
-                    f.MarkUpCompra AS markup_compra
+                    f.MarkUpCompra AS markup_compra,
+                    $markupFranqueadoraSelect AS markup_franqueadora
                FROM produtos_fornecedor f
               WHERE CAST(f.Codigo AS CHAR) LIKE :q_codigo
                  OR f.NomeFornecedor LIKE :q_nome
@@ -289,6 +294,11 @@ function cp_load_pedido(int $id): ?array
     foreach ($items as &$item) {
         $detailStmt->execute(['item_id' => $item['ID']]);
         $item['detalhes'] = $detailStmt->fetchAll();
+        $item['FotoFornecedor'] = cp_has_fotos_fornecedor(
+            (int) $pedido['ID'],
+            (string) ($item['referencia_fornecedor'] ?? ''),
+            (string) ($pedido['Fornecedor_id'] ?? '')
+        ) ? 1 : 0;
     }
     unset($item);
 
@@ -389,22 +399,25 @@ function cp_image_mime_from_base64(string $base64): string
     return 'image/jpeg';
 }
 
-function cp_validate_foto_context(int $pedidoId, string $referencia, string $fornecedorId): void
+function cp_validate_foto_context(int $pedidoId, string $referencia, string $fornecedorId, string $table = 'cp_compras_fotos_ks'): void
 {
     if ($pedidoId <= 0 || $referencia === '' || $fornecedorId === '') {
         api_response(false, ['message' => 'Informe pedido, referencia e fornecedor para as fotos.'], 422);
     }
-    if (!cp_fotos_table_exists('cp_compras_fotos_ks')) {
-        api_response(false, ['message' => 'Tabela cp_compras_fotos_ks nao encontrada.'], 500);
+    if (!in_array($table, ['cp_compras_fotos_ks', 'cp_compras_fotos'], true)) {
+        api_response(false, ['message' => 'Tabela de fotos invalida.'], 422);
+    }
+    if (!cp_fotos_table_exists($table)) {
+        api_response(false, ['message' => "Tabela $table nao encontrada."], 500);
     }
 }
 
-function cp_list_fotos_ks(int $pedidoId, string $referencia, string $fornecedorId): array
+function cp_list_fotos_table(int $pedidoId, string $referencia, string $fornecedorId, string $table): array
 {
-    cp_validate_foto_context($pedidoId, $referencia, $fornecedorId);
+    cp_validate_foto_context($pedidoId, $referencia, $fornecedorId, $table);
     $stmt = db_fotos()->prepare(
         "SELECT id, Sequencia, foto
-           FROM cp_compras_fotos_ks
+           FROM `$table`
           WHERE cp_compras_id = :pedido_id
             AND ref_fornecedor = :referencia
             AND fornecedor_id = :fornecedor_id
@@ -431,12 +444,22 @@ function cp_list_fotos_ks(int $pedidoId, string $referencia, string $fornecedorI
     }, $stmt->fetchAll());
 }
 
-function cp_count_fotos_ks(int $pedidoId, string $referencia, string $fornecedorId): int
+function cp_list_fotos_ks(int $pedidoId, string $referencia, string $fornecedorId): array
 {
-    cp_validate_foto_context($pedidoId, $referencia, $fornecedorId);
+    return cp_list_fotos_table($pedidoId, $referencia, $fornecedorId, 'cp_compras_fotos_ks');
+}
+
+function cp_list_fotos_fornecedor(int $pedidoId, string $referencia, string $fornecedorId): array
+{
+    return cp_list_fotos_table($pedidoId, $referencia, $fornecedorId, 'cp_compras_fotos');
+}
+
+function cp_count_fotos_table(int $pedidoId, string $referencia, string $fornecedorId, string $table): int
+{
+    cp_validate_foto_context($pedidoId, $referencia, $fornecedorId, $table);
     $stmt = db_fotos()->prepare(
         "SELECT COUNT(*)
-           FROM cp_compras_fotos_ks
+           FROM `$table`
           WHERE cp_compras_id = :pedido_id
             AND ref_fornecedor = :referencia
             AND fornecedor_id = :fornecedor_id"
@@ -447,6 +470,11 @@ function cp_count_fotos_ks(int $pedidoId, string $referencia, string $fornecedor
         'fornecedor_id' => $fornecedorId,
     ]);
     return (int) $stmt->fetchColumn();
+}
+
+function cp_count_fotos_ks(int $pedidoId, string $referencia, string $fornecedorId): int
+{
+    return cp_count_fotos_table($pedidoId, $referencia, $fornecedorId, 'cp_compras_fotos_ks');
 }
 
 function cp_sync_foto_flag_ks(int $pedidoId, string $referencia, string $fornecedorId): int
@@ -472,6 +500,14 @@ function cp_has_fotos_ks(int $pedidoId, string $referencia, string $fornecedorId
         return false;
     }
     return cp_count_fotos_ks($pedidoId, $referencia, $fornecedorId) > 0;
+}
+
+function cp_has_fotos_fornecedor(int $pedidoId, string $referencia, string $fornecedorId): bool
+{
+    if ($pedidoId <= 0 || $referencia === '' || $fornecedorId === '' || !cp_fotos_table_exists('cp_compras_fotos')) {
+        return false;
+    }
+    return cp_count_fotos_table($pedidoId, $referencia, $fornecedorId, 'cp_compras_fotos') > 0;
 }
 
 function cp_next_foto_sequencia(int $pedidoId, string $referencia, string $fornecedorId): int
@@ -698,6 +734,89 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId): void
     }
 }
 
+function cp_current_user_name(): string
+{
+    $user = current_user();
+    return (string) ($user['login'] ?? $user['nome'] ?? '');
+}
+
+function cp_workflow_update(int $id, string $workflowAction): void
+{
+    if ($id <= 0) {
+        api_response(false, ['message' => 'Informe o pedido.'], 422);
+    }
+
+    $stmt = db()->prepare("SELECT ID, Localizacao FROM cp_compras WHERE ID = :id");
+    $stmt->execute(['id' => $id]);
+    $pedido = $stmt->fetch();
+    if (!$pedido) {
+        api_response(false, ['message' => 'Pedido nao encontrado.'], 404);
+    }
+
+    $usuario = cp_current_user_name();
+    if ($workflowAction === 'enviar_proposta') {
+        cp_require_kidstok($id, 'enviar proposta');
+        $stmt = db()->prepare(
+            "UPDATE cp_compras
+                SET Publicado = 1,
+                    Localizacao = 'Fornecedor',
+                    Iteracao = COALESCE(Iteracao, 0) + 1,
+                    Alteracao = :alteracao,
+                    Usuario = :usuario
+              WHERE ID = :id"
+        );
+        $stmt->execute(['alteracao' => date('Y-m-d'), 'usuario' => $usuario, 'id' => $id]);
+        api_response(true, ['message' => 'Proposta enviada ao fornecedor.']);
+    }
+
+    if ($workflowAction === 'aprovar') {
+        $stmt = db()->prepare(
+            "UPDATE cp_compras
+                SET Sts = 'Aprovado',
+                    Localizacao = 'KidStok',
+                    DataAprovacao = :data_aprovacao,
+                    UsuarioAprovacao = :usuario_aprovacao,
+                    Alteracao = :alteracao,
+                    Usuario = :usuario
+              WHERE ID = :id"
+        );
+        $stmt->execute([
+            'data_aprovacao' => date('Y-m-d'),
+            'alteracao' => date('Y-m-d'),
+            'usuario_aprovacao' => $usuario,
+            'usuario' => $usuario,
+            'id' => $id,
+        ]);
+        api_response(true, ['message' => 'Pedido aprovado.']);
+    }
+
+    if ($workflowAction === 'recusar') {
+        $motivo = cp_trim($_POST['motivo'] ?? $_GET['motivo'] ?? '');
+        $stmt = db()->prepare(
+            "UPDATE cp_compras
+                SET Sts = 'Recusado',
+                    StsMotivo = :motivo,
+                    Localizacao = 'KidStok',
+                    DataRecusa = :data_recusa,
+                    UsuarioRecusa = :usuario_recusa,
+                    Alteracao = :alteracao,
+                    Usuario = :usuario
+              WHERE ID = :id"
+        );
+        $stmt->execute([
+            'motivo' => $motivo,
+            'data_recusa' => date('Y-m-d'),
+            'alteracao' => date('Y-m-d'),
+            'usuario_recusa' => $usuario,
+            'usuario' => $usuario,
+            'id' => $id,
+        ]);
+        api_response(true, ['message' => 'Pedido recusado.']);
+    }
+
+    api_response(false, ['message' => 'Acao de workflow invalida.'], 404);
+}
+
 try {
     if ($action === 'options') {
         cp_option_select((string) ($_GET['type'] ?? ''), trim((string) ($_GET['q'] ?? '')));
@@ -788,6 +907,14 @@ try {
         api_response(true, ['data' => $fotos, 'count' => count($fotos)]);
     }
 
+    if ($action === 'fotos_fornecedor_list') {
+        $pedidoId = (int) ($data['pedido_id'] ?? 0);
+        $referencia = cp_trim($data['referencia'] ?? '');
+        $fornecedorId = cp_trim($data['fornecedor_id'] ?? '');
+        $fotos = cp_list_fotos_fornecedor($pedidoId, $referencia, $fornecedorId);
+        api_response(true, ['data' => $fotos, 'count' => count($fotos)]);
+    }
+
     if ($action === 'fotos_upload') {
         $pedidoId = (int) ($data['pedido_id'] ?? 0);
         $referencia = cp_trim($data['referencia'] ?? '');
@@ -809,6 +936,10 @@ try {
         $stmt = db()->prepare("DELETE FROM cp_compras WHERE ID = :id");
         $stmt->execute(['id' => $id]);
         api_response(true, ['message' => 'Pedido excluido.']);
+    }
+
+    if (in_array($action, ['enviar_proposta', 'aprovar', 'recusar'], true)) {
+        cp_workflow_update((int) ($data['id'] ?? 0), $action);
     }
 
     if ($action === 'save') {

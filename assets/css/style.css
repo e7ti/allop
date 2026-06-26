@@ -780,6 +780,20 @@ body {
     flex: 0 0 auto;
 }
 
+.cp-compras-form-wide .cp-fotos-actions {
+    align-items: flex-start;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.cp-compras-form-wide .cp-fotos-action {
+    min-width: 128px;
+}
+
+.cp-compras-form-wide .cp-fotos-action .btn-photo {
+    width: 100%;
+}
+
 .cp-compras-form-wide .cp-compra-item-actions {
     flex: 0 0 auto;
 }
@@ -837,10 +851,48 @@ body {
     white-space: nowrap;
 }
 
+.btn-photo.btn-photo-sim {
+    background: #159447 !important;
+    border-color: #12813e !important;
+    color: #fff !important;
+}
+
+.btn-photo.btn-photo-nao {
+    background: #f59e0b !important;
+    border-color: #d97706 !important;
+    color: #1f2933 !important;
+}
+
+.cp-foto-badge {
+    border: 1px solid rgba(255, 255, 255, 0.42);
+    font-weight: 700;
+}
+
+.cp-foto-badge-sim {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.cp-foto-badge-nao {
+    background: #fff7ed;
+    color: #9a3412;
+}
+
 .btn-photo:hover,
 .btn-photo:focus {
     background: #4f5d66 !important;
     box-shadow: 0 4px 10px rgba(79, 93, 102, 0.24);
+}
+
+.btn-photo.btn-photo-sim:hover,
+.btn-photo.btn-photo-sim:focus {
+    background: #0f7a39 !important;
+}
+
+.btn-photo.btn-photo-nao:hover,
+.btn-photo.btn-photo-nao:focus {
+    background: #d97706 !important;
+    color: #111827 !important;
 }
 
 .cp-fotos-grid {
@@ -860,6 +912,7 @@ body {
 .cp-foto-card img {
     aspect-ratio: 4 / 3;
     background: #ffffff;
+    cursor: zoom-in;
     display: block;
     object-fit: contain;
     width: 100%;
@@ -880,6 +933,19 @@ body {
     flex: 0 0 auto;
     min-height: 30px;
     min-width: 30px;
+}
+
+.cp-foto-preview-modal-content .modal-body {
+    background: #f5f7f9;
+    padding: 0.75rem;
+}
+
+.cp-foto-preview-img {
+    background: #ffffff;
+    display: block;
+    max-height: 78vh;
+    object-fit: contain;
+    width: 100%;
 }
 
 .form-label {
