@@ -7,6 +7,7 @@ $aplicacao_nome = "cp_compras.php";
 $aplicacao_descricao = "API para listar, inserir, editar e excluir pedidos de compra.";
 
 require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../../includes/smtp_mailer.php';
 api_require_login();
 
 $action = (string) ($_GET['action'] ?? $_POST['action'] ?? 'list');
@@ -785,6 +786,82 @@ function cp_current_user_name(): string
     return (string) ($user['login'] ?? $user['nome'] ?? '');
 }
 
+function cp_send_proposta_email(int $id): int
+{
+    $stmt = db()->prepare(
+        "SELECT c.ID,
+                c.cd_id,
+                c.empresa_id,
+                c.Fornecedor_id,
+                c.DataPedido,
+                c.ValorTotalPedido,
+                COALESCE(NULLIF(f.NomeFornecedor, ''), c.Fornecedor_id) AS fornecedor_nome
+           FROM cp_compras c
+           LEFT JOIN produtos_fornecedor f ON f.Codigo = c.Fornecedor_id
+          WHERE c.ID = :id"
+    );
+    $stmt->execute(['id' => $id]);
+    $pedido = $stmt->fetch();
+    if (!$pedido) {
+        throw new RuntimeException('Pedido nao encontrado.');
+    }
+
+    $stmt = db()->prepare(
+        "SELECT Codigo,
+                NomeConta,
+                Servidor,
+                Porta,
+                ModoAutenticado,
+                ModoSSL,
+                Email,
+                Senha
+           FROM config_email
+          WHERE cd_id = :cd_id
+            AND empresa_id = :empresa_id
+            AND Habilitado = 1
+            AND Status = 'Ativo'
+          ORDER BY Codigo
+          LIMIT 1"
+    );
+    $stmt->execute([
+        'cd_id' => $pedido['cd_id'],
+        'empresa_id' => $pedido['empresa_id'],
+    ]);
+    $config = $stmt->fetch();
+    if (!$config) {
+        throw new RuntimeException('Nao existe uma configuracao de e-mail ativa para o CD e a empresa do pedido.');
+    }
+
+    $stmt = db()->prepare(
+        "SELECT DISTINCT u.nome, u.email
+           FROM pf_usuarios u
+           INNER JOIN pf_usuario_fornecedor uf ON uf.id_usuario = u.id
+          WHERE uf.id_fornecedor = :fornecedor_id
+            AND u.status = 1
+            AND u.email <> ''
+          ORDER BY u.nome"
+    );
+    $stmt->execute(['fornecedor_id' => $pedido['Fornecedor_id']]);
+    $recipients = $stmt->fetchAll();
+    if (!$recipients) {
+        throw new RuntimeException('O fornecedor nao possui usuarios ativos cadastrados para receber a proposta.');
+    }
+
+    $dataPedido = DateTime::createFromFormat('Y-m-d', (string) $pedido['DataPedido']);
+    $dataPedidoText = $dataPedido ? $dataPedido->format('d/m/Y') : (string) $pedido['DataPedido'];
+    $fornecedorNome = cp_fix_text_encoding($pedido['fornecedor_nome']);
+    $subject = 'Portal Fornecedor Kidstok - Pedido #' . $pedido['ID'] . ' ' . $fornecedorNome;
+    $body = "Novo Pedido no Portal do Fornecedor\n"
+        . "A Kidstok enviou uma proposta comercial e aguarda a sua resposta.\n\n"
+        . "Detalhes do Pedido:\n"
+        . "Fornecedor: " . $fornecedorNome . "\n"
+        . "Data Pedido: " . $dataPedidoText . "\n"
+        . "Valor Total: R$ " . number_format((float) $pedido['ValorTotalPedido'], 2, ',', '.');
+
+    smtp_send($config, $recipients, $subject, $body);
+    return count($recipients);
+}
+
 function cp_workflow_update(int $id, string $workflowAction): void
 {
     if ($id <= 0) {
@@ -801,6 +878,7 @@ function cp_workflow_update(int $id, string $workflowAction): void
     $usuario = cp_current_user_name();
     if ($workflowAction === 'enviar_proposta') {
         cp_require_kidstok($id, 'enviar proposta');
+        $recipientCount = cp_send_proposta_email($id);
         $stmt = db()->prepare(
             "UPDATE cp_compras
                 SET Publicado = 1,
@@ -811,7 +889,10 @@ function cp_workflow_update(int $id, string $workflowAction): void
               WHERE ID = :id"
         );
         $stmt->execute(['alteracao' => date('Y-m-d'), 'usuario' => $usuario, 'id' => $id]);
-        api_response(true, ['message' => 'Proposta enviada ao fornecedor.']);
+        api_response(true, [
+            'message' => 'Proposta enviada ao fornecedor por e-mail.',
+            'destinatarios' => $recipientCount,
+        ]);
     }
 
     if ($workflowAction === 'aprovar') {

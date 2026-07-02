@@ -1108,10 +1108,13 @@ function executarCpCompraWorkflow($form, action, confirmMessage, extraData) {
         return;
     }
     const data = Object.assign({ id: id }, extraData || {});
+    const $workflowButtons = $('#btn-cp-enviar-proposta, #btn-cp-aprovar, #btn-cp-recusar');
+    $workflowButtons.prop('disabled', true);
     $.post(window.cpComprasFormConfig.api + '?action=' + action, data, function (response) {
         appAlert(response.message || 'Pedido atualizado.', 'success');
         window.location.href = 'cp_compras_lista.php';
     }, 'json').fail(function (xhr) {
+        $workflowButtons.prop('disabled', false);
         appAlert(xhr.responseJSON?.message || 'Nao foi possivel atualizar o pedido.', 'danger');
     });
 }

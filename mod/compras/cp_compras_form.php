@@ -17,9 +17,9 @@ $id = (int) ($_GET['id'] ?? 0);
     <input type="hidden" name="id" value="<?= $id ?>">
 
     <div class="cp-compras-workflow-actions d-flex flex-wrap gap-2 justify-content-center mb-3">
-        <button class="btn btn-outline-secondary" id="btn-cp-enviar-proposta" type="button">Enviar Proposta</button>
-        <button class="btn btn-outline-success" id="btn-cp-aprovar" type="button">Aprovar</button>
-        <button class="btn btn-outline-danger" id="btn-cp-recusar" type="button">Recusar</button>
+        <button class="btn btn-outline-secondary btn-send-proposal" id="btn-cp-enviar-proposta" type="button">Enviar Proposta</button>
+        <button class="btn btn-outline-success btn-approve" id="btn-cp-aprovar" type="button">Aprovar</button>
+        <button class="btn btn-outline-danger btn-reject" id="btn-cp-recusar" type="button">Recusar</button>
     </div>
 
     <section class="card card-slim mb-3">
