@@ -110,6 +110,7 @@ Empresas possuem validações de CNPJ, CEP, código IBGE, UF, DDD e telefones. A
 | `mod/compras/cp_compras_lista.php` | Pesquisa e lista até 200 pedidos. |
 | `mod/compras/cp_compras_form.php` | Cabeçalho, itens, variações, rateio, fotos e workflow do pedido. |
 | `api/compras/cp_compras.php` | Regras de consulta, persistência, fotos, e-mail e workflow. |
+| `api/compras/cp_compras_pdf.php` | Gera o PDF completo do pedido em A4 paisagem. |
 
 Principais ações da API:
 
@@ -128,6 +129,8 @@ Principais ações da API:
 | `enviar_proposta` | Envia e-mail, publica o pedido e transfere a localização para `Fornecedor`. |
 | `aprovar` | Marca como `Aprovado` e devolve a localização para `KidStok`. |
 | `recusar` | Marca como `Recusado`, registra motivo e devolve para `KidStok`. |
+
+O botão **Imprimir PDF** é exibido em pedidos já gravados. O relatório contém dados do cabeçalho, auditoria, itens, todas as variações, preços, markups e um resumo dos percentuais de rateio por tamanho e cor. A geração usa Dompdf instalado localmente pelo Composer.
 
 Regras atuais de compras:
 

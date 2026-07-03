@@ -17,6 +17,9 @@ $id = (int) ($_GET['id'] ?? 0);
     <input type="hidden" name="id" value="<?= $id ?>">
 
     <div class="cp-compras-workflow-actions d-flex flex-wrap gap-2 justify-content-center mb-3">
+        <?php if ($id > 0): ?>
+            <a class="btn btn-outline-secondary btn-print" href="../../api/compras/cp_compras_pdf.php?id=<?= $id ?>" target="_blank" rel="noopener">Imprimir PDF</a>
+        <?php endif; ?>
         <button class="btn btn-outline-secondary btn-send-proposal" id="btn-cp-enviar-proposta" type="button">Enviar Proposta</button>
         <button class="btn btn-outline-success btn-approve" id="btn-cp-aprovar" type="button">Aprovar</button>
         <button class="btn btn-outline-danger btn-reject" id="btn-cp-recusar" type="button">Recusar</button>

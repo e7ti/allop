@@ -1,0 +1,9 @@
+{
+    "name": "e7ti/allop",
+    "description": "Sistema de gestão Allop.",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "dompdf/dompdf": "^3.1"
+    }
+}
