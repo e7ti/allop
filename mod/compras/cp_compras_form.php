@@ -4,7 +4,7 @@
     Data : 18/06/2026
 */
 $aplicacao_nome = "cp_compras_form.php";
-$aplicacao_descricao = "Insere e edita pedidos de compra, itens e subitens.";
+$aplicacao_descricao = "Insere e edita pedidos de compra, itens, tamanhos, cores e rateios.";
 
 require_once __DIR__ . '/../../includes/layout.php';
 require_login();
@@ -21,8 +21,8 @@ $id = (int) ($_GET['id'] ?? 0);
             <a class="btn btn-outline-secondary btn-print" href="../../api/compras/cp_compras_pdf.php?id=<?= $id ?>" target="_blank" rel="noopener">Imprimir PDF</a>
         <?php endif; ?>
         <button class="btn btn-outline-secondary btn-send-proposal" id="btn-cp-enviar-proposta" type="button">Enviar Proposta</button>
-        <button class="btn btn-outline-success btn-approve" id="btn-cp-aprovar" type="button">Aprovar</button>
-        <button class="btn btn-outline-danger btn-reject" id="btn-cp-recusar" type="button">Recusar</button>
+        <button class="btn btn-outline-success btn-approve d-none" id="btn-cp-aprovar" type="button">Aprovar</button>
+        <button class="btn btn-outline-danger btn-reject d-none" id="btn-cp-recusar" type="button">Recusar</button>
     </div>
 
     <section class="card card-slim mb-3">
@@ -50,9 +50,11 @@ $id = (int) ($_GET['id'] ?? 0);
     <section class="card card-slim mb-3">
         <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
             <strong>Itens</strong>
-            <button class="btn btn-orange btn-new" id="btn-add-cp-item" type="button">Novo</button>
+            <button class="btn btn-orange btn-new" id="btn-add-cp-item" type="button">Novo item</button>
         </div>
-        <div class="card-body" id="cp-compras-itens"></div>
+        <div class="card-body">
+            <div class="accordion cp-compras-itens-accordion" id="cp-compras-itens"></div>
+        </div>
     </section>
 
     <section class="card card-slim mb-3">
@@ -62,20 +64,37 @@ $id = (int) ($_GET['id'] ?? 0);
     </section>
 </form>
 
-<div class="modal fade" id="cp-percentuais-modal" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="cp-rateio-modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Rateio de Quantidades</h5>
+                <div>
+                    <h5 class="modal-title">Rateio de Quantidades</h5>
+                    <div class="text-muted small">Informe a quantidade do tamanho e o percentual de cada cor.</div>
+                </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
-                <div id="cp-percentuais-alert" class="alert alert-warning d-none"></div>
-                <div id="cp-percentuais-content"></div>
+                <div id="cp-rateio-alert" class="alert alert-warning d-none"></div>
+                <div class="row g-3 mb-3">
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Tamanho</label>
+                        <input class="form-control" id="cp-rateio-tamanho" readonly>
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Quantidade total</label>
+                        <input class="form-control text-end" id="cp-rateio-qtde-total" type="number" min="0" step="1" inputmode="numeric">
+                    </div>
+                    <div class="col-12 col-md-4">
+                        <label class="form-label">Total dos percentuais</label>
+                        <input class="form-control fw-bold text-end" id="cp-rateio-total-percentual" readonly>
+                    </div>
+                </div>
+                <div id="cp-rateio-content"></div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary btn-back" data-bs-dismiss="modal">Voltar</button>
-                <button type="button" class="btn btn-orange btn-save" id="btn-aplicar-percentuais">Salvar</button>
+                <button type="button" class="btn btn-orange btn-save" id="btn-aplicar-cp-rateio">Aplicar rateio</button>
             </div>
         </div>
     </div>

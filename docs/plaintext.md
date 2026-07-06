@@ -1,7 +1,8 @@
 # ALLOP — Arquitetura e padrões do sistema
 
 **Documento-base:** 01/06/2026
-**Última revisão do código:** 02/07/2026
+**Última revisão do código:** 06/07/2026
+**Última revisão do `banco.sql`:** 06/07/2026
 **Escopo revisado:** aplicação PHP, APIs, banco principal, banco de fotos, seed, assets e módulos existentes.
 
 ## 1. Objetivo
@@ -42,7 +43,7 @@ index.php
 | `index.php` | Direciona para login ou dashboard conforme a sessão. |
 | `login.php` | Tela pública de autenticação. |
 | `logout.php` | Encerra a sessão. |
-| `dashboard.php` | Painel inicial autenticado. Atualmente contém atalhos estáticos de Segurança. |
+| `dashboard.php` | Painel inicial autenticado com indicadores e gráficos de pedidos de compra. |
 | `alterar_senha_admin.php` | Tela específica para alteração da senha do usuário `admin`. |
 | `config/` | Configuração geral e conexões PDO. |
 | `includes/` | Autenticação, permissões, layout e envio SMTP. |
@@ -112,13 +113,17 @@ Empresas possuem validações de CNPJ, CEP, código IBGE, UF, DDD e telefones. A
 | `api/compras/cp_compras.php` | Regras de consulta, persistência, fotos, e-mail e workflow. |
 | `api/compras/cp_compras_pdf.php` | Gera o PDF completo do pedido em A4 paisagem. |
 
+O formulário organiza os dados em accordions hierárquicos: cada item contém
+seus tamanhos, e cada tamanho contém suas cores. O percentual é informado em
+cada cor, com totalizador e validação de 100% dentro do respectivo tamanho.
+
 Principais ações da API:
 
 | Ação | Comportamento |
 | --- | --- |
 | `list` | Lista pedidos com CD, empresa, fornecedor, localização, total e status. |
-| `get` | Carrega cabeçalho, itens, detalhes, percentuais e indicadores de fotos. |
-| `save` | Insere ou atualiza o pedido e recria seus itens e detalhes em transação. |
+| `get` | Carrega cabeçalho e a hierarquia de itens, tamanhos, cores, rateios e indicadores de fotos. |
+| `save` | Insere ou atualiza o pedido e recria seus itens, tamanhos, cores e rateios em transação. |
 | `delete` | Exclui um pedido quando ele não está com o fornecedor. |
 | `options` | Pesquisa CD, empresa, fornecedor ou referência. |
 | `defaults` | Retorna CD/empresa automaticamente quando existe somente um registro. |
@@ -130,17 +135,17 @@ Principais ações da API:
 | `aprovar` | Marca como `Aprovado` e devolve a localização para `KidStok`. |
 | `recusar` | Marca como `Recusado`, registra motivo e devolve para `KidStok`. |
 
-O botão **Imprimir PDF** é exibido em pedidos já gravados. O relatório contém dados do cabeçalho, auditoria, itens, todas as variações, preços, markups e um resumo dos percentuais de rateio por tamanho e cor. A geração usa Dompdf instalado localmente pelo Composer.
+O botão **Imprimir PDF** é exibido em pedidos já gravados. O relatório contém dados do cabeçalho, auditoria, itens, tamanhos, cores, preços, markups e um resumo do rateio das cores de cada tamanho. A geração usa Dompdf instalado localmente pelo Composer.
 
 Regras atuais de compras:
 
 - CD, empresa, fornecedor e data do pedido são obrigatórios;
 - o frontend exige pelo menos um item confirmado;
 - uma referência não pode aparecer mais de uma vez no mesmo pedido;
-- percentuais positivos de um item devem totalizar 100%;
+- os percentuais das cores de cada tamanho devem totalizar 100%;
 - o total é recalculado a partir de quantidade × preço proposto;
-- itens e detalhes antigos são excluídos e recriados ao editar;
-- pedido localizado no `Fornecedor` fica somente para visualização e não pode ser editado, excluído ou ter fotos KidStok alteradas;
+- itens, tamanhos, cores e rateios antigos são excluídos e recriados ao editar;
+- pedido localizado no `Fornecedor` fica somente para visualização e impressão; não pode ser editado, excluído, aprovado, recusado nem ter fotos KidStok alteradas;
 - o envio de proposta usa a configuração ativa de `config_email` para o CD/empresa;
 - os destinatários são usuários ativos de `pf_usuarios` vinculados ao fornecedor em `pf_usuario_fornecedor`;
 - fotos são armazenadas em Base64 no banco de fotos.
@@ -194,14 +199,28 @@ Permissões cadastradas:
 
 A configuração executada pelo sistema está em `config/database.php` e atualmente aponta para o banco **`allop_devel`**. Credenciais não devem ser copiadas para documentação, commits ou mensagens; a fonte atual é o arquivo de configuração e, idealmente, deve migrar para variáveis de ambiente.
 
-Tabelas referenciadas pelo código ou por `banco.sql`:
+O schema abaixo foi conferido diretamente no banco em 06/07/2026. Como
+`allop_devel` também contém centenas de tabelas legadas do ERP, `banco.sql`
+mantém somente o subconjunto usado pelo sistema Allop e suas dependências
+diretas, sem dados.
+
+Tabelas presentes no `banco.sql`:
 
 | Domínio | Tabelas |
 | --- | --- |
 | Segurança | `seg_menu`, `seg_aplicacoes`, `seg_perfil`, `seg_perfil_permissoes`, `seg_usuarios`, `seg_usuarios_permissoes` |
-| Configurações | `empresas_cd`, `empresas`, `config_email`, `configuracoes_email` |
-| Compras | `cp_compras`, `cp_compras_itens`, `cp_compras_itens_detalhe`, `cp_compras_itens_percentuais`, `cp_compras_itens_detalhe_log`, `cp_compras_emails` |
+| Configurações | `situacao`, `empresas_cd`, `empresas`, `config_email`, `configuracoes_email` |
+| Compras | `cp_compras`, `cp_compras_config`, `cp_compras_emails`, `cp_compras_itens`, `cp_compras_itens_tamanhos`, `cp_compras_itens_cores`, `cp_compras_itens_rateios` |
 | Catálogo/fornecedor | `produtos_fornecedor`, `pf_colecao`, `pf_usuarios`, `pf_usuario_fornecedor` |
+
+O modelo registrado no arquivo organiza as variações de um item na hierarquia
+`cp_compras_itens` → `cp_compras_itens_tamanhos` → `cp_compras_itens_cores`.
+Cada registro de `cp_compras_itens_rateios` relaciona um tamanho a uma de suas
+cores e armazena o percentual da quantidade destinado àquela combinação. Os
+percentuais devem totalizar 100% dentro de cada tamanho, e a quantidade da cor
+é calculada por `qtde_total do tamanho × percentual / 100`.
+`cp_compras_config` mantém as URLs dos portais de compras e do fornecedor por
+CD/empresa.
 
 ### 6.2 Banco de fotos
 
@@ -302,22 +321,23 @@ $aplicacao_descricao = "Descrição objetiva da aplicação.";
 
 ## 9. Pontos de atenção conhecidos
 
-Estes itens foram encontrados na revisão de 02/07/2026 e não foram corrigidos nesta atualização documental:
+Estes itens foram encontrados nas revisões do código e do `banco.sql` de 06/07/2026 e não foram corrigidos nesta atualização documental:
 
 1. **Permissão incompleta:** o menu usa apenas permissões do perfil. `seg_usuarios_permissoes` não participa da montagem do menu, e as APIs não validam permissões de inserir, editar, excluir ou processar; validam apenas a sessão.
-2. **Dashboard estático:** os cards do dashboard não são filtrados por permissão.
+2. **Dashboard sem filtro por permissão:** os indicadores de compras do dashboard ainda não variam conforme permissões do usuário.
 3. **Alteração de senha admin:** `api/seguranca/admin_senha.php` não chama `api_require_login()`.
 4. **Coluna divergente:** `banco.sql` define `seg_usuarios_permissoes.editar`, mas `api/seguranca/crud.php` usa `edtiar`. A coluna `imprirmir` está grafada dessa forma tanto no schema quanto no código.
 5. **Tabela de e-mail divergente:** o módulo de Configurações usa `configuracoes_email`; o envio de propostas e `banco.sql` usam `config_email`.
-6. **Schema de empresas incompleto:** `banco.sql` não contém a criação de `empresas` e `empresas_cd`. O seed as cria, mas a API de empresas também usa a coluna `ibge`, ausente na definição criada pelo seed.
-7. **Regra e implementação do seed:** a regra histórica dizia que tabelas seriam criadas manualmente, porém o seed atual executa quatro `CREATE TABLE IF NOT EXISTS`.
-8. **SQL duplicado:** `banco.sql` contém definições repetidas de `cp_compras_itens_detalhe_log`, `cp_compras_emails` e `cp_compras_itens_percentuais`, além de trecho de trigger que precisa ser revisado antes de uma importação limpa.
-9. **Credenciais no código:** as conexões usam constantes versionadas em `config/database.php`; o recomendado é usar variáveis de ambiente.
-10. **Erros de API:** várias APIs devolvem diretamente `Throwable::getMessage()`, o que pode revelar detalhes do banco.
-11. **CSRF:** não há token CSRF nos formulários ou ações mutáveis.
-12. **Senha legada:** o login aceita senha em texto puro para compatibilidade, embora novas senhas sejam salvas com hash.
-13. **Transação entre bancos:** upload de fotos abre transações separadas nos dois bancos; não existe atomicidade distribuída caso apenas um commit conclua.
-14. **Dependências externas:** a busca de CEP usa ViaCEP pelo navegador e o CSS importa a fonte Poppins do Google Fonts. São as exceções atuais à regra de assets locais.
+6. **Coluna de empresa ausente:** a API de empresas usa a coluna `ibge`, mas ela não existe em `empresas` no banco consultado.
+7. **Seed divergente do banco:** o seed executa seis `CREATE TABLE IF NOT EXISTS`; nas tabelas novas de compras, sua definição não coincide integralmente com o schema real, especialmente nas nulabilidades e chaves estrangeiras de tamanhos, cores e rateios.
+8. **Datas obrigatórias por tamanho:** o banco define `cp_compras_itens_tamanhos.entrega` e `entrega_anterior` como `NOT NULL`; a API grava fallback pela entrega do tamanho, entrega do item ou data do pedido quando o campo não vem informado.
+9. **Relacionamento de tamanho com item:** o banco não possui chave estrangeira entre `cp_compras_itens_tamanhos.compras_itens_id` e `cp_compras_itens.id`; a integridade depende da API.
+10. **Credenciais no código:** as conexões usam constantes versionadas em `config/database.php`; o recomendado é usar variáveis de ambiente.
+11. **Erros de API:** várias APIs devolvem diretamente `Throwable::getMessage()`, o que pode revelar detalhes do banco.
+12. **CSRF:** não há token CSRF nos formulários ou ações mutáveis.
+13. **Senha legada:** o login aceita senha em texto puro para compatibilidade, embora novas senhas sejam salvas com hash.
+14. **Transação entre bancos:** upload de fotos abre transações separadas nos dois bancos; não existe atomicidade distribuída caso apenas um commit conclua.
+15. **Dependências externas:** a busca de CEP usa ViaCEP pelo navegador e o CSS importa a fonte Poppins do Google Fonts. São as exceções atuais à regra de assets locais.
 
 ## 10. Validação antes de entregar alterações
 

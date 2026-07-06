@@ -866,7 +866,11 @@ let cpCompraReadonly = false;
 let cpCompraReadonlyLocalizacao = '';
 let cpCompraFotoItemIndex = null;
 let cpCompraFotoOrigem = 'kidstok';
-let cpCompraRateioItemIndex = null;
+let cpCompraRateioContext = null;
+
+function cpLocalizacaoEhFornecedor(localizacao) {
+    return String(localizacao || '').trim().toLocaleLowerCase() === 'fornecedor';
+}
 
 function initCpComprasLista() {
     $('#filtro-cp-compras').select2({
@@ -899,7 +903,7 @@ function loadCpComprasGrid() {
             const rows = response.data || [];
             const html = rows.map(function (row) {
                 const localizacao = row.Localizacao || 'KidStok';
-                const localizacaoLabel = localizacao === 'Fornecedor' ? 'Aguardando fornecedor' : localizacao;
+                const localizacaoLabel = cpLocalizacaoEhFornecedor(localizacao) ? 'Aguardando fornecedor' : localizacao;
                 const canEdit = localizacao === 'KidStok';
                 const actions = canEdit
                     ? '<a class="btn btn-sm btn-outline-secondary btn-edit btn-icon-only me-1" title="Editar" aria-label="Editar" href="' + cfg.form + '?id=' + row.id + '"></a>' +
@@ -990,7 +994,7 @@ function initCpComprasForm() {
         const itemIndex = cpCompraItens.length - 1;
         cpCompraItensOpen[itemIndex] = true;
         renderCpCompraItens();
-        focusCpCompraItemEditor(itemIndex);
+        focusCpCompraItemEditor(itemIndex, true);
     });
 
     $('#btn-cp-enviar-proposta').on('click', function () {
@@ -1010,10 +1014,26 @@ function initCpComprasForm() {
     });
 
     $('#cp-foto-input').on('change', uploadCpCompraFotos);
-    $('#btn-aplicar-percentuais').on('click', aplicarCpCompraPercentuais);
+    $('#btn-aplicar-cp-rateio').on('click', aplicarCpCompraRateio);
+    $('#cp-rateio-modal').on('input', '.cp-rateio-percentual, #cp-rateio-qtde-total', updateCpCompraRateioModalTotal);
 
     $form.on('shown.bs.collapse hidden.bs.collapse', '.cp-compra-item-collapse', function (event) {
         cpCompraItensOpen[$(this).data('item-index')] = event.type === 'shown';
+    });
+    $form.on('shown.bs.collapse hidden.bs.collapse', '.cp-compra-tamanho-collapse', function (event) {
+        const item = cpCompraItens[Number($(this).data('item-index'))];
+        const tamanho = item?.tamanhos?.[Number($(this).data('size-index'))];
+        if (tamanho) {
+            tamanho._aberto = event.type === 'shown';
+        }
+    });
+    $form.on('shown.bs.collapse hidden.bs.collapse', '.cp-compra-cor-collapse', function (event) {
+        const item = cpCompraItens[Number($(this).data('item-index'))];
+        const tamanho = item?.tamanhos?.[Number($(this).data('size-index'))];
+        const cor = tamanho?.cores?.[Number($(this).data('color-index'))];
+        if (cor) {
+            cor._aberto = event.type === 'shown';
+        }
     });
 
     if (id > 0) {
@@ -1022,7 +1042,7 @@ function initCpComprasForm() {
                 const row = response.data || {};
                 fillCpCompraHeader($form, row);
                 cpCompraReadonlyLocalizacao = row.Localizacao || 'KidStok';
-                cpCompraReadonly = cpCompraReadonlyLocalizacao === 'Fornecedor';
+                cpCompraReadonly = cpLocalizacaoEhFornecedor(cpCompraReadonlyLocalizacao);
                 cpCompraItens = (row.items || []).map(mapCpCompraItemFromApi);
                 cpCompraItensOpen = {};
                 applyCpCompraReadonly($form);
@@ -1053,7 +1073,7 @@ function initCpComprasForm() {
     $form.on('submit', function (event) {
         event.preventDefault();
         if (cpCompraReadonly) {
-            appAlert('Pedido com localizacao ' + cpCompraReadonlyLocalizacao + ' permite apenas visualizacao.', 'warning');
+            appAlert('Pedido com localizacao ' + cpCompraReadonlyLocalizacao + ' permite apenas visualizacao e impressao.', 'warning');
             return;
         }
         salvarCpCompraForm($form, function (response) {
@@ -1090,7 +1110,7 @@ function salvarCpCompraForm($form, done) {
 
 function enviarCpCompraProposta($form) {
     if (cpCompraReadonly) {
-        appAlert('Pedido com localizacao ' + cpCompraReadonlyLocalizacao + ' permite apenas visualizacao.', 'warning');
+        appAlert('Pedido com localizacao ' + cpCompraReadonlyLocalizacao + ' permite apenas visualizacao e impressao.', 'warning');
         return;
     }
     salvarCpCompraForm($form, function () {
@@ -1102,6 +1122,10 @@ function executarCpCompraWorkflow($form, action, confirmMessage, extraData) {
     const id = Number($form.data('id') || $form.find('[name="id"]').val() || 0);
     if (!id) {
         appAlert('Salve o pedido antes de executar esta acao.', 'warning');
+        return;
+    }
+    if (cpCompraReadonly) {
+        appAlert('Pedido com localizacao ' + cpCompraReadonlyLocalizacao + ' permite apenas visualizacao e impressao.', 'warning');
         return;
     }
     if (confirmMessage && !confirm(confirmMessage)) {
@@ -1148,7 +1172,7 @@ function focusCpCompraFornecedor($form) {
     }, 150);
 }
 
-function focusCpCompraItemEditor(itemIndex) {
+function focusCpCompraItemEditor(itemIndex, openSelect) {
     setTimeout(function () {
         const item = document.querySelector('.cp-compra-item[data-item-index="' + itemIndex + '"]');
         if (!item) {
@@ -1157,7 +1181,7 @@ function focusCpCompraItemEditor(itemIndex) {
         item.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
         const $referencia = $(item).find('.cp-compra-referencia-select');
-        if ($referencia.length && $referencia.data('select2') && !$referencia.prop('disabled')) {
+        if (openSelect !== false && $referencia.length && $referencia.data('select2') && !$referencia.prop('disabled')) {
             $referencia.select2('open');
         }
     }, 150);
@@ -1171,8 +1195,8 @@ function applyCpCompraReadonly($form) {
     $form.find('input, select, textarea, button[type="submit"]').prop('disabled', true);
     $form.find('[name="ID"], [name="ValorTotalPedido"]').prop('disabled', false).prop('readonly', true);
     $form.find('.js-cp-compra-select').prop('disabled', true).trigger('change.select2');
-    $('#btn-add-cp-item, #btn-aplicar-percentuais').prop('disabled', true);
-    appAlert('Pedido com localizacao ' + cpCompraReadonlyLocalizacao + ' esta disponivel apenas para visualizacao.', 'warning');
+    $('#btn-add-cp-item').prop('disabled', true);
+    appAlert('Pedido com localizacao ' + cpCompraReadonlyLocalizacao + ' esta disponivel apenas para visualizacao e impressao.', 'warning');
 }
 
 function updateCpCompraWorkflowButtons(row) {
@@ -1181,7 +1205,10 @@ function updateCpCompraWorkflowButtons(row) {
     const pedidoId = Number($('#cp-compras-form').data('id') || $('#cp-compras-form [name="id"]').val() || 0);
     const isClosed = status === 'Aprovado' || status === 'Recusado';
     $('#btn-cp-enviar-proposta').toggleClass('d-none', !pedidoId || localizacao !== 'KidStok' || isClosed);
-    $('#btn-cp-aprovar, #btn-cp-recusar').toggleClass('d-none', localizacao !== 'Fornecedor' || isClosed);
+    $('#btn-cp-aprovar, #btn-cp-recusar').toggleClass(
+        'd-none',
+        !pedidoId || cpLocalizacaoEhFornecedor(localizacao) || isClosed
+    );
 }
 
 function fillCpCompraHeader($form, row) {
@@ -1267,8 +1294,7 @@ function cpCompraHeaderMarkups() {
 function applyCpCompraHeaderMarkupsToItens() {
     cpCompraItens.forEach(function (item, itemIndex) {
         recalcCpCompraItem(item);
-        updateCpCompraDetalhesDisplay(itemIndex);
-        updateCpCompraItemTotalDisplay(itemIndex);
+        updateCpCompraNestedDisplays(itemIndex);
     });
     $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
 }
@@ -1287,21 +1313,36 @@ function emptyCpCompraItem(confirmado) {
         composicao: '',
         ncm: '',
         entrega: '',
+        entrega_anterior: '',
         total_qtde: 0,
         total_produto: 0,
         Foto: 0,
         FotoFornecedor: 0,
         Sts: 1,
         item_confirmado: confirmado === undefined ? false : Boolean(confirmado),
-        _pendingDetalhes: [],
-        detalhes: []
+        _pendingTamanhos: [],
+        tamanhos: []
     };
 }
 
-function emptyCpCompraDetalhe() {
+function emptyCpCompraTamanho() {
+    return {
+        tamanho: '',
+        entrega: '',
+        entrega_anterior: '',
+        markup_franquia: 0,
+        markup_loja: 0,
+        qtde_total: 0,
+        valor_total: 0,
+        Itens: 0,
+        _aberto: false,
+        cores: []
+    };
+}
+
+function emptyCpCompraCor() {
     return {
         sku: '',
-        tamanho: '',
         cor: '',
         Qtde: 0,
         preco_fornecedor: 0,
@@ -1313,57 +1354,73 @@ function emptyCpCompraDetalhe() {
         markup_loja: 0,
         markup_total: 0,
         percentual: 0,
-        Sts: 1
+        Sts: 1,
+        _aberto: false
     };
 }
 
 function mapCpCompraItemFromApi(row) {
+    const tamanhos = Array.isArray(row.tamanhos) ? row.tamanhos : [];
     return {
         referencia_fornecedor: row.referencia_fornecedor || '',
         descricao: row.descricao || '',
         composicao: row.composicao || '',
         ncm: row.ncm || '',
         entrega: row.entrega || '',
+        entrega_anterior: row.entrega_anterior || '',
         total_qtde: Number(row.total_qtde || 0),
         total_produto: Number(row.total_produto || 0),
         Foto: Number(row.Foto || 0),
         FotoFornecedor: Number(row.FotoFornecedor || 0),
         Sts: Number(row.Sts || 1),
         item_confirmado: true,
-        _pendingDetalhes: [],
-        detalhes: (row.detalhes || []).map(function (detail) {
-            return Object.assign(emptyCpCompraDetalhe(), {
-                sku: detail.sku || '',
-                tamanho: detail.tamanho || '',
-                cor: detail.cor || '',
-                Qtde: Number(detail.Qtde || 0),
-                preco_fornecedor: Number(detail.preco_fornecedor || 0),
-                preco_proposta: Number(detail.preco_proposta || 0),
-                valor_total_produto: Number(detail.valor_total_produto || 0),
-                preco_franqueado: Number(detail.preco_franqueado || 0),
-                markup_franquia: Number(detail.markup_franquia || 0),
-                preco_loja: Number(detail.preco_loja || 0),
-                markup_loja: Number(detail.markup_loja || 0),
-                markup_total: Number(detail.markup_total || 0),
-                percentual: Number(detail.percentual || 0),
-                Sts: Number(detail.Sts || 1)
+        _pendingTamanhos: [],
+        tamanhos: tamanhos.map(mapCpCompraTamanhoFromApi)
+    };
+}
+
+function mapCpCompraTamanhoFromApi(row) {
+    return Object.assign(emptyCpCompraTamanho(), {
+        tamanho: row.tamanho || '',
+        entrega: row.entrega || '',
+        entrega_anterior: row.entrega_anterior || '',
+        markup_franquia: Number(row.markup_franquia || 0),
+        markup_loja: Number(row.markup_loja || 0),
+        qtde_total: Number(row.qtde_total || 0),
+        valor_total: Number(row.valor_total || 0),
+        Itens: Number(row.Itens || 0),
+        cores: (row.cores || []).map(function (cor) {
+            return Object.assign(emptyCpCompraCor(), {
+                sku: cor.sku || '',
+                cor: cor.cor || '',
+                Qtde: Number(cor.Qtde || 0),
+                preco_fornecedor: Number(cor.preco_fornecedor || 0),
+                preco_proposta: Number(cor.preco_proposta || 0),
+                valor_total_produto: Number(cor.valor_total_produto || 0),
+                preco_franqueado: Number(cor.preco_franqueado || 0),
+                markup_franquia: Number(cor.markup_franquia || 0),
+                preco_loja: Number(cor.preco_loja || 0),
+                markup_loja: Number(cor.markup_loja || 0),
+                markup_total: Number(cor.markup_total || 0),
+                percentual: Number(cor.percentual || 0),
+                Sts: Number(cor.Sts || 1)
             });
         })
-    };
+    });
 }
 
 function renderCpCompraItens() {
     const html = cpCompraItens.map(function (item, index) {
         const collapseId = 'cp-compra-item-collapse-' + index;
-        const isOpen = cpCompraItensOpen[index] !== false;
+        const isOpen = cpCompraItensOpen[index] === true;
         const collapseClass = isOpen ? ' show' : '';
         const collapsedClass = isOpen ? '' : ' collapsed';
         const referencia = item.referencia_fornecedor || 'Item ' + (index + 1);
         const descricao = item.descricao || 'Sem descricao';
         const composicao = item.composicao || 'N/A';
         const entrega = item.entrega ? formatDateBr(item.entrega) : 'Nao definida';
-        return '<section class="card card-slim mb-3 cp-compra-item" data-item-index="' + index + '">' +
-            '<div class="card-header bg-table-header cp-compra-item-header cursor-pointer' + collapsedClass + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + collapseId + '">' +
+        return '<section class="accordion-item card card-slim mb-3 cp-compra-item" data-item-index="' + index + '">' +
+            '<div class="accordion-header card-header bg-table-header cp-compra-item-header cursor-pointer' + collapsedClass + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + collapseId + '">' +
             '<div class="d-flex align-items-center cp-compra-item-title">' +
             '<span class="cp-compra-chevron transition-icon" aria-hidden="true"></span>' +
             '<div>' +
@@ -1375,15 +1432,15 @@ function renderCpCompraItens() {
             '<div class="d-flex align-items-center gap-4 cp-compra-item-summary">' +
             photoButtonHtml(index, item) +
             '<div class="text-end d-none d-md-block">' +
-            '<small class="text-muted d-block extra-small text-uppercase">Entrega do Item</small>' +
-            '<span>' + escapeHtml(entrega) + '</span>' +
+            '<small class="text-muted d-block extra-small text-uppercase">Tamanhos</small>' +
+            '<span>' + Number((item.tamanhos || []).length) + '</span>' +
             '</div>' +
             '<div class="text-end d-none d-md-block">' +
             '<small class="text-muted d-block extra-small text-uppercase">Total do Item</small>' +
             '<span class="fw-bold text-success cp-compra-item-total">R$ ' + escapeHtml(formatMoneyBr(item.total_produto || 0)) + '</span>' +
             '</div>' +
             (cpCompraReadonly ? '' : '<div class="d-flex flex-wrap gap-2 cp-compra-item-actions" onclick="event.stopPropagation();">' +
-                (item.item_confirmado ? '<button class="btn btn-sm btn-orange btn-new" type="button" onclick="addCpCompraDetalhe(' + index + ')">Subitem</button>' : '') +
+                (item.item_confirmado ? '<button class="btn btn-sm btn-orange btn-new" type="button" onclick="addCpCompraTamanho(' + index + ')">Tamanho</button>' : '') +
                 '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraItem(' + index + ')"></button>' +
                 '</div>') +
             '</div>' +
@@ -1393,46 +1450,124 @@ function renderCpCompraItens() {
             '<div class="row g-3 mb-3">' +
             referenceSelectHtml(index, item.referencia_fornecedor, 'col-12 col-lg-5', item.item_confirmado) +
             fieldHtml(index, null, 'descricao', 'Descricao', item.descricao, 'col-12 col-lg-5', 'text', null, true) +
-            fieldHtml(index, null, 'entrega', 'Entrega', item.entrega, 'col-12 col-lg-2', 'date', null, true) +
+            fieldHtml(index, null, 'entrega', 'Entrega', item.entrega, 'col-12 col-lg-2', 'date') +
             fieldHtml(index, null, 'composicao', 'Composicao', item.composicao, 'col-12 col-md-3', 'text', null, true) +
             fieldHtml(index, null, 'ncm', 'NCM', item.ncm, 'col-12 col-md-2', 'text', null, true) +
-            fieldHtml(index, null, 'total_qtde', 'Qtde Rateio', item.total_qtde, 'col-12 col-md-2', 'number', '1', false) +
-            rateioCpCompraItemButtonHtml(index, item, 'col-12 col-md-2') +
+            fieldHtml(index, null, 'total_qtde', 'Quantidade total', item.total_qtde, 'col-12 col-md-2', 'number', '1', true) +
             fieldHtml(index, null, 'total_produto', 'Total Item', item.total_produto, 'col-12 col-md-2', 'money', null, true) +
             itemStatusReadonlyHtml(index, item.Sts, 'col-12 col-md-2') +
             confirmCpCompraItemButtonHtml(index, item, 'col-12 col-md-2') +
             '</div>' +
-            (item.item_confirmado ? '<div class="table-responsive">' +
-            '<table class="table table-custom align-middle mb-0 cp-compra-detalhes-table">' +
-            '<thead><tr><th>Tamanho</th><th>Cor</th><th>Qtde</th><th>Preco Prop.</th><th>Preco Forn.</th><th>Preco Franq.</th><th>Preco Loja</th><th>Total</th><th>Status</th>' + (cpCompraReadonly ? '' : '<th class="text-end">Acoes</th>') + '</tr></thead>' +
-            '<tbody>' + renderCpCompraDetalhes(index, item.detalhes || []) + '</tbody>' +
-            '</table>' +
-            '</div>' : '<div class="text-center text-muted py-3">Confirme o item para inserir os subitens.</div>') +
+            (item.item_confirmado
+                ? renderCpCompraTamanhos(index, item.tamanhos || [])
+                : '<div class="text-center text-muted py-3">Confirme o item para inserir os tamanhos.</div>') +
             '</div>' +
             '</div>' +
             '</section>';
     }).join('');
     $('#cp-compras-itens').html(html || '<div class="text-center text-muted py-3">Nenhum item informado.</div>');
     initCpCompraReferenciaSelects();
-    initCpCompraItemFields();
-    initCpCompraDetalheFields();
+    initCpCompraNestedFields();
 }
 
-function renderCpCompraDetalhes(itemIndex, detalhes) {
-    return detalhes.map(function (detail, detailIndex) {
-        return '<tr data-item-index="' + itemIndex + '" data-detail-index="' + detailIndex + '">' +
-            '<td data-label="Tamanho">' + detailInput(itemIndex, detailIndex, 'tamanho', detail.tamanho, 'text', null, true) + '</td>' +
-            '<td data-label="Cor">' + detailInput(itemIndex, detailIndex, 'cor', detail.cor, 'text', null, true) + '</td>' +
-            '<td data-label="Qtde">' + detailInput(itemIndex, detailIndex, 'Qtde', parseInt(detail.Qtde || 0, 10), 'number', '1') + '</td>' +
-            '<td data-label="Preco Prop.">' + detailInput(itemIndex, detailIndex, 'preco_proposta', detail.preco_proposta, 'money') + '</td>' +
-            '<td data-label="Preco Forn.">' + detailInput(itemIndex, detailIndex, 'preco_fornecedor', detail.preco_fornecedor, 'money', null, true) + '</td>' +
-            '<td data-label="Preco Franq.">' + detailInput(itemIndex, detailIndex, 'preco_franqueado', detail.preco_franqueado, 'money', null, true) + '</td>' +
-            '<td data-label="Preco Loja">' + detailInput(itemIndex, detailIndex, 'preco_loja', detail.preco_loja, 'money', null, true) + '</td>' +
-            '<td data-label="Total">' + detailInput(itemIndex, detailIndex, 'valor_total_produto', detail.valor_total_produto, 'money', null, true) + '</td>' +
-            '<td data-label="Status">' + detailStatusSelect(itemIndex, detailIndex, detail.Sts) + '</td>' +
-            (cpCompraReadonly ? '' : '<td data-label="Acoes" class="text-end"><button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" tabindex="-1" onclick="removeCpCompraDetalhe(' + itemIndex + ', ' + detailIndex + ')"></button></td>') +
-            '</tr>';
+function renderCpCompraTamanhos(itemIndex, tamanhos) {
+    if (!tamanhos.length) {
+        return '<div class="cp-compra-empty-nested">Nenhum tamanho informado.</div>';
+    }
+    return '<div class="accordion cp-compra-tamanhos-accordion" id="cp-tamanhos-' + itemIndex + '">' +
+        tamanhos.map(function (tamanho, tamanhoIndex) {
+            const collapseId = 'cp-tamanho-collapse-' + itemIndex + '-' + tamanhoIndex;
+            const aberto = tamanho._aberto !== false;
+            const rateio = cpCompraTamanhoPercentualTotal(tamanho);
+            const rateioClass = roundCpPercent(rateio) === 100 ? 'text-success' : 'text-danger';
+            const entregaResumo = tamanho.entrega ? formatDateBr(tamanho.entrega) : 'Nao definida';
+            return '<section class="accordion-item cp-compra-tamanho" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '">' +
+                '<div class="accordion-header cp-compra-tamanho-header' + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
+                '<div><strong>Tamanho ' + escapeHtml(tamanho.tamanho || (tamanhoIndex + 1)) + '</strong>' +
+                '<small class="d-block text-muted">Entrega: <span class="cp-tamanho-summary-entrega">' + escapeHtml(entregaResumo) + '</span> · Quantidade: <span class="cp-tamanho-summary-qtde">' + escapeHtml(tamanho.qtde_total || 0) + '</span> · Rateio: <span class="cp-tamanho-summary-rateio ' + rateioClass + '">' + escapeHtml(formatPercentInput(rateio)) + '%</span></small></div>' +
+                '<div class="d-flex gap-2 align-items-center" onclick="event.stopPropagation();">' +
+                '<span class="fw-bold text-success cp-tamanho-summary-total">R$ ' + escapeHtml(formatMoneyBr(tamanho.valor_total || 0)) + '</span>' +
+                (cpCompraReadonly ? '' :
+                    '<button class="btn btn-sm btn-outline-primary" type="button" onclick="ratearCpCompraTamanho(' + itemIndex + ', ' + tamanhoIndex + ')">Ratear</button>' +
+                    '<button class="btn btn-sm btn-orange btn-new" type="button" onclick="addCpCompraCor(' + itemIndex + ', ' + tamanhoIndex + ')">Cor</button>' +
+                    '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir tamanho" aria-label="Excluir tamanho" onclick="removeCpCompraTamanho(' + itemIndex + ', ' + tamanhoIndex + ')"></button>') +
+                '</div></div>' +
+                '<div id="' + collapseId + '" class="accordion-collapse collapse cp-compra-tamanho-collapse' + (aberto ? ' show' : '') + '" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '">' +
+                '<div class="accordion-body">' +
+                '<div class="row g-3 mb-3">' +
+                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'tamanho', 'Tamanho', tamanho.tamanho, 'col-12 col-md-2', 'text', true) +
+                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'entrega', 'Entrega', tamanho.entrega, 'col-12 col-md-2', 'date') +
+                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'qtde_total', 'Quantidade do tamanho', tamanho.qtde_total, 'col-12 col-md-2', 'number', true) +
+                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'valor_total', 'Total do tamanho', tamanho.valor_total, 'col-12 col-md-2', 'money', true) +
+                '<div class="col-12 col-md-2"><label class="form-label">Total do rateio</label><input class="form-control ' + rateioClass + ' fw-bold cp-tamanho-rateio-total" value="' + escapeAttr(formatPercentInput(rateio)) + '%" readonly></div>' +
+                '</div>' +
+                renderCpCompraCores(itemIndex, tamanhoIndex, tamanho.cores || []) +
+                '</div></div></section>';
+        }).join('') + '</div>';
+}
+
+function renderCpCompraCores(itemIndex, tamanhoIndex, cores) {
+    if (!cores.length) {
+        return '<div class="cp-compra-empty-nested">Nenhuma cor informada para este tamanho.</div>';
+    }
+    return '<div class="accordion cp-compra-cores-accordion">' + cores.map(function (cor, corIndex) {
+        const collapseId = 'cp-cor-collapse-' + itemIndex + '-' + tamanhoIndex + '-' + corIndex;
+        const aberto = cor._aberto !== false;
+        return '<section class="accordion-item cp-compra-cor" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '" data-color-index="' + corIndex + '">' +
+            '<div class="accordion-header cp-compra-cor-header' + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
+            '<div><strong>Cor ' + escapeHtml(cor.cor || (corIndex + 1)) + '</strong><small class="d-block text-muted">' +
+            '<span class="cp-cor-summary-percentual">' + escapeHtml(formatPercentInput(cor.percentual || 0)) + '%</span> · Quantidade: <span class="cp-cor-summary-qtde">' + escapeHtml(cor.Qtde || 0) + '</span></small></div>' +
+            '<div class="d-flex gap-2 align-items-center" onclick="event.stopPropagation();"><span class="fw-bold text-success cp-cor-summary-total">R$ ' + escapeHtml(formatMoneyBr(cor.valor_total_produto || 0)) + '</span>' +
+            (cpCompraReadonly ? '' : '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir cor" aria-label="Excluir cor" onclick="removeCpCompraCor(' + itemIndex + ', ' + tamanhoIndex + ', ' + corIndex + ')"></button>') +
+            '</div></div>' +
+            '<div id="' + collapseId + '" class="accordion-collapse collapse cp-compra-cor-collapse' + (aberto ? ' show' : '') + '" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '" data-color-index="' + corIndex + '">' +
+            '<div class="accordion-body"><div class="row g-2">' +
+            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'sku', 'SKU', cor.sku, 'col-12 col-md-3', 'text', true) +
+            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'cor', 'Cor', cor.cor, 'col-12 col-md-3', 'text', true) +
+            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'Qtde', 'Quantidade rateada', cor.Qtde, 'col-12 col-md-2', 'number', true) +
+            cpCompraCorStatus(itemIndex, tamanhoIndex, corIndex, cor.Sts, 'col-12 col-md-2') +
+            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_proposta', 'Preço proposto', cor.preco_proposta, 'col-12 col-md-3', 'money') +
+            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_fornecedor', 'Preço fornecedor', cor.preco_fornecedor, 'col-12 col-md-3', 'money', true) +
+            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_franqueado', 'Preço franqueado', cor.preco_franqueado, 'col-12 col-md-3', 'money', true) +
+            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_loja', 'Preço loja', cor.preco_loja, 'col-12 col-md-3', 'money', true) +
+            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'valor_total_produto', 'Total da cor', cor.valor_total_produto, 'col-12 col-md-3', 'money', true) +
+            '</div></div></div></section>';
     }).join('');
+}
+
+function cpCompraTamanhoInput(itemIndex, tamanhoIndex, name, label, value, colClass, type, readonly) {
+    return cpCompraNestedInput('tamanho', itemIndex, tamanhoIndex, null, name, label, value, colClass, type, readonly);
+}
+
+function cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, name, label, value, colClass, type, readonly) {
+    return cpCompraNestedInput('cor', itemIndex, tamanhoIndex, corIndex, name, label, value, colClass, type, readonly);
+}
+
+function cpCompraNestedInput(level, itemIndex, tamanhoIndex, corIndex, name, label, value, colClass, type, readonly) {
+    const isMoney = type === 'money';
+    const isPercent = type === 'percent';
+    const inputType = isMoney || isPercent ? 'text' : (type || 'text');
+    const displayValue = isMoney ? formatMoneyInput(value || 0) : (isPercent ? formatPercentInput(value || 0) : escapeAttr(value || ''));
+    const readonlyAttr = (readonly || cpCompraReadonly) ? ' readonly' : '';
+    const inputMode = (isMoney || isPercent || inputType === 'number') ? ' inputmode="decimal"' : '';
+    const className = 'form-control cp-compra-' + level + '-field' + (isMoney ? ' cp-money-field text-end' : '') + (isPercent ? ' cp-percentual-field text-end' : '');
+    const attrs = cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, name);
+    const input = '<input class="' + className + '" type="' + inputType + '"' + inputMode + readonlyAttr + ' value="' + displayValue + '" ' + attrs + '>';
+    return '<div class="' + colClass + '"><label class="form-label">' + label + '</label>' + (isMoney ? moneyInputGroup(input, false) : input) + '</div>';
+}
+
+function cpCompraCorStatus(itemIndex, tamanhoIndex, corIndex, value, colClass) {
+    const disabled = cpCompraReadonly ? ' disabled' : '';
+    return '<div class="' + colClass + '"><label class="form-label">Status</label><select class="form-select cp-compra-cor-field" ' +
+        cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, 'Sts') + disabled + '>' +
+        '<option value="1"' + (String(value) !== '0' ? ' selected' : '') + '>Ativo</option>' +
+        '<option value="0"' + (String(value) === '0' ? ' selected' : '') + '>Inativo</option></select></div>';
+}
+
+function cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, name) {
+    return 'data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '"' +
+        (corIndex === null ? '' : ' data-color-index="' + corIndex + '"') +
+        ' data-field="' + name + '"';
 }
 
 function fieldHtml(itemIndex, detailIndex, name, label, value, colClass, type, step, readonly) {
@@ -1527,159 +1662,94 @@ function cpCompraReferenciaDuplicada(referencia, ignoreIndex) {
     return cpCompraReferenciasUsadas(ignoreIndex).includes(String(referencia || '').trim());
 }
 
-function initCpCompraItemFields() {
-    $('.cp-compra-item [data-field="total_qtde"]')
-        .off('input.cpRateio change.cpRateio')
-        .on('input.cpRateio change.cpRateio', function () {
+function initCpCompraNestedFields() {
+    $('.cp-compra-field[data-field="entrega"]')
+        .off('change.cpItemEntrega input.cpItemEntrega')
+        .on('change.cpItemEntrega input.cpItemEntrega', function () {
+            updateCpCompraItemEntrega($(this));
+        });
+
+    $('.cp-compra-tamanho-field, .cp-compra-cor-field')
+        .off('input.cpNested change.cpNested')
+        .on('input.cpNested change.cpNested', function () {
             const $field = $(this);
-            const itemIndex = Number($field.data('item-index'));
-            if (!cpCompraItens[itemIndex]) {
-                return;
+            updateCpCompraNestedField($field);
+        })
+        .off('focus.cpNested')
+        .on('focus.cpNested', function () {
+            if (this.type !== 'date') {
+                this.select();
             }
-            cpCompraItens[itemIndex].total_qtde = normalizeCpCompraValue('total_qtde', $field.val());
-            ratearCpCompraItemQtde(cpCompraItens[itemIndex]);
-            recalcCpCompraItem(cpCompraItens[itemIndex]);
-            updateCpCompraDetalhesDisplay(itemIndex);
-            updateCpCompraItemTotalDisplay(itemIndex);
-            $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
+        });
+
+    $('.cp-percentual-field')
+        .off('input.cpPercentual')
+        .on('input.cpPercentual', function () {
+            updateCpCompraNestedField($(this));
+        })
+        .off('blur.cpPercentual')
+        .on('blur.cpPercentual', function () {
+            this.value = formatPercentInput(parsePercentInput(this.value));
+        });
+
+    $('.cp-money-field')
+        .off('input.cpMoney')
+        .on('input.cpMoney', function () {
+            this.value = formatMoneyInput(this.value);
+            if ($(this).hasClass('cp-compra-cor-field')) {
+                updateCpCompraNestedField($(this));
+            }
         });
 }
 
-function openCpCompraPercentuais(itemIndex) {
-    syncCpCompraItensFromDom();
-    const item = cpCompraItens[itemIndex] || null;
-    if (!item || !item.item_confirmado) {
-        appAlert('Confirme o item antes de informar o rateio.', 'warning');
-        return;
-    }
-    if (!Number(item.total_qtde || 0)) {
-        appAlert('Informe a Qtde Rateio do item antes de aplicar percentuais.', 'warning');
+function updateCpCompraItemEntrega($field) {
+    const itemIndex = Number($field.data('item-index'));
+    const item = cpCompraItens[itemIndex];
+    if (!item) {
         return;
     }
 
-    const grupos = cpCompraPercentuaisGrupos(item);
-    if (!grupos.length) {
-        appAlert('Nao ha subitens para ratear.', 'warning');
-        return;
-    }
-
-    cpCompraRateioItemIndex = itemIndex;
-    $('#cp-percentuais-alert').addClass('d-none').text('');
-    $('#cp-percentuais-content').html(
-        '<div class="table-responsive"><table class="table table-custom align-middle mb-0">' +
-        '<thead><tr><th>Tamanho</th><th>Cor</th><th class="text-end">Percentual</th></tr></thead>' +
-        '<tbody>' + grupos.map(function (grupo, index) {
-            return '<tr>' +
-                '<td>' + escapeHtml(grupo.tamanho || '') + '</td>' +
-                '<td>' + escapeHtml(grupo.cor || '') + '</td>' +
-                '<td><input class="form-control form-control-sm text-end cp-percentual-input" type="text" inputmode="decimal" value="' + escapeAttr(formatPercentInput(grupo.percentual || 0)) + '" data-rateio-index="' + index + '"></td>' +
-                '</tr>';
-        }).join('') + '</tbody>' +
-        '<tfoot><tr><th colspan="2" class="text-end">Total</th><th class="text-end"><span id="cp-percentuais-total">0,00</span>%</th></tr></tfoot>' +
-        '</table></div>'
-    );
-    $('#cp-percentuais-content').data('grupos', grupos);
-    $('.cp-percentual-input').on('input', updateCpCompraPercentuaisTotal);
-    updateCpCompraPercentuaisTotal();
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-percentuais-modal')).show();
+    const entrega = String($field.val() || '');
+    item.entrega = entrega;
+    (item.tamanhos || []).forEach(function (tamanho) {
+        tamanho.entrega = entrega;
+    });
+    $('.cp-compra-tamanho-field[data-item-index="' + itemIndex + '"][data-field="entrega"]').val(entrega);
+    updateCpCompraNestedDisplays(itemIndex);
 }
 
-function cpCompraPercentuaisGrupos(item) {
-    const grupos = {};
-    (item.detalhes || []).forEach(function (detail, detailIndex) {
-        if (String(detail.Sts) === '0') {
+function updateCpCompraNestedField($field) {
+    const itemIndex = Number($field.data('item-index'));
+    const tamanhoIndex = Number($field.data('size-index'));
+    const corIndexRaw = $field.attr('data-color-index');
+    const name = $field.data('field');
+    const item = cpCompraItens[itemIndex];
+    const tamanho = item?.tamanhos?.[tamanhoIndex];
+    if (!tamanho) {
+        return;
+    }
+    if (corIndexRaw === undefined) {
+        tamanho[name] = normalizeCpCompraValue(name, $field.val());
+    } else {
+        const cor = tamanho.cores[Number(corIndexRaw)];
+        if (!cor) {
             return;
         }
-        const tamanho = String(detail.tamanho || '');
-        const cor = String(detail.cor || '');
-        const key = tamanho + '\u0001' + cor;
-        if (!grupos[key]) {
-            grupos[key] = {
-                tamanho: tamanho,
-                cor: cor,
-                percentual: Number(detail.percentual || 0),
-                detailIndexes: []
-            };
-        }
-        grupos[key].detailIndexes.push(detailIndex);
-    });
-    return Object.keys(grupos).map(function (key) {
-        return grupos[key];
-    });
-}
-
-function updateCpCompraPercentuaisTotal() {
-    let total = 0;
-    $('.cp-percentual-input').each(function () {
-        total += parsePercentInput(this.value);
-    });
-    $('#cp-percentuais-total').text(formatPercentInput(total));
-}
-
-function aplicarCpCompraPercentuais() {
-    const item = cpCompraItens[cpCompraRateioItemIndex] || null;
-    const grupos = $('#cp-percentuais-content').data('grupos') || [];
-    if (!item || !grupos.length) {
-        return;
+        cor[name] = normalizeCpCompraValue(name, $field.val());
     }
-
-    let totalPercentual = 0;
-    let invalidPercentual = false;
-    $('.cp-percentual-input').each(function () {
-        const index = Number($(this).data('rateio-index'));
-        const percentual = parsePercentInput(this.value);
-        if (percentual < 0 || percentual > 100) {
-            invalidPercentual = true;
-        }
-        grupos[index].percentual = percentual;
-        totalPercentual += percentual;
-    });
-
-    if (invalidPercentual) {
-        $('#cp-percentuais-alert').removeClass('d-none').text('Cada percentual deve estar entre 0% e 100%.');
-        return;
-    }
-    if (roundCpMoney(totalPercentual) !== 100) {
-        $('#cp-percentuais-alert').removeClass('d-none').text('O total dos percentuais deve atingir exatamente 100%. Total atual: ' + formatPercentInput(totalPercentual) + '%.');
-        return;
-    }
-
-    aplicarCpCompraRateioPorPercentual(item, grupos);
     recalcCpCompraItem(item);
-    renderCpCompraItens();
-    recalcCpCompraTotal();
-    bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-percentuais-modal')).hide();
+    updateCpCompraNestedDisplays(itemIndex);
+    $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
 }
 
-function aplicarCpCompraRateioPorPercentual(item, grupos) {
-    const totalQtde = Math.max(0, parseInt(Number(item.total_qtde || 0), 10) || 0);
-    let qtdeAplicada = 0;
-    let firstDetailIndex = null;
+function cpCompraTamanhoPercentualTotal(tamanho) {
+    return (tamanho.cores || []).reduce(function (total, cor) {
+        return String(cor.Sts) === '0' ? total : total + Number(cor.percentual || 0);
+    }, 0);
+}
 
-    (item.detalhes || []).forEach(function (detail) {
-        if (String(detail.Sts) === '0') {
-            detail.percentual = 0;
-            detail.Qtde = 0;
-        }
-    });
-
-    grupos.forEach(function (grupo) {
-        const qtdeGrupo = Math.floor(totalQtde * Number(grupo.percentual || 0) / 100);
-        qtdeAplicada += qtdeGrupo;
-        grupo.detailIndexes.forEach(function (detailIndex, groupIndex) {
-            const detail = item.detalhes[detailIndex];
-            detail.percentual = Number(grupo.percentual || 0);
-            detail.Qtde = groupIndex === 0 ? qtdeGrupo : 0;
-            if (firstDetailIndex === null) {
-                firstDetailIndex = detailIndex;
-            }
-        });
-    });
-
-    const diferenca = totalQtde - qtdeAplicada;
-    if (firstDetailIndex !== null && diferenca !== 0) {
-        item.detalhes[firstDetailIndex].Qtde = Number(item.detalhes[firstDetailIndex].Qtde || 0) + diferenca;
-    }
+function roundCpPercent(value) {
+    return Math.round((Number(value) || 0) * 10000) / 10000;
 }
 
 function parsePercentInput(value) {
@@ -1708,8 +1778,8 @@ function loadCpCompraReferenciaItem(itemIndex, codigoReferencia) {
     }).done(function (response) {
         const itemData = Object.assign(emptyCpCompraItem(false), response.data || {});
         itemData.item_confirmado = false;
-        itemData._pendingDetalhes = itemData.detalhes || [];
-        itemData.detalhes = [];
+        itemData._pendingTamanhos = (itemData.tamanhos || []).map(mapCpCompraTamanhoFromApi);
+        itemData.tamanhos = [];
         cpCompraItens[itemIndex] = itemData;
         cpCompraItensOpen[itemIndex] = true;
         renderCpCompraItens();
@@ -1952,16 +2022,6 @@ function itemStatusReadonlyHtml(itemIndex, value, colClass) {
         '</div>';
 }
 
-function rateioCpCompraItemButtonHtml(itemIndex, item, colClass) {
-    if (cpCompraReadonly || !item.item_confirmado) {
-        return '';
-    }
-    return '<div class="' + colClass + ' cp-compra-rateio-wrapper">' +
-        '<label class="form-label d-none d-md-block">&nbsp;</label>' +
-        '<button class="btn btn-sm btn-rateio-item w-100" type="button" onclick="openCpCompraPercentuais(' + itemIndex + ')">Rateio</button>' +
-        '</div>';
-}
-
 function confirmCpCompraItemButtonHtml(itemIndex, item, colClass) {
     if (cpCompraReadonly || item.item_confirmado) {
         return '';
@@ -1971,76 +2031,8 @@ function confirmCpCompraItemButtonHtml(itemIndex, item, colClass) {
         '</div>';
 }
 
-function detailInput(itemIndex, detailIndex, name, value, type, step, readonly) {
-    const isMoney = type === 'money';
-    const inputType = isMoney ? 'text' : (type || 'text');
-    const stepAttr = step ? ' step="' + step + '"' : '';
-    const readonlyAttr = (readonly || cpCompraReadonly) ? ' readonly' : '';
-    const tabIndexAttr = (readonly || cpCompraReadonly) ? ' tabindex="-1"' : '';
-    const inputModeAttr = inputType === 'number' ? ' inputmode="numeric"' : (isMoney ? ' inputmode="numeric"' : '');
-    const className = 'form-control form-control-sm cp-compra-field' + (isMoney ? ' cp-money-field text-end' : '');
-    const displayValue = isMoney ? formatMoneyInput(value || 0) : escapeAttr(value || '');
-    const input = '<input class="' + className + '" type="' + inputType + '"' + stepAttr + inputModeAttr + readonlyAttr + tabIndexAttr + ' value="' + displayValue + '" ' + cpDataAttrs(itemIndex, detailIndex, name) + '>';
-    return isMoney ? moneyInputGroup(input, true) : input;
-}
-
 function moneyInputGroup(inputHtml, small) {
     return '<div class="input-group' + (small ? ' input-group-sm' : '') + ' cp-money-input-group"><span class="input-group-text">R$</span>' + inputHtml + '</div>';
-}
-
-function detailStatusSelect(itemIndex, detailIndex, value) {
-    const activeSelected = String(value) !== '0' ? ' selected' : '';
-    const inactiveSelected = String(value) === '0' ? ' selected' : '';
-    const disabledAttr = cpCompraReadonly ? ' disabled' : '';
-    return '<select class="form-select form-select-sm cp-compra-field" ' + cpDataAttrs(itemIndex, detailIndex, 'Sts') + disabledAttr + ' tabindex="-1">' +
-        '<option value="1"' + activeSelected + '>Ativo</option>' +
-        '<option value="0"' + inactiveSelected + '>Inativo</option>' +
-        '</select>';
-}
-
-function initCpCompraDetalheFields() {
-    $('.cp-compra-detalhes-table input.cp-compra-field').off('focus.cpDetalhe').on('focus.cpDetalhe', function () {
-        this.select();
-    });
-
-    $('.cp-money-field').off('input.cpMoney').on('input.cpMoney', function () {
-        this.value = formatMoneyInput(this.value);
-        updateCpCompraDetalheFromField($(this));
-    });
-
-    $('.cp-compra-detalhes-table [data-field="Qtde"], .cp-compra-detalhes-table [data-field="preco_proposta"]')
-        .off('input.cpRecalc change.cpRecalc')
-        .on('input.cpRecalc change.cpRecalc', function () {
-            updateCpCompraDetalheFromField($(this));
-        });
-
-    $('.cp-compra-detalhes-table [data-field="Sts"]')
-        .off('change.cpStatus')
-        .on('change.cpStatus', function () {
-            updateCpCompraDetalheFromField($(this));
-        });
-}
-
-function updateCpCompraDetalheFromField($field) {
-    const itemIndex = Number($field.data('item-index'));
-    const detailIndex = Number($field.attr('data-detail-index'));
-    const name = $field.data('field');
-    if (!cpCompraItens[itemIndex] || !cpCompraItens[itemIndex].detalhes[detailIndex]) {
-        return;
-    }
-
-    cpCompraItens[itemIndex].detalhes[detailIndex][name] = normalizeCpCompraValue(name, $field.val());
-    if (name === 'Sts' && Number(cpCompraItens[itemIndex].total_qtde || 0) > 0) {
-        ratearCpCompraItemQtde(cpCompraItens[itemIndex]);
-    }
-    recalcCpCompraItem(cpCompraItens[itemIndex]);
-
-    const detail = cpCompraItens[itemIndex].detalhes[detailIndex];
-    const $row = $field.closest('tr');
-    $row.find('[data-field="valor_total_produto"]').val(formatMoneyInput(detail.valor_total_produto || 0));
-    updateCpCompraDetalhesDisplay(itemIndex);
-    updateCpCompraItemTotalDisplay(itemIndex);
-    $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
 }
 
 function updateCpCompraItemTotalDisplay(itemIndex) {
@@ -2050,6 +2042,7 @@ function updateCpCompraItemTotalDisplay(itemIndex) {
     }
     const total = roundCpMoney(item.total_produto || 0);
     const $item = $('.cp-compra-item[data-item-index="' + itemIndex + '"]');
+    $item.find('[data-field="total_qtde"]').val(parseInt(item.total_qtde || 0, 10));
     $item.find('[data-field="total_produto"]').val(formatMoneyInput(total));
     $item.find('.cp-compra-item-total').text('R$ ' + formatMoneyBr(total));
 }
@@ -2057,7 +2050,7 @@ function updateCpCompraItemTotalDisplay(itemIndex) {
 function cpLocalizacaoBadge(localizacao, label) {
     const value = localizacao || 'KidStok';
     const className = value === 'KidStok' ? 'badge-localizacao-kidstok' :
-        value === 'Fornecedor' ? 'badge-localizacao-fornecedor' : 'badge-localizacao-allop';
+        cpLocalizacaoEhFornecedor(value) ? 'badge-localizacao-fornecedor' : 'badge-localizacao-allop';
     return '<span class="badge cp-localizacao-badge ' + className + '">' + escapeHtml(label || value) + '</span>';
 }
 
@@ -2066,15 +2059,181 @@ function cpDataAttrs(itemIndex, detailIndex, name) {
     return 'data-item-index="' + itemIndex + '"' + detail + ' data-field="' + name + '"';
 }
 
-function addCpCompraDetalhe(itemIndex) {
+function addCpCompraTamanho(itemIndex) {
     syncCpCompraItensFromDom();
     if (!cpCompraItens[itemIndex] || !cpCompraItens[itemIndex].item_confirmado) {
-        appAlert('Confirme o item antes de inserir subitens.', 'warning');
+        appAlert('Confirme o item antes de inserir tamanhos.', 'warning');
+        return;
+    }
+    const tamanho = emptyCpCompraTamanho();
+    tamanho.entrega = cpCompraItens[itemIndex].entrega || '';
+    tamanho.entrega_anterior = cpCompraItens[itemIndex].entrega_anterior || cpCompraItens[itemIndex].entrega || '';
+    cpCompraItensOpen[itemIndex] = true;
+    cpCompraItens[itemIndex].tamanhos.push(tamanho);
+    renderCpCompraItens();
+}
+
+function addCpCompraCor(itemIndex, tamanhoIndex) {
+    syncCpCompraItensFromDom();
+    const tamanho = cpCompraItens[itemIndex]?.tamanhos?.[tamanhoIndex];
+    if (!tamanho) {
         return;
     }
     cpCompraItensOpen[itemIndex] = true;
-    cpCompraItens[itemIndex].detalhes.push(emptyCpCompraDetalhe());
+    tamanho._aberto = true;
+    tamanho.cores.push(emptyCpCompraCor());
     renderCpCompraItens();
+}
+
+function ratearCpCompraTamanho(itemIndex, tamanhoIndex) {
+    syncCpCompraItensFromDom();
+    const tamanho = cpCompraItens[itemIndex]?.tamanhos?.[tamanhoIndex];
+    if (!tamanho) {
+        return;
+    }
+
+    const coresAtivas = (tamanho.cores || []).filter(function (cor) {
+        return String(cor.Sts) !== '0';
+    });
+    if (!coresAtivas.length) {
+        appAlert('Informe ao menos uma cor ativa para ratear este tamanho.', 'warning');
+        return;
+    }
+
+    cpCompraRateioContext = {
+        itemIndex: itemIndex,
+        tamanhoIndex: tamanhoIndex
+    };
+    renderCpCompraRateioModal(tamanho, coresAtivas);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-rateio-modal')).show();
+}
+
+function renderCpCompraRateioModal(tamanho, coresAtivas) {
+    $('#cp-rateio-alert').addClass('d-none').text('');
+    $('#cp-rateio-tamanho').val(tamanho.tamanho || '');
+    $('#cp-rateio-qtde-total').val(parseInt(tamanho.qtde_total || 0, 10) || 0);
+
+    const rows = coresAtivas.map(function (cor) {
+        const originalIndex = (tamanho.cores || []).indexOf(cor);
+        return '<tr data-color-index="' + originalIndex + '">' +
+            '<td>' + escapeHtml(cor.cor || 'Cor ' + (originalIndex + 1)) + '</td>' +
+            '<td>' + escapeHtml(cor.sku || '') + '</td>' +
+            '<td><input class="form-control form-control-sm text-end cp-rateio-percentual" inputmode="decimal" value="' + escapeAttr(formatPercentInput(cor.percentual || 0)) + '"></td>' +
+            '<td class="text-end cp-rateio-qtde-cor">' + escapeHtml(parseInt(cor.Qtde || 0, 10)) + '</td>' +
+            '</tr>';
+    }).join('');
+
+    $('#cp-rateio-content').html(
+        '<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-2">' +
+        '<span class="text-muted small">A soma dos percentuais deve totalizar 100% para este tamanho.</span>' +
+        '<button class="btn btn-sm btn-outline-primary" type="button" onclick="distribuirCpCompraRateioIgual()">Dividir igualmente</button>' +
+        '</div>' +
+        '<div class="table-responsive"><table class="table table-sm table-striped align-middle mb-0">' +
+        '<thead><tr><th>Cor</th><th>SKU</th><th class="text-end" style="width: 180px;">Percentual</th><th class="text-end" style="width: 140px;">Qtde</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table></div>'
+    );
+    updateCpCompraRateioModalTotal();
+}
+
+function updateCpCompraRateioModalTotal() {
+    const qtdeTotal = Math.max(0, parseInt(String($('#cp-rateio-qtde-total').val() || '0').replace(/\D/g, ''), 10) || 0);
+    let totalPercentual = 0;
+    let qtdeAplicada = 0;
+    const $rows = $('#cp-rateio-content tbody tr');
+
+    $rows.each(function () {
+        const $row = $(this);
+        const percentual = parsePercentInput($row.find('.cp-rateio-percentual').val());
+        const qtde = Math.floor(qtdeTotal * percentual / 100);
+        totalPercentual = roundCpPercent(totalPercentual + percentual);
+        qtdeAplicada += qtde;
+        $row.find('.cp-rateio-qtde-cor').text(qtde);
+    });
+
+    if ($rows.length && roundCpPercent(totalPercentual) === 100) {
+        let sobra = qtdeTotal - qtdeAplicada;
+        let rowIndex = 0;
+        while (sobra > 0) {
+            const $row = $rows.eq(rowIndex % $rows.length);
+            $row.find('.cp-rateio-qtde-cor').text((parseInt($row.find('.cp-rateio-qtde-cor').text() || '0', 10) || 0) + 1);
+            sobra -= 1;
+            rowIndex += 1;
+        }
+    }
+
+    const valido = roundCpPercent(totalPercentual) === 100;
+    $('#cp-rateio-total-percentual')
+        .val(formatPercentInput(totalPercentual) + '%')
+        .toggleClass('text-success', valido)
+        .toggleClass('text-danger', !valido);
+}
+
+function distribuirCpCompraRateioIgual() {
+    const $inputs = $('#cp-rateio-content .cp-rateio-percentual');
+    if (!$inputs.length) {
+        return;
+    }
+    const base = Math.floor((100 / $inputs.length) * 100) / 100;
+    let acumulado = 0;
+    $inputs.each(function (index) {
+        const percentual = index === $inputs.length - 1
+            ? roundCpPercent(100 - acumulado)
+            : base;
+        $(this).val(formatPercentInput(percentual));
+        acumulado = roundCpPercent(acumulado + percentual);
+    });
+    updateCpCompraRateioModalTotal();
+}
+
+function aplicarCpCompraRateio() {
+    const context = cpCompraRateioContext;
+    const tamanho = context ? cpCompraItens[context.itemIndex]?.tamanhos?.[context.tamanhoIndex] : null;
+    if (!tamanho) {
+        return;
+    }
+
+    const qtdeTotal = Math.max(0, parseInt(String($('#cp-rateio-qtde-total').val() || '0').replace(/\D/g, ''), 10) || 0);
+    let totalPercentual = 0;
+    const percentuais = [];
+
+    $('#cp-rateio-content tbody tr').each(function () {
+        const corIndex = Number($(this).data('color-index'));
+        const percentual = parsePercentInput($(this).find('.cp-rateio-percentual').val());
+        if (percentual < 0 || percentual > 100) {
+            percentuais.push({ corIndex: corIndex, percentual: percentual, invalido: true });
+            return;
+        }
+        totalPercentual = roundCpPercent(totalPercentual + percentual);
+        percentuais.push({ corIndex: corIndex, percentual: percentual, invalido: false });
+    });
+
+    if (percentuais.some(function (row) { return row.invalido; })) {
+        $('#cp-rateio-alert').removeClass('d-none').text('Cada percentual deve estar entre 0% e 100%.');
+        return;
+    }
+    if (roundCpPercent(totalPercentual) !== 100) {
+        $('#cp-rateio-alert').removeClass('d-none').text('O rateio do tamanho deve totalizar 100%. Total atual: ' + formatPercentInput(totalPercentual) + '%.');
+        return;
+    }
+
+    (tamanho.cores || []).forEach(function (cor) {
+        if (String(cor.Sts) === '0') {
+            cor.percentual = 0;
+        }
+    });
+    percentuais.forEach(function (row) {
+        if (tamanho.cores[row.corIndex]) {
+            tamanho.cores[row.corIndex].percentual = row.percentual;
+        }
+    });
+
+    tamanho.qtde_total = qtdeTotal;
+    cpCompraItensOpen[context.itemIndex] = true;
+    tamanho._aberto = true;
+    recalcCpCompraItem(cpCompraItens[context.itemIndex]);
+    renderCpCompraItens();
+    recalcCpCompraTotal();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-rateio-modal')).hide();
 }
 
 function confirmCpCompraItem(itemIndex) {
@@ -2089,10 +2248,13 @@ function confirmCpCompraItem(itemIndex) {
     }
 
     item.item_confirmado = true;
-    item.detalhes = (item._pendingDetalhes && item._pendingDetalhes.length) ? item._pendingDetalhes : item.detalhes;
-    item._pendingDetalhes = [];
-    cpCompraItensOpen[itemIndex] = true;
-    ratearCpCompraItemQtde(item);
+    item.tamanhos = (item._pendingTamanhos && item._pendingTamanhos.length) ? item._pendingTamanhos : item.tamanhos;
+    (item.tamanhos || []).forEach(function (tamanho) {
+        tamanho.entrega = tamanho.entrega || item.entrega || '';
+        tamanho.entrega_anterior = tamanho.entrega_anterior || item.entrega_anterior || tamanho.entrega || item.entrega || '';
+    });
+    item._pendingTamanhos = [];
+    cpCompraItensOpen[itemIndex] = false;
     recalcCpCompraItem(item);
     renderCpCompraItens();
     recalcCpCompraTotal();
@@ -2106,9 +2268,16 @@ function removeCpCompraItem(itemIndex) {
     recalcCpCompraTotal();
 }
 
-function removeCpCompraDetalhe(itemIndex, detailIndex) {
+function removeCpCompraTamanho(itemIndex, tamanhoIndex) {
     syncCpCompraItensFromDom();
-    cpCompraItens[itemIndex].detalhes.splice(detailIndex, 1);
+    cpCompraItens[itemIndex]?.tamanhos?.splice(tamanhoIndex, 1);
+    renderCpCompraItens();
+    recalcCpCompraTotal();
+}
+
+function removeCpCompraCor(itemIndex, tamanhoIndex, corIndex) {
+    syncCpCompraItensFromDom();
+    cpCompraItens[itemIndex]?.tamanhos?.[tamanhoIndex]?.cores?.splice(corIndex, 1);
     renderCpCompraItens();
     recalcCpCompraTotal();
 }
@@ -2124,31 +2293,42 @@ function syncCpCompraItensFromDom() {
             return;
         }
         if (detailIndexRaw !== undefined) {
-            const detailIndex = Number(detailIndexRaw);
-            cpCompraItens[itemIndex].detalhes[detailIndex][name] = normalizeCpCompraValue(name, value);
             return;
         }
         cpCompraItens[itemIndex][name] = normalizeCpCompraValue(name, value);
     });
 
+    $('.cp-compra-tamanho-field, .cp-compra-cor-field').each(function () {
+        const $field = $(this);
+        const item = cpCompraItens[Number($field.data('item-index'))];
+        const tamanho = item?.tamanhos?.[Number($field.data('size-index'))];
+        if (!tamanho) {
+            return;
+        }
+        const corIndexRaw = $field.attr('data-color-index');
+        const target = corIndexRaw === undefined ? tamanho : tamanho.cores[Number(corIndexRaw)];
+        if (target) {
+            target[$field.data('field')] = normalizeCpCompraValue($field.data('field'), $field.val());
+        }
+    });
+
     cpCompraItens.forEach(function (item) {
-        item.detalhes.sort(function (a, b) {
-            return String(a.tamanho || '').localeCompare(String(b.tamanho || ''), 'pt-BR', { numeric: true }) ||
-                String(a.cor || '').localeCompare(String(b.cor || ''), 'pt-BR');
-        });
         recalcCpCompraItem(item);
     });
 }
 
 function normalizeCpCompraValue(name, value) {
-    if (name === 'Qtde') {
+    if (name === 'Qtde' || name === 'qtde_total' || name === 'total_qtde' || name === 'Itens') {
         return parseInt(String(value || '0').replace(/\D/g, ''), 10) || 0;
+    }
+    if (name === 'percentual') {
+        return parsePercentInput(value);
     }
     const moneyColumns = ['total_produto', 'preco_fornecedor', 'preco_proposta', 'valor_total_produto', 'preco_franqueado', 'preco_loja'];
     if (moneyColumns.includes(name)) {
         return parseMoneyInput(value);
     }
-    const numeric = ['total_qtde', 'total_produto', 'Foto', 'Sts', 'markup_franquia', 'markup_loja', 'markup_total'];
+    const numeric = ['Foto', 'Sts', 'markup_franquia', 'markup_loja', 'markup_total', 'valor_total'];
     if (numeric.includes(name)) {
         return Number(String(value || '0').replace(',', '.')) || 0;
     }
@@ -2156,15 +2336,52 @@ function normalizeCpCompraValue(name, value) {
 }
 
 function recalcCpCompraItem(item) {
-    let total = 0;
+    let totalItem = 0;
+    let totalQtdeItem = 0;
     const markups = cpCompraHeaderMarkups();
-    (item.detalhes || []).forEach(function (detail) {
-        applyCpCompraDetailMarkups(detail, markups);
-        const isActive = String(detail.Sts) !== '0';
-        detail.valor_total_produto = isActive ? roundCpMoney(Number(detail.Qtde || 0) * Number(detail.preco_proposta || 0)) : 0;
-        total += Number(detail.valor_total_produto || 0);
+    (item.tamanhos || []).forEach(function (tamanho) {
+        const coresAtivas = (tamanho.cores || []).filter(function (cor) {
+            return String(cor.Sts) !== '0';
+        });
+        const totalPercentual = cpCompraTamanhoPercentualTotal(tamanho);
+        const totalQtde = Math.max(0, parseInt(Number(tamanho.qtde_total || 0), 10) || 0);
+        let qtdeAplicada = 0;
+
+        (tamanho.cores || []).forEach(function (cor) {
+            if (String(cor.Sts) === '0' || roundCpPercent(totalPercentual) !== 100) {
+                cor.Qtde = 0;
+            } else {
+                cor.Qtde = Math.floor(totalQtde * Number(cor.percentual || 0) / 100);
+                qtdeAplicada += cor.Qtde;
+            }
+        });
+        if (coresAtivas.length && roundCpPercent(totalPercentual) === 100) {
+            let sobra = totalQtde - qtdeAplicada;
+            let corSobraIndex = 0;
+            while (sobra > 0) {
+                coresAtivas[corSobraIndex % coresAtivas.length].Qtde += 1;
+                sobra -= 1;
+                corSobraIndex += 1;
+            }
+        }
+
+        let totalTamanho = 0;
+        (tamanho.cores || []).forEach(function (cor) {
+            applyCpCompraDetailMarkups(cor, markups);
+            cor.valor_total_produto = String(cor.Sts) === '0'
+                ? 0
+                : roundCpMoney(Number(cor.Qtde || 0) * Number(cor.preco_proposta || 0));
+            totalTamanho += Number(cor.valor_total_produto || 0);
+        });
+        tamanho.valor_total = roundCpMoney(totalTamanho);
+        tamanho.Itens = coresAtivas.length;
+        tamanho.markup_franquia = roundCpMoney(markups.franquia || 0);
+        tamanho.markup_loja = roundCpMoney(markups.franqueadora || 0);
+        totalQtdeItem += totalQtde;
+        totalItem += totalTamanho;
     });
-    item.total_produto = roundCpMoney(total);
+    item.total_qtde = totalQtdeItem;
+    item.total_produto = roundCpMoney(totalItem);
 }
 
 function applyCpCompraDetailMarkups(detail, markups) {
@@ -2178,62 +2395,45 @@ function applyCpCompraDetailMarkups(detail, markups) {
         : 0;
 }
 
-function ratearCpCompraItemQtde(item) {
-    const gruposPercentuais = cpCompraPercentuaisGrupos(item).filter(function (grupo) {
-        return Number(grupo.percentual || 0) > 0;
-    });
-    const totalPercentual = gruposPercentuais.reduce(function (total, grupo) {
-        return total + Number(grupo.percentual || 0);
-    }, 0);
-    if (gruposPercentuais.length && roundCpMoney(totalPercentual) === 100) {
-        aplicarCpCompraRateioPorPercentual(item, gruposPercentuais);
-        return;
-    }
-
-    const detalhes = item.detalhes || [];
-    const activeIndexes = [];
-    detalhes.forEach(function (detail, index) {
-        if (String(detail.Sts) !== '0') {
-            activeIndexes.push(index);
-        } else {
-            detail.Qtde = 0;
-        }
-    });
-
-    const totalQtde = Math.max(0, parseInt(Number(item.total_qtde || 0), 10) || 0);
-    if (!activeIndexes.length || totalQtde <= 0) {
-        activeIndexes.forEach(function (index) {
-            detalhes[index].Qtde = 0;
-        });
-        return;
-    }
-
-    const baseQtde = Math.floor(totalQtde / activeIndexes.length);
-    const diferenca = totalQtde - (baseQtde * activeIndexes.length);
-    activeIndexes.forEach(function (detailIndex, activeIndex) {
-        detalhes[detailIndex].Qtde = baseQtde + (activeIndex === 0 ? diferenca : 0);
-    });
-}
-
-function updateCpCompraDetalhesDisplay(itemIndex) {
+function updateCpCompraNestedDisplays(itemIndex) {
     const item = cpCompraItens[itemIndex] || null;
     if (!item) {
         return;
     }
-    (item.detalhes || []).forEach(function (detail, detailIndex) {
-        const $row = $('.cp-compra-detalhes-table tr[data-item-index="' + itemIndex + '"][data-detail-index="' + detailIndex + '"]');
-        $row.find('[data-field="Qtde"]').val(parseInt(detail.Qtde || 0, 10));
-        $row.find('[data-field="preco_franqueado"]').val(formatMoneyInput(detail.preco_franqueado || 0));
-        $row.find('[data-field="preco_loja"]').val(formatMoneyInput(detail.preco_loja || 0));
-        $row.find('[data-field="valor_total_produto"]').val(formatMoneyInput(detail.valor_total_produto || 0));
+    (item.tamanhos || []).forEach(function (tamanho, tamanhoIndex) {
+        const $tamanho = $('.cp-compra-tamanho[data-item-index="' + itemIndex + '"][data-size-index="' + tamanhoIndex + '"]');
+        const rateio = cpCompraTamanhoPercentualTotal(tamanho);
+        const rateioValido = roundCpPercent(rateio) === 100;
+        $tamanho.find('.cp-tamanho-rateio-total')
+            .val(formatPercentInput(rateio) + '%')
+            .toggleClass('text-success', rateioValido)
+            .toggleClass('text-danger', !rateioValido);
+        $tamanho.find('.cp-tamanho-summary-qtde').text(tamanho.qtde_total || 0);
+        $tamanho.find('.cp-tamanho-summary-entrega').text(tamanho.entrega ? formatDateBr(tamanho.entrega) : 'Nao definida');
+        $tamanho.find('.cp-tamanho-summary-rateio')
+            .text(formatPercentInput(rateio) + '%')
+            .toggleClass('text-success', rateioValido)
+            .toggleClass('text-danger', !rateioValido);
+        $tamanho.find('.cp-tamanho-summary-total').text('R$ ' + formatMoneyBr(tamanho.valor_total || 0));
+        $tamanho.find('.cp-compra-tamanho-field[data-field="valor_total"]').val(formatMoneyInput(tamanho.valor_total || 0));
+        (tamanho.cores || []).forEach(function (cor, corIndex) {
+            const $cor = $('.cp-compra-cor[data-item-index="' + itemIndex + '"][data-size-index="' + tamanhoIndex + '"][data-color-index="' + corIndex + '"]');
+            $cor.find('.cp-compra-cor-field[data-field="Qtde"]').val(parseInt(cor.Qtde || 0, 10));
+            $cor.find('.cp-compra-cor-field[data-field="preco_franqueado"]').val(formatMoneyInput(cor.preco_franqueado || 0));
+            $cor.find('.cp-compra-cor-field[data-field="preco_loja"]').val(formatMoneyInput(cor.preco_loja || 0));
+            $cor.find('.cp-compra-cor-field[data-field="valor_total_produto"]').val(formatMoneyInput(cor.valor_total_produto || 0));
+            $cor.find('.cp-cor-summary-percentual').text(formatPercentInput(cor.percentual || 0) + '%');
+            $cor.find('.cp-cor-summary-qtde').text(parseInt(cor.Qtde || 0, 10));
+            $cor.find('.cp-cor-summary-total').text('R$ ' + formatMoneyBr(cor.valor_total_produto || 0));
+        });
     });
+    updateCpCompraItemTotalDisplay(itemIndex);
 }
 
 function recalcCpCompraTotal() {
     syncCpCompraItensFromDom();
     cpCompraItens.forEach(function (_item, itemIndex) {
-        updateCpCompraDetalhesDisplay(itemIndex);
-        updateCpCompraItemTotalDisplay(itemIndex);
+        updateCpCompraNestedDisplays(itemIndex);
     });
     $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
 }
@@ -2288,7 +2488,8 @@ function validarCpCompraForm($form) {
     }
     const referencias = {};
     for (let index = 0; index < cpCompraItens.length; index++) {
-        const referencia = String(cpCompraItens[index].referencia_fornecedor || '').trim();
+        const item = cpCompraItens[index];
+        const referencia = String(item.referencia_fornecedor || '').trim();
         if (!referencia) {
             continue;
         }
@@ -2296,6 +2497,47 @@ function validarCpCompraForm($form) {
             return 'A referencia ' + referencia + ' ja foi incluida neste pedido. Remova o item duplicado antes de salvar.';
         }
         referencias[referencia] = true;
+
+        if (!(item.tamanhos || []).length) {
+            return 'Informe ao menos um tamanho para a referencia ' + referencia + '.';
+        }
+        const tamanhosUsados = {};
+        for (let tamanhoIndex = 0; tamanhoIndex < item.tamanhos.length; tamanhoIndex++) {
+            const tamanho = item.tamanhos[tamanhoIndex];
+            const nomeTamanho = String(tamanho.tamanho || '').trim();
+            if (!nomeTamanho) {
+                return 'Informe o tamanho ' + (tamanhoIndex + 1) + ' da referencia ' + referencia + '.';
+            }
+            if (tamanhosUsados[nomeTamanho]) {
+                return 'O tamanho ' + nomeTamanho + ' esta duplicado na referencia ' + referencia + '.';
+            }
+            tamanhosUsados[nomeTamanho] = true;
+            const coresAtivas = (tamanho.cores || []).filter(function (cor) {
+                return String(cor.Sts) !== '0';
+            });
+            if (!coresAtivas.length) {
+                return 'Informe ao menos uma cor ativa para o tamanho ' + nomeTamanho + '.';
+            }
+            const coresUsadas = {};
+            for (let corIndex = 0; corIndex < coresAtivas.length; corIndex++) {
+                const nomeCor = String(coresAtivas[corIndex].cor || '').trim();
+                if (!nomeCor) {
+                    return 'Informe todas as cores do tamanho ' + nomeTamanho + '.';
+                }
+                if (coresUsadas[nomeCor]) {
+                    return 'A cor ' + nomeCor + ' esta duplicada no tamanho ' + nomeTamanho + '.';
+                }
+                coresUsadas[nomeCor] = true;
+                const percentual = Number(coresAtivas[corIndex].percentual || 0);
+                if (percentual < 0 || percentual > 100) {
+                    return 'Cada percentual deve estar entre 0% e 100%.';
+                }
+            }
+            const totalPercentual = cpCompraTamanhoPercentualTotal(tamanho);
+            if (roundCpPercent(totalPercentual) !== 100) {
+                return 'O rateio das cores do tamanho ' + nomeTamanho + ' deve totalizar 100%. Total atual: ' + formatPercentInput(totalPercentual) + '%.';
+            }
+        }
     }
     return '';
 }

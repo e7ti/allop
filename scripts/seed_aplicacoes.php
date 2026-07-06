@@ -302,16 +302,53 @@ db()->exec("CREATE TABLE IF NOT EXISTS `configuracoes_email` (
     KEY `FK_config_email_empresas` (`empresa_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
 
-// Garante a existencia da tabela de percentuais por tamanho e cor dos itens de compra
-db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_percentuais` (
-    `ID` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+// Garante a existencia das tabelas hierarquicas de tamanhos, cores e rateios
+db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_tamanhos` (
+    `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
     `compras_itens_id` bigint(20) unsigned NOT NULL,
     `tamanho` varchar(20) NOT NULL DEFAULT '',
-    `cor` varchar(30) NOT NULL DEFAULT '',
-    `percentual` decimal(6,2) NOT NULL DEFAULT '0.00',
-    PRIMARY KEY (`ID`),
-    UNIQUE KEY `IDXItemTamanhoCor` (`compras_itens_id`,`tamanho`,`cor`),
-    CONSTRAINT `FK_cp_compras_itens_percentuais_item` FOREIGN KEY (`compras_itens_id`) REFERENCES `cp_compras_itens` (`ID`) ON DELETE CASCADE ON UPDATE NO ACTION
+    `entrega` date DEFAULT NULL,
+    `entrega_anterior` date DEFAULT NULL,
+    `markup_franquia` decimal(8,2) NOT NULL DEFAULT '0.00',
+    `markup_loja` decimal(8,2) NOT NULL DEFAULT '0.00',
+    `qtde_total` decimal(8,2) NOT NULL DEFAULT '0.00',
+    `valor_total` decimal(15,2) NOT NULL DEFAULT '0.00',
+    `Itens` int(11) NOT NULL DEFAULT '0',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `IDXItensTamanho` (`compras_itens_id`,`tamanho`),
+    CONSTRAINT `FK_cp_compras_itens_tamanhos_cp_compras_itens` FOREIGN KEY (`compras_itens_id`) REFERENCES `cp_compras_itens` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
+
+db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_cores` (
+    `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+    `compras_itens_tamanho_id` bigint(20) unsigned NOT NULL,
+    `sku` varchar(100) DEFAULT NULL,
+    `cor` varchar(50) NOT NULL,
+    `Qtde` double(8,2) NOT NULL DEFAULT '0.00',
+    `preco_fornecedor` decimal(15,2) NOT NULL DEFAULT '0.00',
+    `preco_proposta` decimal(15,2) NOT NULL DEFAULT '0.00',
+    `valor_total_produto` decimal(15,2) NOT NULL DEFAULT '0.00',
+    `preco_franqueado` decimal(15,2) NOT NULL DEFAULT '0.00',
+    `markup_franquia` double(8,2) NOT NULL DEFAULT '0.00',
+    `preco_loja` decimal(15,2) NOT NULL DEFAULT '0.00',
+    `markup_loja` double(12,2) NOT NULL DEFAULT '0.00',
+    `markup_total` double(8,2) NOT NULL DEFAULT '0.00',
+    `Sts` tinyint(4) NOT NULL DEFAULT '1',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `IDXCorTamanho` (`id`,`compras_itens_tamanho_id`),
+    KEY `FK_compras_tamanho_cores` (`compras_itens_tamanho_id`),
+    CONSTRAINT `FK_compras_tamanho_cores` FOREIGN KEY (`compras_itens_tamanho_id`) REFERENCES `cp_compras_itens_tamanhos` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
+
+db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_rateios` (
+    `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+    `compras_itens_tamanho_id` bigint(20) unsigned NOT NULL,
+    `compras_itens_cor_id` bigint(20) unsigned NOT NULL,
+    `percentual` decimal(7,4) NOT NULL DEFAULT '0.0000',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `IDXRateioTamanhoCor` (`compras_itens_tamanho_id`,`compras_itens_cor_id`),
+    KEY `IDXRateioCorTamanho` (`compras_itens_cor_id`,`compras_itens_tamanho_id`),
+    CONSTRAINT `FK_rateio_tamanho_cor` FOREIGN KEY (`compras_itens_cor_id`,`compras_itens_tamanho_id`) REFERENCES `cp_compras_itens_cores` (`id`,`compras_itens_tamanho_id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
 
 echo "Seed executado com sucesso.\n";

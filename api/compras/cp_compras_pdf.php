@@ -67,6 +67,7 @@ if (!$pedidoId || $pedidoId < 1) {
 
 $stmt = db()->prepare(
     "SELECT c.*,
+            c.id AS ID,
             cd.NomeCD AS cd_nome,
             e.Nome AS empresa_razao_social,
             e.Fantasia AS empresa_fantasia,
@@ -76,7 +77,7 @@ $stmt = db()->prepare(
        LEFT JOIN empresas_cd cd ON cd.Codigo = c.cd_id
        LEFT JOIN empresas e ON e.Codigo = c.empresa_id
        LEFT JOIN produtos_fornecedor f ON f.Codigo = c.Fornecedor_id
-      WHERE c.ID = :id"
+      WHERE c.id = :id"
 );
 $stmt->execute(['id' => $pedidoId]);
 $pedido = $stmt->fetch();
@@ -87,28 +88,33 @@ if (!$pedido) {
 }
 
 $stmt = db()->prepare(
-    "SELECT *
+    "SELECT *, id AS ID
        FROM cp_compras_itens
       WHERE cp_compras_id = :pedido_id
-      ORDER BY ID"
+      ORDER BY id"
 );
 $stmt->execute(['pedido_id' => $pedidoId]);
 $itens = $stmt->fetchAll();
 
 $detailStmt = db()->prepare(
-    "SELECT d.*,
-            COALESCE(p.percentual, 0) AS percentual
-       FROM cp_compras_itens_detalhe d
-       LEFT JOIN cp_compras_itens_percentuais p
-         ON p.compras_itens_id = d.compras_itens_id
-        AND p.tamanho = d.tamanho
-        AND p.cor = d.cor
-      WHERE d.compras_itens_id = :item_id
-      ORDER BY d.tamanho, d.cor, d.ID"
+    "SELECT c.*,
+            c.id AS ID,
+            t.tamanho,
+            t.entrega,
+            t.entrega_anterior,
+            COALESCE(r.percentual, 0) AS percentual
+       FROM cp_compras_itens_tamanhos t
+       JOIN cp_compras_itens_cores c
+         ON c.compras_itens_tamanho_id = t.id
+       LEFT JOIN cp_compras_itens_rateios r
+         ON r.compras_itens_tamanho_id = t.id
+        AND r.compras_itens_cor_id = c.id
+      WHERE t.compras_itens_id = :item_id
+      ORDER BY t.tamanho, c.cor, c.id"
 );
 
 foreach ($itens as &$item) {
-    $detailStmt->execute(['item_id' => $item['ID']]);
+    $detailStmt->execute(['item_id' => $item['id']]);
     $item['detalhes'] = $detailStmt->fetchAll();
 }
 unset($item);
@@ -237,7 +243,7 @@ ob_start();
         <?php endif; ?>
     </table>
 
-    <div class="section-title">Itens, detalhes e percentuais de rateio</div>
+    <div class="section-title">Itens, tamanhos, cores e percentuais de rateio</div>
     <?php if (!$itens): ?>
         <div class="empty">Este pedido não possui itens.</div>
     <?php endif; ?>
@@ -328,7 +334,7 @@ ob_start();
                     </tbody>
                 </table>
             <?php else: ?>
-                <div class="empty">Item sem detalhes de tamanho e cor.</div>
+                <div class="empty">Item sem tamanhos e cores.</div>
             <?php endif; ?>
         </div>
     <?php endforeach; ?>

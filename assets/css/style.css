@@ -606,6 +606,48 @@ body {
     margin: 0.15rem 0 1rem;
 }
 
+.dashboard-section-title {
+    color: var(--appf-title-gray);
+    font-size: clamp(1.2rem, 1rem + 0.5vw, 1.65rem);
+    font-weight: 700;
+}
+
+.dashboard-compra-tile {
+    overflow: hidden;
+    position: relative;
+}
+
+.dashboard-compra-tile::after {
+    border-radius: 999px;
+    content: "";
+    height: 72px;
+    opacity: 0.12;
+    position: absolute;
+    right: -20px;
+    top: -22px;
+    width: 72px;
+}
+
+.dashboard-compra-tile.dashboard-status-open::after,
+.dashboard-status-open {
+    background: var(--ks-orange);
+}
+
+.dashboard-compra-tile.dashboard-status-approved::after,
+.dashboard-status-approved {
+    background: #2eb872;
+}
+
+.dashboard-compra-tile.dashboard-status-rejected::after,
+.dashboard-status-rejected {
+    background: #d9534f;
+}
+
+.dashboard-compra-tile.dashboard-status-total::after,
+.dashboard-status-total {
+    background: var(--ks-blue);
+}
+
 .tile-icon {
     color: var(--ks-orange);
     font-size: 1.8rem;
@@ -760,6 +802,130 @@ body {
     padding: 1rem;
 }
 
+.dashboard-status-bars {
+    display: grid;
+    gap: 1rem;
+    padding: 0.5rem 0;
+}
+
+.dashboard-status-row {
+    align-items: center;
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: 110px 1fr 48px;
+}
+
+.dashboard-status-label {
+    color: var(--appf-block-title-gray);
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.dashboard-status-track {
+    background: #edf2f4;
+    border-radius: 999px;
+    height: 16px;
+    overflow: hidden;
+}
+
+.dashboard-status-bar {
+    border-radius: inherit;
+    display: block;
+    height: 100%;
+    min-width: 2px;
+}
+
+.dashboard-status-value {
+    color: var(--ks-muted);
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: right;
+}
+
+.dashboard-donut-wrap {
+    align-items: center;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.dashboard-donut {
+    align-items: center;
+    background:
+        radial-gradient(circle at center, #fff 0 55%, transparent 56%),
+        conic-gradient(
+            var(--ks-orange) 0 var(--abertos),
+            #2eb872 var(--aprovados-start) var(--recusados-start),
+            #d9534f var(--recusados-start) 100%
+        );
+    border-radius: 50%;
+    display: flex;
+    height: 190px;
+    justify-content: center;
+    width: 190px;
+}
+
+.dashboard-donut-empty {
+    background:
+        radial-gradient(circle at center, #fff 0 55%, transparent 56%),
+        conic-gradient(#dfe6ea 0 100%);
+}
+
+.dashboard-donut span {
+    color: var(--appf-title-gray);
+    display: block;
+    font-size: 2rem;
+    font-weight: 800;
+    line-height: 1;
+    text-align: center;
+}
+
+.dashboard-donut small {
+    color: var(--ks-muted);
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 700;
+    margin-top: 0.3rem;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.dashboard-donut-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem 1rem;
+    justify-content: center;
+}
+
+.dashboard-donut-legend span {
+    align-items: center;
+    color: var(--ks-muted);
+    display: inline-flex;
+    font-size: 0.82rem;
+    gap: 0.35rem;
+}
+
+.dashboard-donut-legend i {
+    border-radius: 50%;
+    display: inline-block;
+    height: 0.65rem;
+    width: 0.65rem;
+}
+
+.dashboard-total-value {
+    border-top: 1px solid var(--ks-light);
+    padding-top: 0.85rem;
+    text-align: center;
+    width: 100%;
+}
+
+.dashboard-total-value strong {
+    color: var(--appf-title-gray);
+    display: block;
+    font-size: 1.35rem;
+}
+
 .form-narrow,
 .form-section {
     margin: 0 auto;
@@ -795,7 +961,9 @@ body {
 .cp-compras-form-wide .cp-compra-item {
     background: #f7f8fa;
     border: 1px solid #e4e7eb;
+    border-radius: 8px;
     box-shadow: 0 2px 8px rgba(33, 37, 41, 0.04);
+    overflow: hidden;
 }
 
 .cp-compras-form-wide .cp-compra-item-header {
@@ -856,6 +1024,99 @@ body {
 
 .cp-compras-form-wide .cp-compra-item-actions {
     flex: 0 0 auto;
+}
+
+.cp-compras-form-wide .cp-compra-tamanhos-accordion,
+.cp-compras-form-wide .cp-compra-cores-accordion {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.cp-compras-form-wide .cp-compra-cores-accordion {
+    gap: 0.35rem;
+}
+
+.cp-compras-form-wide .cp-compra-tamanho,
+.cp-compras-form-wide .cp-compra-cor {
+    border: 1px solid #dfe4e8;
+    border-radius: 7px !important;
+    overflow: hidden;
+}
+
+.cp-compras-form-wide .cp-compra-tamanho-header,
+.cp-compras-form-wide .cp-compra-cor-header {
+    align-items: center;
+    cursor: pointer;
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    padding: 0.7rem 0.9rem;
+}
+
+.cp-compras-form-wide .cp-compra-tamanho-header {
+    background: #edf6f8;
+    color: #334e57;
+}
+
+.cp-compras-form-wide .cp-compra-cor-header {
+    background: #f7f9fa;
+    color: #4f5b66;
+    font-size: 0.82rem;
+    padding: 0.42rem 0.6rem;
+}
+
+.cp-compras-form-wide .cp-compra-tamanho-header::before,
+.cp-compras-form-wide .cp-compra-cor-header::before {
+    border-bottom: 2px solid #7b8792;
+    border-right: 2px solid #7b8792;
+    content: "";
+    flex: 0 0 auto;
+    height: 0.55rem;
+    transform: rotate(45deg);
+    width: 0.55rem;
+}
+
+.cp-compras-form-wide .cp-compra-tamanho-header.collapsed::before,
+.cp-compras-form-wide .cp-compra-cor-header.collapsed::before {
+    transform: rotate(-45deg);
+}
+
+.cp-compras-form-wide .cp-compra-tamanho-header > :first-child,
+.cp-compras-form-wide .cp-compra-cor-header > :first-child {
+    flex: 1 1 auto;
+}
+
+.cp-compras-form-wide .cp-compra-tamanho .accordion-body {
+    background: #fbfdfd;
+    padding: 1rem;
+}
+
+.cp-compras-form-wide .cp-compra-cor .accordion-body {
+    background: #fff;
+    font-size: 0.82rem;
+    padding: 0.55rem;
+}
+
+.cp-compras-form-wide .cp-compra-cor .form-label {
+    font-size: 0.72rem;
+    margin-bottom: 0.18rem;
+}
+
+.cp-compras-form-wide .cp-compra-cor .form-control,
+.cp-compras-form-wide .cp-compra-cor .form-select,
+.cp-compras-form-wide .cp-compra-cor .input-group-text {
+    font-size: 0.78rem;
+    min-height: 31px;
+    padding-bottom: 0.25rem;
+    padding-top: 0.25rem;
+}
+
+.cp-compras-form-wide .cp-compra-empty-nested {
+    border: 1px dashed #cbd3da;
+    border-radius: 6px;
+    color: var(--ks-muted);
+    padding: 1rem;
+    text-align: center;
 }
 
 .cp-compras-form-wide .cp-compra-detalhes-table {
@@ -1322,5 +1583,11 @@ body {
 
     .cp-compras-form-wide .cp-compra-item-actions .btn:not(.btn-icon-only) {
         flex: 1 1 auto;
+    }
+
+    .cp-compras-form-wide .cp-compra-tamanho-header,
+    .cp-compras-form-wide .cp-compra-cor-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
     }
 }
