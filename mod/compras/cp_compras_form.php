@@ -46,7 +46,6 @@ $id = (int) ($_GET['id'] ?? 0);
             <div class="col-12 col-md-8 d-none" id="cp-sts-motivo-group"><label class="form-label">Motivo/Observacao</label><input class="form-control" name="StsMotivo" maxlength="500"></div>
         </div>
     </section>
-
     <section class="card card-slim mb-3">
         <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
             <strong>Itens</strong>
