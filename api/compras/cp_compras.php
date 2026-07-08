@@ -253,6 +253,8 @@ function cp_validate_item_percentuais(array $items): void
             api_response(false, ['message' => "Informe ao menos um tamanho para a referencia $referencia."], 422);
         }
 
+        $itemAtivo = (int) ($item['Sts'] ?? 1) !== 0;
+        $tamanhosAtivos = 0;
         $tamanhosUsados = [];
         foreach ($tamanhos as $tamanho) {
             $nomeTamanho = cp_trim($tamanho['tamanho'] ?? '');
@@ -263,6 +265,12 @@ function cp_validate_item_percentuais(array $items): void
                 api_response(false, ['message' => "O tamanho $nomeTamanho esta duplicado na referencia $referencia."], 422);
             }
             $tamanhosUsados[$nomeTamanho] = true;
+
+            $tamanhoAtivo = $itemAtivo && (int) ($tamanho['Sts'] ?? 1) !== 0;
+            if (!$tamanhoAtivo) {
+                continue;
+            }
+            $tamanhosAtivos += 1;
 
             $cores = is_array($tamanho['cores'] ?? null) ? $tamanho['cores'] : [];
             $coresAtivas = array_values(array_filter($cores, static function (array $cor): bool {
@@ -293,6 +301,9 @@ function cp_validate_item_percentuais(array $items): void
             if (round($total, 4) !== 100.0000) {
                 api_response(false, ['message' => "O rateio das cores do tamanho $nomeTamanho deve totalizar 100%."], 422);
             }
+        }
+        if ($itemAtivo && $tamanhosAtivos === 0) {
+            api_response(false, ['message' => "Informe ao menos um tamanho ativo para a referencia $referencia."], 422);
         }
     }
 }
@@ -424,6 +435,7 @@ function cp_load_referencia_item(string $fornecedorId, string $codigoReferencia)
                 'qtde_total' => 0,
                 'valor_total' => 0,
                 'Itens' => 0,
+                'Sts' => 1,
                 'cores' => [],
             ];
         }
@@ -615,6 +627,20 @@ function cp_has_fotos_fornecedor(int $pedidoId, string $referencia, string $forn
     return cp_count_fotos_table($pedidoId, $referencia, $fornecedorId, 'cp_compras_fotos') > 0;
 }
 
+function cp_pedido_tem_fotos_fornecedor(int $pedidoId): bool
+{
+    if ($pedidoId <= 0 || !cp_fotos_table_exists('cp_compras_fotos')) {
+        return false;
+    }
+    $stmt = db_fotos()->prepare(
+        "SELECT COUNT(*)
+           FROM cp_compras_fotos
+          WHERE cp_compras_id = :pedido_id"
+    );
+    $stmt->execute(['pedido_id' => $pedidoId]);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
 function cp_next_foto_sequencia(int $pedidoId, string $referencia, string $fornecedorId): int
 {
     $stmt = db_fotos()->prepare(
@@ -795,10 +821,10 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
     $tamanhoStmt = db()->prepare(
         "INSERT INTO cp_compras_itens_tamanhos
             (compras_itens_id, tamanho, entrega, entrega_anterior, markup_franquia, markup_loja,
-             qtde_total, valor_total, Itens)
+             qtde_total, valor_total, Itens, Sts)
          VALUES
             (:compras_itens_id, :tamanho, :entrega, :entrega_anterior, :markup_franquia, :markup_loja,
-             :qtde_total, :valor_total, :Itens)"
+             :qtde_total, :valor_total, :Itens, :Sts)"
     );
     $corStmt = db()->prepare(
         "INSERT INTO cp_compras_itens_cores
@@ -840,11 +866,14 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
         $itemStmt->execute($itemPayload);
         $itemId = (int) db()->lastInsertId();
 
+        $itemAtivo = (int) ($item['Sts'] ?? 1) !== 0;
         foreach ($tamanhos as $tamanho) {
             $cores = is_array($tamanho['cores'] ?? null) ? $tamanho['cores'] : [];
-            $itensAtivos = count(array_filter($cores, static function (array $cor): bool {
+            $tamanhoSolicitadoAtivo = (int) ($tamanho['Sts'] ?? 1) !== 0;
+            $itensAtivos = (!$itemAtivo || !$tamanhoSolicitadoAtivo) ? 0 : count(array_filter($cores, static function (array $cor): bool {
                 return (int) ($cor['Sts'] ?? 1) !== 0;
             }));
+            $tamanhoSts = $itemAtivo && $tamanhoSolicitadoAtivo && $itensAtivos > 0 ? 1 : 0;
             $tamanhoPayload = [
                 'compras_itens_id' => $itemId,
                 'tamanho' => cp_trim($tamanho['tamanho'] ?? ''),
@@ -855,11 +884,13 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
                 'qtde_total' => cp_decimal($tamanho['qtde_total'] ?? 0),
                 'valor_total' => cp_decimal($tamanho['valor_total'] ?? 0),
                 'Itens' => $itensAtivos,
+                'Sts' => $tamanhoSts,
             ];
             $tamanhoStmt->execute($tamanhoPayload);
             $tamanhoId = (int) db()->lastInsertId();
 
             foreach ($cores as $cor) {
+                $corSts = $tamanhoSts === 1 ? (int) ($cor['Sts'] ?? 1) : 0;
                 $qtde = cp_decimal($cor['Qtde'] ?? 0);
                 $precoProposta = cp_decimal($cor['preco_proposta'] ?? 0);
                 $corStmt->execute([
@@ -875,13 +906,13 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
                     'preco_loja' => cp_decimal($cor['preco_loja'] ?? 0),
                     'markup_loja' => cp_decimal($cor['markup_loja'] ?? 0),
                     'markup_total' => cp_decimal($cor['markup_total'] ?? 0),
-                    'Sts' => (int) ($cor['Sts'] ?? 1),
+                    'Sts' => $corSts,
                 ]);
                 $corId = (int) db()->lastInsertId();
                 $rateioStmt->execute([
                     'compras_itens_tamanho_id' => $tamanhoId,
                     'compras_itens_cor_id' => $corId,
-                    'percentual' => cp_decimal($cor['percentual'] ?? 0),
+                    'percentual' => $corSts === 1 ? cp_decimal($cor['percentual'] ?? 0) : 0,
                 ]);
             }
         }
@@ -977,7 +1008,7 @@ function cp_workflow_update(int $id, string $workflowAction): void
         api_response(false, ['message' => 'Informe o pedido.'], 422);
     }
 
-    $stmt = db()->prepare("SELECT id, id AS ID, Localizacao FROM cp_compras WHERE id = :id");
+    $stmt = db()->prepare("SELECT id, id AS ID, Localizacao, Publicado FROM cp_compras WHERE id = :id");
     $stmt->execute(['id' => $id]);
     $pedido = $stmt->fetch();
     if (!$pedido) {
@@ -1015,9 +1046,13 @@ function cp_workflow_update(int $id, string $workflowAction): void
     }
 
     if ($workflowAction === 'aprovar') {
+        if ((int) ($pedido['Publicado'] ?? 0) !== 1) {
+            api_response(false, ['message' => 'Pedido nao publicado nao pode ser aprovado.'], 422);
+        }
+        $statusAprovacao = cp_pedido_tem_fotos_fornecedor($id) ? 'Aprovado' : 'Aprovado sem fotos';
         $stmt = db()->prepare(
             "UPDATE cp_compras
-                SET Sts = 'Aprovado',
+                SET Sts = :status_aprovacao,
                     Localizacao = 'KidStok',
                     DataAprovacao = :data_aprovacao,
                     UsuarioAprovacao = :usuario_aprovacao,
@@ -1026,13 +1061,14 @@ function cp_workflow_update(int $id, string $workflowAction): void
               WHERE id = :id"
         );
         $stmt->execute([
+            'status_aprovacao' => $statusAprovacao,
             'data_aprovacao' => date('Y-m-d'),
             'alteracao' => date('Y-m-d'),
             'usuario_aprovacao' => $usuario,
             'usuario' => $usuario,
             'id' => $id,
         ]);
-        api_response(true, ['message' => 'Pedido aprovado.']);
+        api_response(true, ['message' => $statusAprovacao === 'Aprovado' ? 'Pedido aprovado.' : 'Pedido aprovado sem fotos do fornecedor.']);
     }
 
     if ($workflowAction === 'recusar') {
@@ -1082,12 +1118,14 @@ try {
             $where = "WHERE CAST(c.id AS CHAR) LIKE :q_id
                          OR c.Sts LIKE :q_sts
                          OR c.Localizacao LIKE :q_localizacao
+                         OR c.Fornecedor_id LIKE :q_fornecedor_codigo
                          OR COALESCE(NULLIF(e.Fantasia, ''), e.Nome) LIKE :q_empresa
                          OR cd.NomeCD LIKE :q_cd";
             $params = [
                 'q_id' => '%' . $term . '%',
                 'q_sts' => '%' . $term . '%',
                 'q_localizacao' => '%' . $term . '%',
+                'q_fornecedor_codigo' => '%' . $term . '%',
                 'q_empresa' => '%' . $term . '%',
                 'q_cd' => '%' . $term . '%',
             ];
@@ -1111,6 +1149,7 @@ try {
                     c.ValorTotalPedido,
                     c.Sts,
                     c.Localizacao,
+                    c.Fornecedor_id AS fornecedor_codigo,
                     cd.NomeCD AS cd_nome,
                     COALESCE(NULLIF(e.Fantasia, ''), e.Nome) AS empresa_nome,
                     $fornecedorLabel AS fornecedor_nome
@@ -1196,8 +1235,17 @@ try {
 
         $total = 0.0;
         foreach ($items as $item) {
+            if ((int) ($item['Sts'] ?? 1) === 0) {
+                continue;
+            }
             foreach (($item['tamanhos'] ?? []) as $tamanho) {
+                if ((int) ($tamanho['Sts'] ?? 1) === 0) {
+                    continue;
+                }
                 foreach (($tamanho['cores'] ?? []) as $cor) {
+                    if ((int) ($cor['Sts'] ?? 1) === 0) {
+                        continue;
+                    }
                     $total += cp_decimal($cor['valor_total_produto'] ?? (cp_decimal($cor['Qtde'] ?? 0) * cp_decimal($cor['preco_proposta'] ?? 0)));
                 }
             }

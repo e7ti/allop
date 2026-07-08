@@ -14,7 +14,7 @@ render_header('Pedidos de Compra', [
 ?>
 <section class="card card-slim grid-shell">
     <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
-        <div class="grid-filter">
+        <div class="grid-filter cp-compras-filter">
             <div class="filter-inline">
                 <select id="filtro-cp-compras" class="form-select"><option value="">Pesquisar pedido</option></select>
                 <button class="btn btn-orange btn-filter" id="btn-filtrar-cp-compras" type="button">Filtrar</button>

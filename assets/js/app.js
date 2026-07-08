@@ -97,6 +97,38 @@ function appAlert(message, type) {
     $alert.addClass('alert-' + (type || 'info')).text(message);
 }
 
+function appOkAlert(message, title) {
+    if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+        alert(message);
+        return;
+    }
+
+    let $modal = $('#app-ok-alert-modal');
+    if (!$modal.length) {
+        $('body').append(
+            '<div class="modal fade" id="app-ok-alert-modal" tabindex="-1" aria-hidden="true">' +
+            '<div class="modal-dialog modal-dialog-centered">' +
+            '<div class="modal-content">' +
+            '<div class="modal-header">' +
+            '<h5 class="modal-title"></h5>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>' +
+            '</div>' +
+            '<div class="modal-body"></div>' +
+            '<div class="modal-footer">' +
+            '<button type="button" class="btn btn-orange" data-bs-dismiss="modal">OK</button>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>'
+        );
+        $modal = $('#app-ok-alert-modal');
+    }
+
+    $modal.find('.modal-title').text(title || 'Aviso');
+    $modal.find('.modal-body').text(message);
+    bootstrap.Modal.getOrCreateInstance($modal[0]).show();
+}
+
 function apiPost(url, data) {
     return $.ajax({
         url: url,
@@ -885,7 +917,7 @@ function initCpComprasLista() {
             processResults: response => ({
                 results: (response.data || []).map(row => ({
                     id: row.id,
-                    text: 'Pedido ' + row.ID + ' - ' + (row.empresa_nome || row.fornecedor_nome || row.Sts || '') + ' - ' + (row.Localizacao || '')
+                    text: cpCompraListaOptionText(row)
                 }))
             })
         }
@@ -893,6 +925,16 @@ function initCpComprasLista() {
 
     loadCpComprasGrid();
     $('#btn-filtrar-cp-compras').on('click', loadCpComprasGrid);
+}
+
+function cpCompraListaOptionText(row) {
+    const fornecedorCodigo = row.fornecedor_codigo || '';
+    const fornecedorNome = row.fornecedor_nome || '';
+    const fornecedor = fornecedorCodigo && fornecedorNome && fornecedorCodigo !== fornecedorNome
+        ? fornecedorCodigo + ' - ' + fornecedorNome
+        : (fornecedorNome || fornecedorCodigo || 'Nao informado');
+    const status = row.Sts ? ' - Status: ' + row.Sts : '';
+    return 'Pedido ' + (row.ID || row.id || '') + ' - Fornecedor: ' + fornecedor + status;
 }
 
 function loadCpComprasGrid() {
@@ -1077,7 +1119,7 @@ function initCpComprasForm() {
             return;
         }
         salvarCpCompraForm($form, function (response) {
-            appAlert(response.message || 'Pedido salvo.', 'success');
+            appOkAlert(response.message || 'Pedido salvo.', 'Pedido de Compra');
             collapseCpCompraItens();
         });
     });
@@ -1126,6 +1168,10 @@ function executarCpCompraWorkflow($form, action, confirmMessage, extraData) {
     }
     if (cpCompraReadonly) {
         appAlert('Pedido com localizacao ' + cpCompraReadonlyLocalizacao + ' permite apenas visualizacao e impressao.', 'warning');
+        return;
+    }
+    if (action === 'aprovar' && Number($form.find('[name="Publicado"]').val() || 0) !== 1) {
+        appAlert('Pedido nao publicado nao pode ser aprovado.', 'warning');
         return;
     }
     if (confirmMessage && !confirm(confirmMessage)) {
@@ -1202,10 +1248,15 @@ function applyCpCompraReadonly($form) {
 function updateCpCompraWorkflowButtons(row) {
     const localizacao = row.Localizacao || 'KidStok';
     const status = row.Sts || 'Aberto';
+    const publicado = Number(row.Publicado || 0) === 1;
     const pedidoId = Number($('#cp-compras-form').data('id') || $('#cp-compras-form [name="id"]').val() || 0);
-    const isClosed = status === 'Aprovado' || status === 'Recusado';
+    const isClosed = status === 'Aprovado' || status === 'Aprovado sem fotos' || status === 'Recusado';
     $('#btn-cp-enviar-proposta').toggleClass('d-none', !pedidoId || localizacao !== 'KidStok' || isClosed);
-    $('#btn-cp-aprovar, #btn-cp-recusar').toggleClass(
+    $('#btn-cp-aprovar').toggleClass(
+        'd-none',
+        !pedidoId || !publicado || cpLocalizacaoEhFornecedor(localizacao) || isClosed
+    );
+    $('#btn-cp-recusar').toggleClass(
         'd-none',
         !pedidoId || cpLocalizacaoEhFornecedor(localizacao) || isClosed
     );
@@ -1335,6 +1386,7 @@ function emptyCpCompraTamanho() {
         qtde_total: 0,
         valor_total: 0,
         Itens: 0,
+        Sts: 1,
         _aberto: false,
         cores: []
     };
@@ -1359,6 +1411,17 @@ function emptyCpCompraCor() {
     };
 }
 
+function cpCompraStatusValue(value) {
+    return String(value) === '0' ? 0 : 1;
+}
+
+function cpCompraStatusBadge(value) {
+    const active = cpCompraStatusValue(value) === 1;
+    return '<span class="badge cp-status-badge ' + (active ? 'cp-status-badge-active' : 'cp-status-badge-inactive') + '">' +
+        (active ? 'Ativo' : 'Inativo') +
+        '</span>';
+}
+
 function mapCpCompraItemFromApi(row) {
     const tamanhos = Array.isArray(row.tamanhos) ? row.tamanhos : [];
     return {
@@ -1372,7 +1435,7 @@ function mapCpCompraItemFromApi(row) {
         total_produto: Number(row.total_produto || 0),
         Foto: Number(row.Foto || 0),
         FotoFornecedor: Number(row.FotoFornecedor || 0),
-        Sts: Number(row.Sts || 1),
+        Sts: cpCompraStatusValue(row.Sts),
         item_confirmado: true,
         _pendingTamanhos: [],
         tamanhos: tamanhos.map(mapCpCompraTamanhoFromApi)
@@ -1389,6 +1452,7 @@ function mapCpCompraTamanhoFromApi(row) {
         qtde_total: Number(row.qtde_total || 0),
         valor_total: Number(row.valor_total || 0),
         Itens: Number(row.Itens || 0),
+        Sts: cpCompraStatusValue(row.Sts),
         cores: (row.cores || []).map(function (cor) {
             return Object.assign(emptyCpCompraCor(), {
                 sku: cor.sku || '',
@@ -1403,7 +1467,7 @@ function mapCpCompraTamanhoFromApi(row) {
                 markup_loja: Number(cor.markup_loja || 0),
                 markup_total: Number(cor.markup_total || 0),
                 percentual: Number(cor.percentual || 0),
-                Sts: Number(cor.Sts || 1)
+                Sts: cpCompraStatusValue(cor.Sts)
             });
         })
     });
@@ -1430,6 +1494,7 @@ function renderCpCompraItens() {
             '</div>' +
             '</div>' +
             '<div class="d-flex align-items-center gap-4 cp-compra-item-summary">' +
+            cpCompraStatusBadge(item.Sts) +
             photoButtonHtml(index, item) +
             '<div class="text-end d-none d-md-block">' +
             '<small class="text-muted d-block extra-small text-uppercase">Tamanhos</small>' +
@@ -1455,7 +1520,7 @@ function renderCpCompraItens() {
             fieldHtml(index, null, 'ncm', 'NCM', item.ncm, 'col-12 col-md-2', 'text', null, true) +
             fieldHtml(index, null, 'total_qtde', 'Quantidade total', item.total_qtde, 'col-12 col-md-2', 'number', '1', true) +
             fieldHtml(index, null, 'total_produto', 'Total Item', item.total_produto, 'col-12 col-md-2', 'money', null, true) +
-            itemStatusReadonlyHtml(index, item.Sts, 'col-12 col-md-2') +
+            itemStatusSelectHtml(index, item.Sts, 'col-12 col-md-2') +
             confirmCpCompraItemButtonHtml(index, item, 'col-12 col-md-2') +
             '</div>' +
             (item.item_confirmado
@@ -1479,13 +1544,15 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
             const collapseId = 'cp-tamanho-collapse-' + itemIndex + '-' + tamanhoIndex;
             const aberto = tamanho._aberto !== false;
             const rateio = cpCompraTamanhoPercentualTotal(tamanho);
-            const rateioClass = roundCpPercent(rateio) === 100 ? 'text-success' : 'text-danger';
+            const tamanhoInativo = String(tamanho.Sts) === '0';
+            const rateioClass = tamanhoInativo ? 'text-muted' : (roundCpPercent(rateio) === 100 ? 'text-success' : 'text-danger');
             const entregaResumo = tamanho.entrega ? formatDateBr(tamanho.entrega) : 'Nao definida';
             return '<section class="accordion-item cp-compra-tamanho" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '">' +
                 '<div class="accordion-header cp-compra-tamanho-header' + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
                 '<div><strong>Tamanho ' + escapeHtml(tamanho.tamanho || (tamanhoIndex + 1)) + '</strong>' +
                 '<small class="d-block text-muted">Entrega: <span class="cp-tamanho-summary-entrega">' + escapeHtml(entregaResumo) + '</span> · Quantidade: <span class="cp-tamanho-summary-qtde">' + escapeHtml(tamanho.qtde_total || 0) + '</span> · Rateio: <span class="cp-tamanho-summary-rateio ' + rateioClass + '">' + escapeHtml(formatPercentInput(rateio)) + '%</span></small></div>' +
                 '<div class="d-flex gap-2 align-items-center" onclick="event.stopPropagation();">' +
+                cpCompraStatusBadge(tamanho.Sts) +
                 '<span class="fw-bold text-success cp-tamanho-summary-total">R$ ' + escapeHtml(formatMoneyBr(tamanho.valor_total || 0)) + '</span>' +
                 (cpCompraReadonly ? '' :
                     '<button class="btn btn-sm btn-outline-primary" type="button" onclick="ratearCpCompraTamanho(' + itemIndex + ', ' + tamanhoIndex + ')">Ratear</button>' +
@@ -1499,6 +1566,7 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'entrega', 'Entrega', tamanho.entrega, 'col-12 col-md-2', 'date') +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'qtde_total', 'Quantidade do tamanho', tamanho.qtde_total, 'col-12 col-md-2', 'number', true) +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'valor_total', 'Total do tamanho', tamanho.valor_total, 'col-12 col-md-2', 'money', true) +
+                cpCompraTamanhoStatus(itemIndex, tamanhoIndex, tamanho.Sts, 'col-12 col-md-2') +
                 '<div class="col-12 col-md-2"><label class="form-label">Total do rateio</label><input class="form-control ' + rateioClass + ' fw-bold cp-tamanho-rateio-total" value="' + escapeAttr(formatPercentInput(rateio)) + '%" readonly></div>' +
                 '</div>' +
                 renderCpCompraCores(itemIndex, tamanhoIndex, tamanho.cores || []) +
@@ -1517,7 +1585,9 @@ function renderCpCompraCores(itemIndex, tamanhoIndex, cores) {
             '<div class="accordion-header cp-compra-cor-header' + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
             '<div><strong>Cor ' + escapeHtml(cor.cor || (corIndex + 1)) + '</strong><small class="d-block text-muted">' +
             '<span class="cp-cor-summary-percentual">' + escapeHtml(formatPercentInput(cor.percentual || 0)) + '%</span> · Quantidade: <span class="cp-cor-summary-qtde">' + escapeHtml(cor.Qtde || 0) + '</span></small></div>' +
-            '<div class="d-flex gap-2 align-items-center" onclick="event.stopPropagation();"><span class="fw-bold text-success cp-cor-summary-total">R$ ' + escapeHtml(formatMoneyBr(cor.valor_total_produto || 0)) + '</span>' +
+            '<div class="d-flex gap-2 align-items-center" onclick="event.stopPropagation();">' +
+            cpCompraStatusBadge(cor.Sts) +
+            '<span class="fw-bold text-success cp-cor-summary-total">R$ ' + escapeHtml(formatMoneyBr(cor.valor_total_produto || 0)) + '</span>' +
             (cpCompraReadonly ? '' : '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir cor" aria-label="Excluir cor" onclick="removeCpCompraCor(' + itemIndex + ', ' + tamanhoIndex + ', ' + corIndex + ')"></button>') +
             '</div></div>' +
             '<div id="' + collapseId + '" class="accordion-collapse collapse cp-compra-cor-collapse' + (aberto ? ' show' : '') + '" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '" data-color-index="' + corIndex + '">' +
@@ -1554,6 +1624,14 @@ function cpCompraNestedInput(level, itemIndex, tamanhoIndex, corIndex, name, lab
     const attrs = cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, name);
     const input = '<input class="' + className + '" type="' + inputType + '"' + inputMode + readonlyAttr + ' value="' + displayValue + '" ' + attrs + '>';
     return '<div class="' + colClass + '"><label class="form-label">' + label + '</label>' + (isMoney ? moneyInputGroup(input, false) : input) + '</div>';
+}
+
+function cpCompraTamanhoStatus(itemIndex, tamanhoIndex, value, colClass) {
+    const disabled = cpCompraReadonly ? ' disabled' : '';
+    return '<div class="' + colClass + '"><label class="form-label">Status</label><select class="form-select cp-compra-tamanho-field" ' +
+        cpNestedDataAttrs(itemIndex, tamanhoIndex, null, 'Sts') + disabled + '>' +
+        '<option value="1"' + (String(value) !== '0' ? ' selected' : '') + '>Ativo</option>' +
+        '<option value="0"' + (String(value) === '0' ? ' selected' : '') + '>Inativo</option></select></div>';
 }
 
 function cpCompraCorStatus(itemIndex, tamanhoIndex, corIndex, value, colClass) {
@@ -1669,6 +1747,12 @@ function initCpCompraNestedFields() {
             updateCpCompraItemEntrega($(this));
         });
 
+    $('.cp-compra-field[data-field="Sts"]')
+        .off('change.cpItemStatus')
+        .on('change.cpItemStatus', function () {
+            updateCpCompraItemStatus($(this));
+        });
+
     $('.cp-compra-tamanho-field, .cp-compra-cor-field')
         .off('input.cpNested change.cpNested')
         .on('input.cpNested change.cpNested', function () {
@@ -1702,6 +1786,29 @@ function initCpCompraNestedFields() {
         });
 }
 
+function updateCpCompraItemStatus($field) {
+    const itemIndex = Number($field.data('item-index'));
+    const item = cpCompraItens[itemIndex];
+    if (!item) {
+        return;
+    }
+    const status = normalizeCpCompraValue('Sts', $field.val()) === 0 ? 0 : 1;
+    item.Sts = status;
+    (item.tamanhos || []).forEach(function (tamanho) {
+        tamanho.Sts = status;
+        (tamanho.cores || []).forEach(function (cor) {
+            cor.Sts = status;
+            if (status === 0) {
+                cor.percentual = 0;
+            }
+        });
+    });
+    recalcCpCompraItem(item);
+    cpCompraItensOpen[itemIndex] = true;
+    renderCpCompraItens();
+    recalcCpCompraTotal();
+}
+
 function updateCpCompraItemEntrega($field) {
     const itemIndex = Number($field.data('item-index'));
     const item = cpCompraItens[itemIndex];
@@ -1730,19 +1837,52 @@ function updateCpCompraNestedField($field) {
     }
     if (corIndexRaw === undefined) {
         tamanho[name] = normalizeCpCompraValue(name, $field.val());
+        if (name === 'Sts') {
+            cascadeCpCompraTamanhoStatus(tamanho, tamanho[name]);
+            cpCompraItensOpen[itemIndex] = true;
+            tamanho._aberto = true;
+            recalcCpCompraItem(item);
+            renderCpCompraItens();
+            recalcCpCompraTotal();
+            return;
+        }
     } else {
         const cor = tamanho.cores[Number(corIndexRaw)];
         if (!cor) {
             return;
         }
         cor[name] = normalizeCpCompraValue(name, $field.val());
+        if (name === 'Sts') {
+            updateCpCompraTamanhoStatusFromCores(tamanho);
+            $('.cp-compra-tamanho-field[data-item-index="' + itemIndex + '"][data-size-index="' + tamanhoIndex + '"][data-field="Sts"]').val(String(tamanho.Sts));
+        }
     }
     recalcCpCompraItem(item);
     updateCpCompraNestedDisplays(itemIndex);
     $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
 }
 
+function cascadeCpCompraTamanhoStatus(tamanho, status) {
+    const statusValue = Number(status) === 0 ? 0 : 1;
+    tamanho.Sts = statusValue;
+    (tamanho.cores || []).forEach(function (cor) {
+        cor.Sts = statusValue;
+        if (statusValue === 0) {
+            cor.percentual = 0;
+        }
+    });
+}
+
+function updateCpCompraTamanhoStatusFromCores(tamanho) {
+    tamanho.Sts = (tamanho.cores || []).some(function (cor) {
+        return String(cor.Sts) !== '0';
+    }) ? 1 : 0;
+}
+
 function cpCompraTamanhoPercentualTotal(tamanho) {
+    if (String(tamanho.Sts) === '0') {
+        return 0;
+    }
     return (tamanho.cores || []).reduce(function (total, cor) {
         return String(cor.Sts) === '0' ? total : total + Number(cor.percentual || 0);
     }, 0);
@@ -2012,13 +2152,15 @@ function updateCpCompraFotoFornecedorFlag(itemIndex, value) {
     }
 }
 
-function itemStatusReadonlyHtml(itemIndex, value, colClass) {
+function itemStatusSelectHtml(itemIndex, value, colClass) {
     const statusValue = String(value) === '0' ? 0 : 1;
-    const statusText = statusValue === 1 ? 'Ativo' : 'Inativo';
+    const disabled = cpCompraReadonly ? ' disabled' : '';
     return '<div class="' + colClass + '">' +
         '<label class="form-label">Status</label>' +
-        '<input class="form-control" value="' + statusText + '" readonly>' +
-        '<input type="hidden" class="cp-compra-field" value="' + statusValue + '" ' + cpDataAttrs(itemIndex, null, 'Sts') + '>' +
+        '<select class="form-select cp-compra-field cp-compra-item-status" ' + cpDataAttrs(itemIndex, null, 'Sts') + disabled + '>' +
+        '<option value="1"' + (statusValue === 1 ? ' selected' : '') + '>Ativo</option>' +
+        '<option value="0"' + (statusValue === 0 ? ' selected' : '') + '>Inativo</option>' +
+        '</select>' +
         '</div>';
 }
 
@@ -2117,7 +2259,6 @@ function renderCpCompraRateioModal(tamanho, coresAtivas) {
         const originalIndex = (tamanho.cores || []).indexOf(cor);
         return '<tr data-color-index="' + originalIndex + '">' +
             '<td>' + escapeHtml(cor.cor || 'Cor ' + (originalIndex + 1)) + '</td>' +
-            '<td>' + escapeHtml(cor.sku || '') + '</td>' +
             '<td><input class="form-control form-control-sm text-end cp-rateio-percentual" inputmode="decimal" value="' + escapeAttr(formatPercentInput(cor.percentual || 0)) + '"></td>' +
             '<td class="text-end cp-rateio-qtde-cor">' + escapeHtml(parseInt(cor.Qtde || 0, 10)) + '</td>' +
             '</tr>';
@@ -2129,7 +2270,7 @@ function renderCpCompraRateioModal(tamanho, coresAtivas) {
         '<button class="btn btn-sm btn-outline-primary" type="button" onclick="distribuirCpCompraRateioIgual()">Dividir igualmente</button>' +
         '</div>' +
         '<div class="table-responsive"><table class="table table-sm table-striped align-middle mb-0">' +
-        '<thead><tr><th>Cor</th><th>SKU</th><th class="text-end" style="width: 180px;">Percentual</th><th class="text-end" style="width: 140px;">Qtde</th></tr></thead>' +
+        '<thead><tr><th>Cor</th><th class="text-end" style="width: 180px;">Percentual</th><th class="text-end" style="width: 140px;">Qtde</th></tr></thead>' +
         '<tbody>' + rows + '</tbody></table></div>'
     );
     updateCpCompraRateioModalTotal();
@@ -2340,15 +2481,21 @@ function recalcCpCompraItem(item) {
     let totalQtdeItem = 0;
     const markups = cpCompraHeaderMarkups();
     (item.tamanhos || []).forEach(function (tamanho) {
+        if (String(item.Sts) === '0') {
+            tamanho.Sts = 0;
+        } else if ((tamanho.cores || []).length) {
+            updateCpCompraTamanhoStatusFromCores(tamanho);
+        }
+        const tamanhoAtivo = String(tamanho.Sts) !== '0';
         const coresAtivas = (tamanho.cores || []).filter(function (cor) {
-            return String(cor.Sts) !== '0';
+            return tamanhoAtivo && String(cor.Sts) !== '0';
         });
         const totalPercentual = cpCompraTamanhoPercentualTotal(tamanho);
         const totalQtde = Math.max(0, parseInt(Number(tamanho.qtde_total || 0), 10) || 0);
         let qtdeAplicada = 0;
 
         (tamanho.cores || []).forEach(function (cor) {
-            if (String(cor.Sts) === '0' || roundCpPercent(totalPercentual) !== 100) {
+            if (!tamanhoAtivo || String(cor.Sts) === '0' || roundCpPercent(totalPercentual) !== 100) {
                 cor.Qtde = 0;
             } else {
                 cor.Qtde = Math.floor(totalQtde * Number(cor.percentual || 0) / 100);
@@ -2368,7 +2515,7 @@ function recalcCpCompraItem(item) {
         let totalTamanho = 0;
         (tamanho.cores || []).forEach(function (cor) {
             applyCpCompraDetailMarkups(cor, markups);
-            cor.valor_total_produto = String(cor.Sts) === '0'
+            cor.valor_total_produto = (!tamanhoAtivo || String(cor.Sts) === '0')
                 ? 0
                 : roundCpMoney(Number(cor.Qtde || 0) * Number(cor.preco_proposta || 0));
             totalTamanho += Number(cor.valor_total_produto || 0);
@@ -2377,7 +2524,7 @@ function recalcCpCompraItem(item) {
         tamanho.Itens = coresAtivas.length;
         tamanho.markup_franquia = roundCpMoney(markups.franquia || 0);
         tamanho.markup_loja = roundCpMoney(markups.franqueadora || 0);
-        totalQtdeItem += totalQtde;
+        totalQtdeItem += tamanhoAtivo ? totalQtde : 0;
         totalItem += totalTamanho;
     });
     item.total_qtde = totalQtdeItem;
@@ -2403,17 +2550,21 @@ function updateCpCompraNestedDisplays(itemIndex) {
     (item.tamanhos || []).forEach(function (tamanho, tamanhoIndex) {
         const $tamanho = $('.cp-compra-tamanho[data-item-index="' + itemIndex + '"][data-size-index="' + tamanhoIndex + '"]');
         const rateio = cpCompraTamanhoPercentualTotal(tamanho);
-        const rateioValido = roundCpPercent(rateio) === 100;
+        const tamanhoInativo = String(tamanho.Sts) === '0';
+        const rateioValido = !tamanhoInativo && roundCpPercent(rateio) === 100;
         $tamanho.find('.cp-tamanho-rateio-total')
             .val(formatPercentInput(rateio) + '%')
+            .toggleClass('text-muted', tamanhoInativo)
             .toggleClass('text-success', rateioValido)
-            .toggleClass('text-danger', !rateioValido);
+            .toggleClass('text-danger', !tamanhoInativo && !rateioValido);
+        $tamanho.find('.cp-compra-tamanho-field[data-field="Sts"]').val(String(tamanho.Sts));
         $tamanho.find('.cp-tamanho-summary-qtde').text(tamanho.qtde_total || 0);
         $tamanho.find('.cp-tamanho-summary-entrega').text(tamanho.entrega ? formatDateBr(tamanho.entrega) : 'Nao definida');
         $tamanho.find('.cp-tamanho-summary-rateio')
             .text(formatPercentInput(rateio) + '%')
+            .toggleClass('text-muted', tamanhoInativo)
             .toggleClass('text-success', rateioValido)
-            .toggleClass('text-danger', !rateioValido);
+            .toggleClass('text-danger', !tamanhoInativo && !rateioValido);
         $tamanho.find('.cp-tamanho-summary-total').text('R$ ' + formatMoneyBr(tamanho.valor_total || 0));
         $tamanho.find('.cp-compra-tamanho-field[data-field="valor_total"]').val(formatMoneyInput(tamanho.valor_total || 0));
         (tamanho.cores || []).forEach(function (cor, corIndex) {
@@ -2501,6 +2652,8 @@ function validarCpCompraForm($form) {
         if (!(item.tamanhos || []).length) {
             return 'Informe ao menos um tamanho para a referencia ' + referencia + '.';
         }
+        const itemAtivo = String(item.Sts) !== '0';
+        let tamanhosAtivos = 0;
         const tamanhosUsados = {};
         for (let tamanhoIndex = 0; tamanhoIndex < item.tamanhos.length; tamanhoIndex++) {
             const tamanho = item.tamanhos[tamanhoIndex];
@@ -2512,6 +2665,11 @@ function validarCpCompraForm($form) {
                 return 'O tamanho ' + nomeTamanho + ' esta duplicado na referencia ' + referencia + '.';
             }
             tamanhosUsados[nomeTamanho] = true;
+            const tamanhoAtivo = String(tamanho.Sts) !== '0';
+            if (!itemAtivo || !tamanhoAtivo) {
+                continue;
+            }
+            tamanhosAtivos += 1;
             const coresAtivas = (tamanho.cores || []).filter(function (cor) {
                 return String(cor.Sts) !== '0';
             });
@@ -2537,6 +2695,9 @@ function validarCpCompraForm($form) {
             if (roundCpPercent(totalPercentual) !== 100) {
                 return 'O rateio das cores do tamanho ' + nomeTamanho + ' deve totalizar 100%. Total atual: ' + formatPercentInput(totalPercentual) + '%.';
             }
+        }
+        if (itemAtivo && tamanhosAtivos === 0) {
+            return 'Informe ao menos um tamanho ativo para a referencia ' + referencia + '.';
         }
     }
     return '';

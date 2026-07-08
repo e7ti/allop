@@ -314,6 +314,7 @@ db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_tamanhos` (
     `qtde_total` decimal(8,2) NOT NULL DEFAULT '0.00',
     `valor_total` decimal(15,2) NOT NULL DEFAULT '0.00',
     `Itens` int(11) NOT NULL DEFAULT '0',
+    `Sts` tinyint(4) NOT NULL DEFAULT '1',
     PRIMARY KEY (`id`),
     UNIQUE KEY `IDXItensTamanho` (`compras_itens_id`,`tamanho`),
     CONSTRAINT `FK_cp_compras_itens_tamanhos_cp_compras_itens` FOREIGN KEY (`compras_itens_id`) REFERENCES `cp_compras_itens` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION

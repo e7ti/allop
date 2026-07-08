@@ -233,6 +233,7 @@ CREATE TABLE IF NOT EXISTS `cp_compras_itens_tamanhos` (
   `qtde_total` decimal(8,2) NOT NULL DEFAULT '0.00' COMMENT 'Total de quantidades',
   `valor_total` decimal(8,2) NOT NULL DEFAULT '0.00' COMMENT 'Valor total do tamanho',
   `Itens` int(11) NOT NULL DEFAULT '0' COMMENT 'Quantidade de itens tem o tamanho',
+  `Sts` tinyint(4) NOT NULL DEFAULT '1' COMMENT '0 - inativo, 1 - ativo',
   PRIMARY KEY (`id`),
   UNIQUE KEY `IDXItensTamanho` (`compras_itens_id`,`tamanho`) USING BTREE
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1 COMMENT='Tabela de itens de tamanhos, separação de tamanhos.';

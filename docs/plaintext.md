@@ -2,7 +2,7 @@
 
 **Documento-base:** 01/06/2026
 **Última revisão do código:** 08/07/2026
-**Última revisão do `banco.sql`:** 06/07/2026
+**Última revisão do `banco.sql`:** 08/07/2026
 **Escopo revisado:** aplicação PHP, APIs, banco principal, banco de fotos, seed, assets e módulos existentes.
 
 ## 1. Objetivo
@@ -132,7 +132,7 @@ Principais ações da API:
 | `fotos_fornecedor_list` | Lista fotos do fornecedor em `cp_compras_fotos`. |
 | `fotos_upload` / `fotos_delete` | Mantém fotos da KidStok e sincroniza o indicador do item. |
 | `enviar_proposta` | Envia e-mail, publica o pedido e transfere a localização para `Fornecedor`. |
-| `aprovar` | Marca como `Aprovado` e devolve a localização para `KidStok`. |
+| `aprovar` | Aprova somente pedido publicado, devolve a localização para `KidStok` e marca como `Aprovado` ou `Aprovado sem fotos` conforme fotos do fornecedor. |
 | `recusar` | Marca como `Recusado`, registra motivo e devolve para `KidStok`. |
 
 O botão **Imprimir PDF** é exibido em pedidos já gravados. O relatório contém dados do cabeçalho, auditoria, itens, tamanhos, cores, preços, markups e um resumo do rateio das cores de cada tamanho. A geração usa Dompdf instalado localmente pelo Composer.
@@ -143,9 +143,15 @@ Regras atuais de compras:
 - o frontend exige pelo menos um item confirmado;
 - uma referência não pode aparecer mais de uma vez no mesmo pedido;
 - os percentuais das cores de cada tamanho devem totalizar 100%;
+- itens, tamanhos e cores possuem status ativo/inativo;
+- alterar o status do item aplica o mesmo status em cascata para seus tamanhos e cores;
+- alterar o status do tamanho aplica o mesmo status em cascata para suas cores;
+- tamanho inativo não exige cor ativa nem rateio de 100%, e tamanho ativo depende de pelo menos uma cor ativa;
 - o total é recalculado a partir de quantidade × preço proposto;
 - itens, tamanhos, cores e rateios antigos são excluídos e recriados ao editar;
 - pedido localizado no `Fornecedor` fica somente para visualização e impressão; não pode ser editado, excluído, aprovado, recusado nem ter fotos KidStok alteradas;
+- pedido não publicado não pode ser aprovado;
+- pedido aprovado sem fotos do fornecedor fica com status `Aprovado sem fotos`;
 - o envio de proposta usa a configuração ativa de `config_email` para o CD/empresa;
 - os destinatários são usuários ativos de `pf_usuarios` vinculados ao fornecedor em `pf_usuario_fornecedor`;
 - fotos são armazenadas em Base64 no banco de fotos.
@@ -321,7 +327,7 @@ $aplicacao_descricao = "Descrição objetiva da aplicação.";
 
 ## 9. Pontos de atenção conhecidos
 
-Estes itens foram encontrados nas revisões do código de 08/07/2026 e do `banco.sql` de 06/07/2026 e não foram corrigidos nesta atualização documental:
+Estes itens foram encontrados nas revisões do código de 08/07/2026 e do `banco.sql` de 08/07/2026 e não foram corrigidos nesta atualização documental:
 
 1. **Permissão incompleta:** o menu usa apenas permissões do perfil. `seg_usuarios_permissoes` não participa da montagem do menu, e as APIs não validam permissões de inserir, editar, excluir ou processar; validam apenas a sessão.
 2. **Dashboard sem filtro por permissão:** os indicadores de compras do dashboard ainda não variam conforme permissões do usuário.
