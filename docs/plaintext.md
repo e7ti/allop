@@ -1,7 +1,7 @@
 # ALLOP — Arquitetura e padrões do sistema
 
 **Documento-base:** 01/06/2026
-**Última revisão do código:** 06/07/2026
+**Última revisão do código:** 08/07/2026
 **Última revisão do `banco.sql`:** 06/07/2026
 **Escopo revisado:** aplicação PHP, APIs, banco principal, banco de fotos, seed, assets e módulos existentes.
 
@@ -321,7 +321,7 @@ $aplicacao_descricao = "Descrição objetiva da aplicação.";
 
 ## 9. Pontos de atenção conhecidos
 
-Estes itens foram encontrados nas revisões do código e do `banco.sql` de 06/07/2026 e não foram corrigidos nesta atualização documental:
+Estes itens foram encontrados nas revisões do código de 08/07/2026 e do `banco.sql` de 06/07/2026 e não foram corrigidos nesta atualização documental:
 
 1. **Permissão incompleta:** o menu usa apenas permissões do perfil. `seg_usuarios_permissoes` não participa da montagem do menu, e as APIs não validam permissões de inserir, editar, excluir ou processar; validam apenas a sessão.
 2. **Dashboard sem filtro por permissão:** os indicadores de compras do dashboard ainda não variam conforme permissões do usuário.
