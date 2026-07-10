@@ -5,7 +5,7 @@
 */
 $pagina_aplicacao_descricao = $aplicacao_descricao ?? '';
 $aplicacao_nome = $aplicacao_nome ?? "layout.php";
-$aplicacao_descricao = $aplicacao_descricao ?? "Header, menu e footer padrao do sistema.";
+$aplicacao_descricao = $aplicacao_descricao ?? "Header, menu e footer padrão do sistema.";
 
 
 require_once __DIR__ . '/permissions.php';

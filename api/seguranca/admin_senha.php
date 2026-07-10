@@ -17,7 +17,7 @@ if (strlen($novaSenha) < 6) {
 }
 
 if ($novaSenha !== $confirmarSenha) {
-    api_response(false, ['message' => 'A confirmacao da senha nao confere.'], 422);
+    api_response(false, ['message' => 'A confirmação da senha não confere.'], 422);
 }
 
 try {
@@ -25,7 +25,7 @@ try {
     $stmt->execute(['senha' => password_hash($novaSenha, PASSWORD_DEFAULT)]);
 
     if ($stmt->rowCount() < 1) {
-        api_response(false, ['message' => 'Usuario admin nao encontrado.'], 404);
+        api_response(false, ['message' => 'Usuário admin não encontrado.'], 404);
     }
 
     api_response(true, ['message' => 'Senha do admin alterada com sucesso.']);

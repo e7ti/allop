@@ -4,13 +4,13 @@
     Data : 01/06/2026
 */
 $aplicacao_nome = "usuarios_permissoes_form.php";
-$aplicacao_descricao = "Insere e edita permissoes de aplicacoes por usuario.";
+$aplicacao_descricao = "Insere e edita permissões de aplicações por usuário.";
 
 
 
 require_once __DIR__ . '/../../includes/layout.php';
 require_login();
-render_header('Usuario x Aplicacoes', [
+render_header('Usuário x Aplicações', [
     ['label' => 'Voltar', 'href' => 'usuarios_permissoes_lista.php', 'class' => 'btn btn-outline-secondary btn-back'],
 ]);
 $id = (int) ($_GET['id'] ?? 0);
@@ -29,14 +29,14 @@ $checks = [
     <div class="row g-3">
         <div class="col-12 col-lg-6">
             <section class="card card-slim h-100">
-                <div class="card-header bg-white fw-bold">Usuario e aplicacao</div>
+                <div class="card-header bg-white fw-bold">Usuário e aplicação</div>
                 <div class="card-body row g-3">
                     <div class="col-12">
-                        <label class="form-label">Usuario</label>
+                        <label class="form-label">Usuário</label>
                         <select class="form-select js-remote-select" name="usuario_id" data-type="usuarios" required></select>
                     </div>
                     <div class="col-12">
-                        <label class="form-label">Aplicacao</label>
+                        <label class="form-label">Aplicação</label>
                         <select class="form-select js-remote-select" name="aplicacao_id" data-type="aplicacoes" required></select>
                     </div>
                 </div>
@@ -44,7 +44,7 @@ $checks = [
         </div>
         <div class="col-12 col-lg-6">
             <section class="card card-slim h-100">
-                <div class="card-header bg-white fw-bold">Permissoes</div>
+                <div class="card-header bg-white fw-bold">Permissões</div>
                 <div class="card-body row g-3">
                     <?php foreach ($checks as $name => $label): ?>
                         <div class="col-6 col-md-4">

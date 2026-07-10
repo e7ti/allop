@@ -4,7 +4,7 @@
     Data : 01/06/2026
 */
 $aplicacao_nome = "bootstrap.php";
-$aplicacao_descricao = "Inicializacao padrao das APIs.";
+$aplicacao_descricao = "Inicialização padrão das APIs.";
 
 
 require_once __DIR__ . '/../includes/auth.php';

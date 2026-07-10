@@ -4,7 +4,7 @@
     Data : 01/06/2026
 */
 $aplicacao_nome = "permissions.php";
-$aplicacao_descricao = "Gerencia a busca de itens de menu e permissoes de acesso.";
+$aplicacao_descricao = "Gerencia a busca de itens de menu e permissões de acesso.";
 
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/auth.php';

@@ -65,32 +65,32 @@ function validate_empresa_payload(array $payload): void
     }
 
     if (!valid_cnpj((string) $payload['CNPJ'])) {
-        api_response(false, ['message' => 'Informe um CNPJ valido.'], 422);
+        api_response(false, ['message' => 'Informe um CNPJ válido.'], 422);
     }
 
     if ($payload['CEP'] !== '' && strlen($payload['CEP']) !== 8) {
-        api_response(false, ['message' => 'CEP deve conter 8 digitos.'], 422);
+        api_response(false, ['message' => 'CEP deve conter 8 dígitos.'], 422);
     }
 
     if ($payload['ibge'] !== '' && strlen($payload['ibge']) !== 7) {
-        api_response(false, ['message' => 'Codigo IBGE deve conter 7 digitos.'], 422);
+        api_response(false, ['message' => 'Código IBGE deve conter 7 dígitos.'], 422);
     }
 
     foreach (['FoneDDD', 'CelularDDD'] as $field) {
         if ($payload[$field] !== '' && strlen($payload[$field]) !== 2) {
-            api_response(false, ['message' => 'DDD deve conter 2 digitos.'], 422);
+            api_response(false, ['message' => 'DDD deve conter 2 dígitos.'], 422);
         }
     }
 
     foreach (['FoneNro', 'CelularNro'] as $field) {
         if ($payload[$field] !== '' && !ctype_digit($payload[$field])) {
-            api_response(false, ['message' => 'Telefones devem conter apenas digitos.'], 422);
+            api_response(false, ['message' => 'Telefones devem conter apenas dígitos.'], 422);
         }
     }
 
     $ufs = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
     if ($payload['UF'] !== '' && !in_array($payload['UF'], $ufs, true)) {
-        api_response(false, ['message' => 'Selecione uma UF valida.'], 422);
+        api_response(false, ['message' => 'Selecione uma UF válida.'], 422);
     }
 }
 
@@ -178,7 +178,7 @@ try {
         $id = (int) ($data['id'] ?? 0);
         $stmt = db()->prepare("DELETE FROM empresas WHERE Codigo = :id");
         $stmt->execute(['id' => $id]);
-        api_response(true, ['message' => 'Registro excluido.']);
+        api_response(true, ['message' => 'Registro excluído.']);
     }
 
     if ($action === 'save') {
@@ -242,7 +242,7 @@ try {
         api_response(true, ['message' => 'Registro inserido.', 'id' => $payload['Codigo']]);
     }
 
-    api_response(false, ['message' => 'Acao invalida.'], 404);
+    api_response(false, ['message' => 'Ação inválida.'], 404);
 } catch (Throwable $e) {
     api_response(false, ['message' => $e->getMessage()], 500);
 }

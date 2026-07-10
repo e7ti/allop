@@ -62,6 +62,7 @@ function dashboard_ultimos_pedidos(): array
                     c.ValorTotalPedido,
                     c.Sts,
                     c.Localizacao,
+                    c.Publicado,
                     cd.NomeCD AS cd_nome,
                     COALESCE(NULLIF(e.Fantasia, ''), e.Nome) AS empresa_nome,
                     COALESCE(NULLIF(f.NomeFornecedor, ''), c.Fornecedor_id) AS fornecedor_nome
@@ -88,6 +89,59 @@ function dashboard_date_br($value): string
 
     $date = DateTime::createFromFormat('Y-m-d', substr($value, 0, 10));
     return $date ? $date->format('d/m/Y') : $value;
+}
+
+function dashboard_status_badge($status, $localizacao = ''): string
+{
+    $status = trim((string) ($status ?? ''));
+    $label = $status !== '' ? $status : 'Aberto';
+    $normalized = strtolower($label);
+
+    if (strpos($normalized, 'aprovado sem fotos') === 0) {
+        $class = 'badge-status-awaiting-photo';
+    } elseif (strpos($normalized, 'aprovado') === 0) {
+        $class = 'badge-status-approved';
+    } elseif ($normalized === 'recusado') {
+        $class = 'badge-status-rejected';
+    } else {
+        $class = 'badge-status-open';
+        if ($normalized === 'aberto') {
+            $localizacao = trim((string) ($localizacao ?? 'KidStok'));
+            $label = strcasecmp($localizacao, 'Fornecedor') === 0
+                ? 'Aberto Aguardando Fornecedor'
+                : 'Aberto Aguardando KidStok';
+        }
+    }
+
+    return '<span class="badge dashboard-grid-badge ' . h($class) . '">' . h($label) . '</span>';
+}
+
+function dashboard_localizacao_badge($localizacao): string
+{
+    $localizacao = trim((string) ($localizacao ?? 'KidStok'));
+    $value = $localizacao !== '' ? $localizacao : 'KidStok';
+
+    if (strcasecmp($value, 'KidStok') === 0) {
+        $class = 'badge-localizacao-kidstok';
+        $label = 'KidStok';
+    } elseif (strcasecmp($value, 'Fornecedor') === 0) {
+        $class = 'badge-localizacao-fornecedor';
+        $label = 'Fornecedor';
+    } else {
+        $class = 'badge-localizacao-allop';
+        $label = $value;
+    }
+
+    return '<span class="badge cp-localizacao-badge ' . h($class) . '">' . h($label) . '</span>';
+}
+
+function dashboard_publicado_badge($publicado): string
+{
+    $published = (int) ($publicado ?? 0) === 1;
+    $class = $published ? 'dashboard-publicado-sim' : 'dashboard-publicado-nao';
+    $label = $published ? 'Publicado' : 'Não Publicado';
+
+    return '<span class="badge dashboard-grid-badge ' . h($class) . '">' . h($label) . '</span>';
 }
 
 $stats = dashboard_compra_stats();
@@ -237,13 +291,14 @@ render_header('Dashboard');
                             <th>Fornecedor</th>
                             <th>Status</th>
                             <th>Localização</th>
+                            <th>Publicado</th>
                             <th class="text-end">Valor</th>
                             <th class="text-end">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (!$ultimosPedidos): ?>
-                            <tr><td colspan="9" class="text-center text-muted">Nenhum pedido encontrado.</td></tr>
+                            <tr><td colspan="10" class="text-center text-muted">Nenhum pedido encontrado.</td></tr>
                         <?php endif; ?>
                         <?php foreach ($ultimosPedidos as $pedido): ?>
                             <tr>
@@ -252,8 +307,9 @@ render_header('Dashboard');
                                 <td data-label="CD"><?= h((string) ($pedido['cd_nome'] ?? '')) ?></td>
                                 <td data-label="Empresa"><?= h((string) ($pedido['empresa_nome'] ?? '')) ?></td>
                                 <td data-label="Fornecedor"><?= h((string) ($pedido['fornecedor_nome'] ?? '')) ?></td>
-                                <td data-label="Status"><?= h((string) ($pedido['Sts'] ?? '')) ?></td>
-                                <td data-label="Localização"><?= h((string) ($pedido['Localizacao'] ?? '')) ?></td>
+                                <td data-label="Status"><?= dashboard_status_badge($pedido['Sts'] ?? '', $pedido['Localizacao'] ?? '') ?></td>
+                                <td data-label="Localização"><?= dashboard_localizacao_badge($pedido['Localizacao'] ?? '') ?></td>
+                                <td data-label="Publicado"><?= dashboard_publicado_badge($pedido['Publicado'] ?? 0) ?></td>
                                 <td data-label="Valor" class="text-end">R$ <?= h(number_format((float) ($pedido['ValorTotalPedido'] ?? 0), 2, ',', '.')) ?></td>
                                 <td data-label="Ações" class="text-end">
                                     <a class="btn btn-sm btn-outline-secondary btn-edit btn-icon-only" title="Abrir pedido" aria-label="Abrir pedido" href="<?= app_url('mod/compras/cp_compras_form.php?id=' . (int) ($pedido['id'] ?? 0)) ?>"></a>

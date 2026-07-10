@@ -4,7 +4,7 @@
     Data : 02/06/2026
 */
 $aplicacao_nome = "configuracoes_email.php";
-$aplicacao_descricao = "API para listar, inserir, editar e excluir configuracoes de e-mail.";
+$aplicacao_descricao = "API para listar, inserir, editar e excluir configurações de e-mail.";
 
 require_once __DIR__ . '/../bootstrap.php';
 api_require_login();
@@ -108,7 +108,7 @@ try {
         $id = (int) ($data['id'] ?? 0);
         $stmt = db()->prepare("DELETE FROM configuracoes_email WHERE Codigo = :id");
         $stmt->execute(['id' => $id]);
-        api_response(true, ['message' => 'Registro excluido.']);
+        api_response(true, ['message' => 'Registro excluído.']);
     }
 
     if ($action === 'save') {
@@ -134,7 +134,7 @@ try {
         api_response(true, ['message' => 'Registro inserido.', 'id' => (int) db()->lastInsertId()]);
     }
 
-    api_response(false, ['message' => 'Acao invalida.'], 404);
+    api_response(false, ['message' => 'Ação inválida.'], 404);
 } catch (Throwable $e) {
     api_response(false, ['message' => $e->getMessage()], 500);
 }

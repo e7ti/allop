@@ -4,13 +4,13 @@
     Data : 01/06/2026
 */
 $aplicacao_nome = "perfil_aplicacoes_lista.php";
-$aplicacao_descricao = "Lista permissoes de aplicacoes por perfil.";
+$aplicacao_descricao = "Lista permissões de aplicações por perfil.";
 
 
 
 require_once __DIR__ . '/../../includes/layout.php';
 require_login();
-render_header('Perfil x Aplicacoes', [
+render_header('Perfil x Aplicações', [
     ['label' => 'Voltar', 'href' => '../../dashboard.php', 'class' => 'btn btn-outline-secondary btn-back'],
 ]);
 ?>
@@ -31,8 +31,8 @@ render_header('Perfil x Aplicacoes', [
             <thead>
                 <tr>
                     <th>Perfil</th>
-                    <th>Total Permissoes</th>
-                    <th class="text-end">Acoes</th>
+                    <th>Total Permissões</th>
+                    <th class="text-end">Ações</th>
                 </tr>
             </thead>
             <tbody id="perfil-aplicacoes-grid"></tbody>

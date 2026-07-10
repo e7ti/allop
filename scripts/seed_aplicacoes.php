@@ -302,7 +302,42 @@ db()->exec("CREATE TABLE IF NOT EXISTS `configuracoes_email` (
     KEY `FK_config_email_empresas` (`empresa_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
 
+// Garante a existencia da tabela de URLs dos portais Allop
+db()->exec("CREATE TABLE IF NOT EXISTS `urls_allop` (
+    `id` int(11) NOT NULL AUTO_INCREMENT,
+    `cd_id` int(11) NOT NULL,
+    `empresa_id` int(11) NOT NULL,
+    `url_portal_compras` varchar(255) NOT NULL DEFAULT '',
+    `url_portal_fornecedor` varchar(255) NOT NULL DEFAULT '',
+    `Status` varchar(8) NOT NULL DEFAULT 'Ativo',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `IDXUrlsAllopCdEmpresa` (`cd_id`,`empresa_id`),
+    KEY `FK_urls_allop_empresas` (`empresa_id`),
+    CONSTRAINT `FK_urls_allop_empresas` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`Codigo`) ON UPDATE NO ACTION,
+    CONSTRAINT `FK_urls_allop_empresas_cd` FOREIGN KEY (`cd_id`) REFERENCES `empresas_cd` (`Codigo`) ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
+
 // Garante a existencia das tabelas hierarquicas de tamanhos, cores e rateios
+db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_log` (
+    `log_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+    `log_data` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `id` bigint(20) unsigned NOT NULL,
+    `cp_compras_id` bigint(20) unsigned NOT NULL DEFAULT '0',
+    `referencia_fornecedor` varchar(25) NOT NULL,
+    `descricao` varchar(255) NOT NULL,
+    `composicao` varchar(255) NOT NULL,
+    `ncm` varchar(255) NOT NULL,
+    `entrega` date DEFAULT NULL,
+    `entrega_anterior` date DEFAULT NULL,
+    `total_qtde` double DEFAULT NULL,
+    `total_produto` decimal(15,2) DEFAULT NULL,
+    `Foto` tinyint(4) NOT NULL DEFAULT '0',
+    `Sts` tinyint(4) NOT NULL DEFAULT '1',
+    PRIMARY KEY (`log_id`),
+    KEY `IDXLogItemId` (`id`),
+    KEY `IDXLogItemData` (`log_data`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
+
 db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_tamanhos` (
     `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
     `compras_itens_id` bigint(20) unsigned NOT NULL,
@@ -318,6 +353,25 @@ db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_tamanhos` (
     PRIMARY KEY (`id`),
     UNIQUE KEY `IDXItensTamanho` (`compras_itens_id`,`tamanho`),
     CONSTRAINT `FK_cp_compras_itens_tamanhos_cp_compras_itens` FOREIGN KEY (`compras_itens_id`) REFERENCES `cp_compras_itens` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
+
+db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_tamanhos_log` (
+    `log_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+    `log_data` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `id` bigint(20) unsigned NOT NULL,
+    `compras_itens_id` bigint(20) unsigned NOT NULL DEFAULT '0',
+    `tamanho` varchar(20) NOT NULL,
+    `entrega` date DEFAULT NULL,
+    `entrega_anterior` date DEFAULT NULL,
+    `markup_franquia` decimal(8,2) NOT NULL DEFAULT '0.00',
+    `markup_loja` decimal(8,2) NOT NULL DEFAULT '0.00',
+    `qtde_total` decimal(8,2) NOT NULL DEFAULT '0.00',
+    `valor_total` decimal(8,2) NOT NULL DEFAULT '0.00',
+    `Itens` int(11) NOT NULL DEFAULT '0',
+    `Sts` tinyint(4) NOT NULL DEFAULT '1',
+    PRIMARY KEY (`log_id`),
+    KEY `IDXLogTamanhoId` (`id`),
+    KEY `IDXLogTamanhoData` (`log_data`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
 
 db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_cores` (
@@ -341,6 +395,28 @@ db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_cores` (
     CONSTRAINT `FK_compras_tamanho_cores` FOREIGN KEY (`compras_itens_tamanho_id`) REFERENCES `cp_compras_itens_tamanhos` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
 
+db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_cores_log` (
+    `log_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+    `log_data` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `id` bigint(20) unsigned NOT NULL,
+    `compras_itens_tamanho_id` bigint(20) unsigned NOT NULL DEFAULT '0',
+    `sku` varchar(100) DEFAULT NULL,
+    `cor` varchar(50) NOT NULL,
+    `Qtde` double(8,2) NOT NULL DEFAULT '0.00',
+    `preco_fornecedor` decimal(15,2) NOT NULL DEFAULT '0.00',
+    `preco_proposta` decimal(15,2) NOT NULL DEFAULT '0.00',
+    `valor_total_produto` decimal(15,2) NOT NULL DEFAULT '0.00',
+    `preco_franqueado` decimal(15,2) NOT NULL DEFAULT '0.00',
+    `markup_franquia` double(8,2) NOT NULL DEFAULT '0.00',
+    `preco_loja` decimal(15,2) NOT NULL DEFAULT '0.00',
+    `markup_loja` double(12,2) NOT NULL DEFAULT '0.00',
+    `markup_total` double(8,2) NOT NULL DEFAULT '0.00',
+    `Sts` tinyint(4) NOT NULL DEFAULT '1',
+    PRIMARY KEY (`log_id`),
+    KEY `IDXLogCorId` (`id`),
+    KEY `IDXLogCorData` (`log_data`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
+
 db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_rateios` (
     `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
     `compras_itens_tamanho_id` bigint(20) unsigned NOT NULL,
@@ -351,6 +427,33 @@ db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_rateios` (
     KEY `IDXRateioCorTamanho` (`compras_itens_cor_id`,`compras_itens_tamanho_id`),
     CONSTRAINT `FK_rateio_tamanho_cor` FOREIGN KEY (`compras_itens_cor_id`,`compras_itens_tamanho_id`) REFERENCES `cp_compras_itens_cores` (`id`,`compras_itens_tamanho_id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
+
+db()->exec("DROP TRIGGER IF EXISTS `cp_compras_itens_after_update`;");
+db()->exec("CREATE TRIGGER `cp_compras_itens_after_update` AFTER UPDATE ON `cp_compras_itens` FOR EACH ROW
+BEGIN
+  INSERT INTO `cp_compras_itens_log`
+    (`id`, `cp_compras_id`, `referencia_fornecedor`, `descricao`, `composicao`, `ncm`, `entrega`, `entrega_anterior`, `total_qtde`, `total_produto`, `Foto`, `Sts`)
+  VALUES
+    (OLD.`id`, OLD.`cp_compras_id`, OLD.`referencia_fornecedor`, OLD.`descricao`, OLD.`composicao`, OLD.`ncm`, OLD.`entrega`, OLD.`entrega_anterior`, OLD.`total_qtde`, OLD.`total_produto`, OLD.`Foto`, OLD.`Sts`);
+END;");
+
+db()->exec("DROP TRIGGER IF EXISTS `cp_compras_itens_tamanhos_after_update`;");
+db()->exec("CREATE TRIGGER `cp_compras_itens_tamanhos_after_update` AFTER UPDATE ON `cp_compras_itens_tamanhos` FOR EACH ROW
+BEGIN
+  INSERT INTO `cp_compras_itens_tamanhos_log`
+    (`id`, `compras_itens_id`, `tamanho`, `entrega`, `entrega_anterior`, `markup_franquia`, `markup_loja`, `qtde_total`, `valor_total`, `Itens`, `Sts`)
+  VALUES
+    (OLD.`id`, OLD.`compras_itens_id`, OLD.`tamanho`, OLD.`entrega`, OLD.`entrega_anterior`, OLD.`markup_franquia`, OLD.`markup_loja`, OLD.`qtde_total`, OLD.`valor_total`, OLD.`Itens`, OLD.`Sts`);
+END;");
+
+db()->exec("DROP TRIGGER IF EXISTS `cp_compras_itens_cores_after_update`;");
+db()->exec("CREATE TRIGGER `cp_compras_itens_cores_after_update` AFTER UPDATE ON `cp_compras_itens_cores` FOR EACH ROW
+BEGIN
+  INSERT INTO `cp_compras_itens_cores_log`
+    (`id`, `compras_itens_tamanho_id`, `sku`, `cor`, `Qtde`, `preco_fornecedor`, `preco_proposta`, `valor_total_produto`, `preco_franqueado`, `markup_franquia`, `preco_loja`, `markup_loja`, `markup_total`, `Sts`)
+  VALUES
+    (OLD.`id`, OLD.`compras_itens_tamanho_id`, OLD.`sku`, OLD.`cor`, OLD.`Qtde`, OLD.`preco_fornecedor`, OLD.`preco_proposta`, OLD.`valor_total_produto`, OLD.`preco_franqueado`, OLD.`markup_franquia`, OLD.`preco_loja`, OLD.`markup_loja`, OLD.`markup_total`, OLD.`Sts`);
+END;");
 
 echo "Seed executado com sucesso.\n";
 ?>

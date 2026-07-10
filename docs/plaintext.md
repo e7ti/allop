@@ -1,8 +1,8 @@
 # ALLOP — Arquitetura e padrões do sistema
 
 **Documento-base:** 01/06/2026
-**Última revisão do código:** 08/07/2026
-**Última revisão do `banco.sql`:** 08/07/2026
+**Última revisão do código:** 10/07/2026
+**Última revisão do `banco.sql`:** 10/07/2026
 **Escopo revisado:** aplicação PHP, APIs, banco principal, banco de fotos, seed, assets e módulos existentes.
 
 ## 1. Objetivo
@@ -123,7 +123,7 @@ Principais ações da API:
 | --- | --- |
 | `list` | Lista pedidos com CD, empresa, fornecedor, localização, total e status. |
 | `get` | Carrega cabeçalho e a hierarquia de itens, tamanhos, cores, rateios e indicadores de fotos. |
-| `save` | Insere ou atualiza o pedido e recria seus itens, tamanhos, cores e rateios em transação. |
+| `save` | Insere ou atualiza o pedido e mantém itens, tamanhos, cores e rateios por update quando já existem. |
 | `delete` | Exclui um pedido quando ele não está com o fornecedor. |
 | `options` | Pesquisa CD, empresa, fornecedor ou referência. |
 | `defaults` | Retorna CD/empresa automaticamente quando existe somente um registro. |
@@ -148,7 +148,7 @@ Regras atuais de compras:
 - alterar o status do tamanho aplica o mesmo status em cascata para suas cores;
 - tamanho inativo não exige cor ativa nem rateio de 100%, e tamanho ativo depende de pelo menos uma cor ativa;
 - o total é recalculado a partir de quantidade × preço proposto;
-- itens, tamanhos, cores e rateios antigos são excluídos e recriados ao editar;
+- itens, tamanhos, cores e rateios existentes são atualizados ao editar; somente registros removidos da hierarquia são excluídos;
 - pedido localizado no `Fornecedor` fica somente para visualização e impressão; não pode ser editado, excluído, aprovado, recusado nem ter fotos KidStok alteradas;
 - pedido não publicado não pode ser aprovado;
 - pedido aprovado sem fotos do fornecedor fica com status `Aprovado sem fotos`;
@@ -205,19 +205,18 @@ Permissões cadastradas:
 
 A configuração executada pelo sistema está em `config/database.php` e atualmente aponta para o banco **`allop_devel`**. Credenciais não devem ser copiadas para documentação, commits ou mensagens; a fonte atual é o arquivo de configuração e, idealmente, deve migrar para variáveis de ambiente.
 
-O schema abaixo foi conferido diretamente no banco em 06/07/2026. Como
-`allop_devel` também contém centenas de tabelas legadas do ERP, `banco.sql`
-mantém somente o subconjunto usado pelo sistema Allop e suas dependências
-diretas, sem dados.
+O schema abaixo foi atualizado a partir do `banco.sql` em 10/07/2026. O arquivo
+é um dump estrutural parcial do banco `allop_devel`, sem dados, com tabelas do
+módulo Allop e algumas dependências de catálogo/produtos do ERP.
 
 Tabelas presentes no `banco.sql`:
 
 | Domínio | Tabelas |
 | --- | --- |
 | Segurança | `seg_menu`, `seg_aplicacoes`, `seg_perfil`, `seg_perfil_permissoes`, `seg_usuarios`, `seg_usuarios_permissoes` |
-| Configurações | `situacao`, `empresas_cd`, `empresas`, `config_email`, `configuracoes_email` |
-| Compras | `cp_compras`, `cp_compras_config`, `cp_compras_emails`, `cp_compras_itens`, `cp_compras_itens_tamanhos`, `cp_compras_itens_cores`, `cp_compras_itens_rateios` |
-| Catálogo/fornecedor | `produtos_fornecedor`, `pf_colecao`, `pf_usuarios`, `pf_usuario_fornecedor` |
+| Configurações | `empresas_cd`, `empresas`, `urls_allop` |
+| Compras | `cp_compras`, `cp_compras_emails`, `cp_compras_itens`, `cp_compras_itens_log`, `cp_compras_itens_tamanhos`, `cp_compras_itens_tamanhos_log`, `cp_compras_itens_cores`, `cp_compras_itens_cores_log`, `cp_compras_itens_rateios` |
+| Catálogo/fornecedor | `produtos`, `produtos_fornecedor`, `pf_colecao`, `pf_usuarios`, `pf_usuario_fornecedor` |
 
 O modelo registrado no arquivo organiza as variações de um item na hierarquia
 `cp_compras_itens` → `cp_compras_itens_tamanhos` → `cp_compras_itens_cores`.
@@ -225,8 +224,32 @@ Cada registro de `cp_compras_itens_rateios` relaciona um tamanho a uma de suas
 cores e armazena o percentual da quantidade destinado àquela combinação. Os
 percentuais devem totalizar 100% dentro de cada tamanho, e a quantidade da cor
 é calculada por `qtde_total do tamanho × percentual / 100`.
-`cp_compras_config` mantém as URLs dos portais de compras e do fornecedor por
-CD/empresa.
+
+`urls_allop` guarda URLs por CD/empresa, com os campos `modulo` e `url`.
+
+As tabelas de log registram o snapshot anterior de itens, tamanhos e cores em
+atualizações. Elas também armazenam `Iteracao` e `Localizacao` do pedido no
+momento da alteração:
+
+| Tabela de log | Origem | Observação |
+| --- | --- | --- |
+| `cp_compras_itens_log` | `cp_compras_itens` | Alimentada quando mudam `total_qtde`, `Sts` ou `entrega`. |
+| `cp_compras_itens_tamanhos_log` | `cp_compras_itens_tamanhos` | Alimentada a cada update do tamanho. |
+| `cp_compras_itens_cores_log` | `cp_compras_itens_cores` | Alimentada quando mudam `Qtde`, `preco_proposta` ou `Sts`. |
+
+Triggers presentes no `banco.sql`:
+
+- `cp_compras_itens_after_update`;
+- `cp_compras_itens_tamanhos_after_update`;
+- `cp_compras_itens_cores_after_update`.
+
+O dump possui chaves estrangeiras para tabelas que não estão definidas no próprio
+arquivo, pois pertencem ao schema legado ou não foram exportadas neste recorte:
+`situacao`, `config_email`, `cests_ncm`, `cfops`, `produtos_grupos`,
+`produtos_caracteristicas`, `produtos_categorias`, `produtos_colecao`,
+`produtos_composicoes`, `produtos_cor`, `produtos_generos`, `produtos_linhas`,
+`produtos_local_fisico`, `produtos_tamanho`, `st_cofins`, `st_icms`, `st_ipi`,
+`st_origem` e `st_pis`.
 
 ### 6.2 Banco de fotos
 
@@ -249,7 +272,8 @@ O script `scripts/seed_aplicacoes.php`:
 - cria o usuário inicial `admin` somente se ele ainda não existir;
 - remove rotas antigas de e-mail;
 - remove as aplicações de `Principal` e `Sair`;
-- cria tabelas auxiliares com `CREATE TABLE IF NOT EXISTS`.
+- cria tabelas auxiliares com `CREATE TABLE IF NOT EXISTS`;
+- recria as triggers de log de itens, tamanhos e cores.
 
 Aplicações registradas atualmente:
 
@@ -327,23 +351,24 @@ $aplicacao_descricao = "Descrição objetiva da aplicação.";
 
 ## 9. Pontos de atenção conhecidos
 
-Estes itens foram encontrados nas revisões do código de 08/07/2026 e do `banco.sql` de 08/07/2026 e não foram corrigidos nesta atualização documental:
+Estes itens foram encontrados nas revisões do código e do `banco.sql` de 10/07/2026 e não foram corrigidos nesta atualização documental:
 
 1. **Permissão incompleta:** o menu usa apenas permissões do perfil. `seg_usuarios_permissoes` não participa da montagem do menu, e as APIs não validam permissões de inserir, editar, excluir ou processar; validam apenas a sessão.
 2. **Dashboard sem filtro por permissão:** os indicadores de compras do dashboard ainda não variam conforme permissões do usuário.
 3. **Alteração de senha admin:** `api/seguranca/admin_senha.php` não chama `api_require_login()`.
 4. **Coluna divergente:** `banco.sql` define `seg_usuarios_permissoes.editar`, mas `api/seguranca/crud.php` usa `edtiar`. A coluna `imprirmir` está grafada dessa forma tanto no schema quanto no código.
-5. **Tabela de e-mail divergente:** o módulo de Configurações usa `configuracoes_email`; o envio de propostas e `banco.sql` usam `config_email`.
-6. **Coluna de empresa ausente:** a API de empresas usa a coluna `ibge`, mas ela não existe em `empresas` no banco consultado.
-7. **Seed divergente do banco:** o seed executa seis `CREATE TABLE IF NOT EXISTS`; nas tabelas novas de compras, sua definição não coincide integralmente com o schema real, especialmente nas nulabilidades e chaves estrangeiras de tamanhos, cores e rateios.
-8. **Datas obrigatórias por tamanho:** o banco define `cp_compras_itens_tamanhos.entrega` e `entrega_anterior` como `NOT NULL`; a API grava fallback pela entrega do tamanho, entrega do item ou data do pedido quando o campo não vem informado.
-9. **Relacionamento de tamanho com item:** o banco não possui chave estrangeira entre `cp_compras_itens_tamanhos.compras_itens_id` e `cp_compras_itens.id`; a integridade depende da API.
-10. **Credenciais no código:** as conexões usam constantes versionadas em `config/database.php`; o recomendado é usar variáveis de ambiente.
-11. **Erros de API:** várias APIs devolvem diretamente `Throwable::getMessage()`, o que pode revelar detalhes do banco.
-12. **CSRF:** não há token CSRF nos formulários ou ações mutáveis.
-13. **Senha legada:** o login aceita senha em texto puro para compatibilidade, embora novas senhas sejam salvas com hash.
-14. **Transação entre bancos:** upload de fotos abre transações separadas nos dois bancos; não existe atomicidade distribuída caso apenas um commit conclua.
-15. **Dependências externas:** a busca de CEP usa ViaCEP pelo navegador e o CSS importa a fonte Poppins do Google Fonts. São as exceções atuais à regra de assets locais.
+5. **Tabelas de e-mail divergentes:** o módulo de Configurações usa `configuracoes_email`, o envio de propostas usa `config_email`, e o `banco.sql` atual apenas referencia `config_email` por FK em `cp_compras_emails`, sem criar `config_email` nem `configuracoes_email`.
+6. **Tabela de situação ausente no dump:** `empresas.Status` e `empresas_cd.Status` referenciam `situacao.StsNome`, mas `situacao` não está criada no `banco.sql` atual.
+7. **URLs sem uso no código:** `banco.sql` possui `urls_allop`, mas o código atual não consulta essa tabela.
+8. **Coluna de empresa ausente:** a API de empresas usa a coluna `ibge`, mas ela não existe em `empresas` no `banco.sql` atual.
+9. **Seed divergente do banco:** o seed cria algumas estruturas auxiliares com definições diferentes do `banco.sql`, incluindo tabelas de e-mail e `urls_allop`.
+10. **Dependências de produtos incompletas no dump:** `produtos` possui FKs para várias tabelas legadas que não estão criadas no `banco.sql`, como `cfops`, `cests_ncm`, tabelas `produtos_*` e tabelas `st_*`.
+11. **Credenciais no código:** as conexões usam constantes versionadas em `config/database.php`; o recomendado é usar variáveis de ambiente.
+12. **Erros de API:** várias APIs devolvem diretamente `Throwable::getMessage()`, o que pode revelar detalhes do banco.
+13. **CSRF:** não há token CSRF nos formulários ou ações mutáveis.
+14. **Senha legada:** o login aceita senha em texto puro para compatibilidade, embora novas senhas sejam salvas com hash.
+15. **Transação entre bancos:** upload de fotos abre transações separadas nos dois bancos; não existe atomicidade distribuída caso apenas um commit conclua.
+16. **Dependências externas:** a busca de CEP usa ViaCEP pelo navegador e o CSS importa a fonte Poppins do Google Fonts. São as exceções atuais à regra de assets locais.
 
 ## 10. Validação antes de entregar alterações
 

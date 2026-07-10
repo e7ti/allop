@@ -16,7 +16,7 @@ $id = (int) ($_GET['id'] ?? 0);
 <form id="empresas-cd-form" class="card card-slim form-section" data-id="<?= $id ?>">
     <div class="card-body row g-3">
         <input type="hidden" name="id" value="<?= $id ?>">
-        <div class="col-12 col-md-3"><label class="form-label">Codigo</label><input class="form-control" name="Codigo" type="number"></div>
+        <div class="col-12 col-md-3"><label class="form-label">Código</label><input class="form-control" name="Codigo" type="number"></div>
         <div class="col-12 col-md-6"><label class="form-label">Nome CD</label><input class="form-control" name="NomeCD" maxlength="50" required></div>
         <div class="col-12 col-md-3"><label class="form-label">Status</label><select class="form-select" name="Status" required><option value="Ativo">Ativo</option><option value="Inativo">Inativo</option></select></div>
     </div>

@@ -28,13 +28,13 @@ render_header('Empresas', [
         <table class="table table-custom align-middle">
             <thead>
                 <tr>
-                    <th>Codigo</th>
+                    <th>Código</th>
                     <th>Fantasia</th>
                     <th>CNPJ</th>
                     <th>Cidade/UF</th>
-                    <th>Codigo IBGE</th>
+                    <th>Código IBGE</th>
                     <th>Status</th>
-                    <th class="text-end">Acoes</th>
+                    <th class="text-end">Ações</th>
                 </tr>
             </thead>
             <tbody id="empresas-grid"></tbody>

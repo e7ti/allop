@@ -4,13 +4,13 @@
     Data : 01/06/2026
 */
 $aplicacao_nome = "aplicacoes_form.php";
-$aplicacao_descricao = "Insere e edita aplicacoes do sistema.";
+$aplicacao_descricao = "Insere e edita aplicações do sistema.";
 
 
 
 require_once __DIR__ . '/../../includes/layout.php';
 require_login();
-render_header('Aplicacao', [
+render_header('Aplicação', [
     ['label' => 'Voltar', 'href' => 'aplicacoes_lista.php', 'class' => 'btn btn-outline-secondary btn-back'],
 ]);
 $id = (int) ($_GET['id'] ?? 0);

@@ -4,7 +4,7 @@
     Data : 01/06/2026
 */
 $aplicacao_nome = "crud.php";
-$aplicacao_descricao = "API CRUD generica para o modulo de seguranca.";
+$aplicacao_descricao = "API CRUD genérica para o módulo de segurança.";
 
 
 
@@ -54,7 +54,7 @@ $entityName = (string) ($_GET['entity'] ?? $_POST['entity'] ?? '');
 $action = (string) ($_GET['action'] ?? $_POST['action'] ?? 'list');
 
 if (!isset($entities[$entityName])) {
-    api_response(false, ['message' => 'Entidade invalida.'], 404);
+    api_response(false, ['message' => 'Entidade inválida.'], 404);
 }
 
 $entity = $entities[$entityName];
@@ -192,7 +192,7 @@ try {
         $id = (int) ($data['id'] ?? 0);
         $stmt = db()->prepare("DELETE FROM $table WHERE id = :id");
         $stmt->execute(['id' => $id]);
-        api_response(true, ['message' => 'Registro excluido.']);
+        api_response(true, ['message' => 'Registro excluído.']);
     }
 
     if ($action === 'save') {
@@ -224,7 +224,7 @@ try {
 
         if ($entityName === 'perfil_aplicacoes') {
             if (empty($payload['perfil_id']) || empty($payload['aplicacao_id'])) {
-                api_response(false, ['message' => 'Informe perfil e aplicacao.'], 422);
+                api_response(false, ['message' => 'Informe perfil e aplicação.'], 422);
             }
 
             if ($id < 1) {
@@ -245,7 +245,7 @@ try {
 
         if ($entityName === 'usuarios_permissoes') {
             if (empty($payload['usuario_id']) || empty($payload['aplicacao_id'])) {
-                api_response(false, ['message' => 'Informe usuario e aplicacao.'], 422);
+                api_response(false, ['message' => 'Informe usuário e aplicação.'], 422);
             }
 
             if ($id < 1) {
@@ -282,7 +282,7 @@ try {
         api_response(true, ['message' => 'Registro inserido.', 'id' => (int) ($payload['id'] ?? db()->lastInsertId())]);
     }
 
-    api_response(false, ['message' => 'Acao invalida.'], 404);
+    api_response(false, ['message' => 'Ação inválida.'], 404);
 } catch (Throwable $e) {
     api_response(false, ['message' => $e->getMessage()], 500);
 }

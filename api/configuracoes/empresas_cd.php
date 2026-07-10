@@ -62,7 +62,7 @@ try {
         $id = (int) ($data['id'] ?? 0);
         $stmt = db()->prepare("DELETE FROM empresas_cd WHERE Codigo = :id");
         $stmt->execute(['id' => $id]);
-        api_response(true, ['message' => 'Registro excluido.']);
+        api_response(true, ['message' => 'Registro excluído.']);
     }
 
     if ($action === 'save') {
@@ -101,7 +101,7 @@ try {
         api_response(true, ['message' => 'Registro inserido.', 'id' => $payload['Codigo']]);
     }
 
-    api_response(false, ['message' => 'Acao invalida.'], 404);
+    api_response(false, ['message' => 'Ação inválida.'], 404);
 } catch (Throwable $e) {
     api_response(false, ['message' => $e->getMessage()], 500);
 }

@@ -18,9 +18,9 @@ $ufs = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','P
     <input type="hidden" name="id" value="<?= $id ?>">
 
     <section class="card card-slim mb-3">
-        <div class="card-header"><strong>Identificacao</strong></div>
+        <div class="card-header"><strong>Identificação</strong></div>
         <div class="card-body row g-3">
-            <div class="col-12 col-md-3"><label class="form-label">Codigo</label><input class="form-control" name="Codigo" type="number"></div>
+            <div class="col-12 col-md-3"><label class="form-label">Código</label><input class="form-control" name="Codigo" type="number"></div>
             <div class="col-12 col-md-5"><label class="form-label">CD</label><select class="form-select js-empresa-select" name="EmpresaCD" data-type="empresas_cd" required></select></div>
             <div class="col-12 col-md-4"><label class="form-label">CNPJ</label><input class="form-control js-only-digits js-cnpj" name="CNPJ" maxlength="14" required></div>
             <div class="col-12 col-md-6"><label class="form-label">Nome</label><input class="form-control" name="Nome" maxlength="50" required></div>
@@ -32,17 +32,17 @@ $ufs = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','P
     </section>
 
     <section class="card card-slim mb-3">
-        <div class="card-header"><strong>Endereco</strong></div>
+        <div class="card-header"><strong>Endereço</strong></div>
         <div class="card-body row g-3">
             <div class="col-12 col-md-3"><label class="form-label">CEP</label><input class="form-control js-only-digits js-cep" name="CEP" maxlength="8"></div>
-            <div class="col-12 col-md-3"><label class="form-label">Tipo Endereco</label><input class="form-control" name="TipoEndereco" maxlength="25"></div>
-            <div class="col-12 col-md-6"><label class="form-label">Endereco</label><input class="form-control" name="Endereco" maxlength="60"></div>
-            <div class="col-12 col-md-2"><label class="form-label">Numero</label><input class="form-control" name="Numero" maxlength="10"></div>
+            <div class="col-12 col-md-3"><label class="form-label">Tipo Endereço</label><input class="form-control" name="TipoEndereco" maxlength="25"></div>
+            <div class="col-12 col-md-6"><label class="form-label">Endereço</label><input class="form-control" name="Endereco" maxlength="60"></div>
+            <div class="col-12 col-md-2"><label class="form-label">Número</label><input class="form-control" name="Numero" maxlength="10"></div>
             <div class="col-12 col-md-4"><label class="form-label">Complemento</label><input class="form-control" name="Complemento" maxlength="40"></div>
             <div class="col-12 col-md-4"><label class="form-label">Bairro</label><input class="form-control" name="Bairro" maxlength="50"></div>
             <div class="col-12 col-md-4"><label class="form-label">Cidade</label><input class="form-control" name="Cidade" maxlength="60"></div>
             <div class="col-12 col-md-2"><label class="form-label">UF</label><select class="form-select" name="UF"><option value="">Selecione</option><?php foreach ($ufs as $uf): ?><option value="<?= $uf ?>"><?= $uf ?></option><?php endforeach; ?></select></div>
-            <div class="col-12 col-md-2"><label class="form-label">Codigo IBGE</label><input class="form-control js-only-digits" name="ibge" maxlength="7"></div>
+            <div class="col-12 col-md-2"><label class="form-label">Código IBGE</label><input class="form-control js-only-digits" name="ibge" maxlength="7"></div>
         </div>
     </section>
 
@@ -53,8 +53,8 @@ $ufs = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','P
             <div class="col-12 col-md-4"><label class="form-label">Telefone</label><input class="form-control js-only-digits" name="FoneNro" maxlength="10"></div>
             <div class="col-12 col-md-2"><label class="form-label">DDD Celular</label><input class="form-control js-only-digits js-ddd" name="CelularDDD" maxlength="2"></div>
             <div class="col-12 col-md-4"><label class="form-label">Celular</label><input class="form-control js-only-digits" name="CelularNro" maxlength="10"></div>
-            <div class="col-12 col-md-5"><label class="form-label">Responsavel</label><input class="form-control" name="Responsavel" maxlength="60"></div>
-            <div class="col-12 col-md-7"><label class="form-label">Observacoes</label><input class="form-control" name="Observacoes" maxlength="250"></div>
+            <div class="col-12 col-md-5"><label class="form-label">Responsável</label><input class="form-control" name="Responsavel" maxlength="60"></div>
+            <div class="col-12 col-md-7"><label class="form-label">Observações</label><input class="form-control" name="Observacoes" maxlength="250"></div>
         </div>
     </section>
 

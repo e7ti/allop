@@ -28,7 +28,7 @@ render_header('Perfis', [
     </div>
     <div class="card-body table-responsive">
         <table class="table table-custom align-middle">
-            <thead><tr><th>Nome</th><th class="text-end">Acoes</th></tr></thead>
+            <thead><tr><th>Nome</th><th class="text-end">Ações</th></tr></thead>
             <tbody id="grid"></tbody>
         </table>
     </div>

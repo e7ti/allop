@@ -4,11 +4,11 @@
     Data : 02/06/2026
 */
 $aplicacao_nome = "configuracoes_email_lista.php";
-$aplicacao_descricao = "Lista configuracoes de e-mail.";
+$aplicacao_descricao = "Lista configurações de e-mail.";
 
 require_once __DIR__ . '/../../../includes/layout.php';
 require_login();
-render_header('Configuracoes de E-mail', [
+render_header('Configurações de E-mail', [
     ['label' => 'Voltar', 'href' => '../../../dashboard.php', 'class' => 'btn btn-outline-secondary btn-back'],
 ]);
 ?>
@@ -16,7 +16,7 @@ render_header('Configuracoes de E-mail', [
     <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
         <div class="grid-filter">
             <div class="filter-inline">
-                <select id="filtro-email" class="form-select"><option value="">Pesquisar configuracao de e-mail</option></select>
+                <select id="filtro-email" class="form-select"><option value="">Pesquisar configuração de e-mail</option></select>
                 <button class="btn btn-orange btn-filter" id="btn-filtrar-email" type="button">Filtrar</button>
             </div>
         </div>
@@ -34,7 +34,7 @@ render_header('Configuracoes de E-mail', [
                     <th>E-mail</th>
                     <th>Habilitado</th>
                     <th>Status</th>
-                    <th class="text-end">Acoes</th>
+                    <th class="text-end">Ações</th>
                 </tr>
             </thead>
             <tbody id="configuracoes-email-grid"></tbody>

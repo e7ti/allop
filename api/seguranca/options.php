@@ -24,7 +24,7 @@ $map = [
 ];
 
 if (!isset($map[$type])) {
-    api_response(false, ['message' => 'Tipo invalido.'], 404);
+    api_response(false, ['message' => 'Tipo inválido.'], 404);
 }
 
 $table = $map[$type]['table'];

@@ -28,7 +28,7 @@ $id = (int) ($_GET['id'] ?? 0);
     <section class="card card-slim mb-3">
         <div class="card-header"><strong>Pedido</strong></div>
         <div class="card-body row g-3">
-            <div class="col-12 col-md-2"><label class="form-label">Codigo</label><input class="form-control" name="ID" type="number" readonly></div>
+            <div class="col-12 col-md-2"><label class="form-label">Código</label><input class="form-control" name="ID" type="number" readonly></div>
             <div class="col-12 col-md-3"><label class="form-label">CD</label><select class="form-select js-cp-compra-select" name="cd_id" data-type="empresas_cd" required></select></div>
             <div class="col-12 col-md-3"><label class="form-label">Empresa</label><select class="form-select js-cp-compra-select" name="empresa_id" data-type="empresas" required></select></div>
             <div class="col-12 col-md-4"><label class="form-label">Fornecedor</label><select class="form-select js-cp-compra-select" name="Fornecedor_id" data-type="fornecedores" required></select></div>
@@ -41,9 +41,9 @@ $id = (int) ($_GET['id'] ?? 0);
             <input type="hidden" name="Publicado" value="0">
             <input type="hidden" name="Localizacao" value="KidStok">
             <div class="col-12 col-md-2"><label class="form-label">Status</label><input class="form-control" name="Sts_display" value="Aberto" readonly></div>
-            <div class="col-12 col-md-2"><label class="form-label">Publicado</label><input class="form-control" name="Publicado_display" value="0 - Nao publicado" readonly></div>
-            <div class="col-12 col-md-2"><label class="form-label">Localizacao</label><input class="form-control" name="Localizacao_display" value="KidStok" readonly></div>
-            <div class="col-12 col-md-8 d-none" id="cp-sts-motivo-group"><label class="form-label">Motivo/Observacao</label><input class="form-control" name="StsMotivo" maxlength="500"></div>
+            <div class="col-12 col-md-2"><label class="form-label">Publicado</label><input class="form-control" name="Publicado_display" value="Não Publicado" readonly></div>
+            <div class="col-12 col-md-2"><label class="form-label">Localização</label><input class="form-control" name="Localizacao_display" value="KidStok" readonly></div>
+            <div class="col-12 col-md-8 d-none" id="cp-sts-motivo-group"><label class="form-label">Motivo/Observação</label><input class="form-control" name="StsMotivo" maxlength="500"></div>
         </div>
     </section>
     <section class="card card-slim mb-3">
@@ -105,7 +105,7 @@ $id = (int) ($_GET['id'] ?? 0);
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title">Fotos do Item</h5>
-                    <div class="text-muted small">Referencia <span id="cp-foto-referencia"></span> - <span id="cp-foto-count">0 fotos</span></div>
+                    <div class="text-muted small">Referência <span id="cp-foto-referencia"></span> - <span id="cp-foto-count">0 fotos</span></div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>

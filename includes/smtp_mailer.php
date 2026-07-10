@@ -37,7 +37,7 @@ function smtp_expect($socket, array $expectedCodes): array
 function smtp_command($socket, string $command, array $expectedCodes): array
 {
     if (fwrite($socket, $command . "\r\n") === false) {
-        throw new RuntimeException('Nao foi possivel enviar um comando ao servidor SMTP.');
+        throw new RuntimeException('Não foi possível enviar um comando ao servidor SMTP.');
     }
 
     return smtp_expect($socket, $expectedCodes);
@@ -66,7 +66,7 @@ function smtp_send(array $config, array $recipients, string $subject, string $bo
     $sslEnabled = strtoupper(trim((string) ($config['ModoSSL'] ?? 'N'))) === 'S';
 
     if ($host === '' || $port <= 0 || !filter_var($username, FILTER_VALIDATE_EMAIL)) {
-        throw new RuntimeException('A configuracao de e-mail esta incompleta.');
+        throw new RuntimeException('A configuração de e-mail está incompleta.');
     }
 
     $validRecipients = [];
@@ -80,7 +80,7 @@ function smtp_send(array $config, array $recipients, string $subject, string $bo
         }
     }
     if (!$validRecipients) {
-        throw new RuntimeException('Nenhum destinatario possui um e-mail valido.');
+        throw new RuntimeException('Nenhum destinatário possui um e-mail válido.');
     }
 
     $implicitSsl = $sslEnabled && $port === 465;
@@ -101,7 +101,7 @@ function smtp_send(array $config, array $recipients, string $subject, string $bo
         $context
     );
     if (!$socket) {
-        throw new RuntimeException('Nao foi possivel conectar ao servidor SMTP: ' . $errorMessage);
+        throw new RuntimeException('Não foi possível conectar ao servidor SMTP: ' . $errorMessage);
     }
 
     stream_set_timeout($socket, 20);
@@ -116,7 +116,7 @@ function smtp_send(array $config, array $recipients, string $subject, string $bo
                 ? STREAM_CRYPTO_METHOD_TLS_CLIENT
                 : STREAM_CRYPTO_METHOD_SSLv23_CLIENT;
             if (!stream_socket_enable_crypto($socket, true, $cryptoMethod)) {
-                throw new RuntimeException('Nao foi possivel ativar a conexao segura com o servidor SMTP.');
+                throw new RuntimeException('Não foi possível ativar a conexão segura com o servidor SMTP.');
             }
             smtp_command($socket, 'EHLO ' . $clientName, [250]);
         }
@@ -151,7 +151,7 @@ function smtp_send(array $config, array $recipients, string $subject, string $bo
             . chunk_split(base64_encode($body), 76, "\r\n");
 
         if (fwrite($socket, $message . "\r\n.\r\n") === false) {
-            throw new RuntimeException('Nao foi possivel transmitir o e-mail ao servidor SMTP.');
+            throw new RuntimeException('Não foi possível transmitir o e-mail ao servidor SMTP.');
         }
         smtp_expect($socket, [250]);
         smtp_command($socket, 'QUIT', [221]);

@@ -4,13 +4,13 @@
     Data : 01/06/2026
 */
 $aplicacao_nome = "usuarios_permissoes_lista.php";
-$aplicacao_descricao = "Lista permissoes de aplicacoes por usuario.";
+$aplicacao_descricao = "Lista permissões de aplicações por usuário.";
 
 
 
 require_once __DIR__ . '/../../includes/layout.php';
 require_login();
-render_header('Usuario x Aplicacoes', [
+render_header('Usuário x Aplicações', [
     ['label' => 'Voltar', 'href' => '../../dashboard.php', 'class' => 'btn btn-outline-secondary btn-back'],
 ]);
 ?>
@@ -18,7 +18,7 @@ render_header('Usuario x Aplicacoes', [
     <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
         <div class="grid-filter">
             <div class="filter-inline">
-                <select id="filtro" class="form-select js-select2" data-entity="usuarios_permissoes"><option value="">Pesquisar permissao</option></select>
+                <select id="filtro" class="form-select js-select2" data-entity="usuarios_permissoes"><option value="">Pesquisar permissão</option></select>
                 <button class="btn btn-orange btn-filter" id="btn-filtrar" type="button">Filtrar</button>
             </div>
         </div>
@@ -30,8 +30,8 @@ render_header('Usuario x Aplicacoes', [
         <table class="table table-custom align-middle">
             <thead>
                 <tr>
-                    <th>Usuario</th>
-                    <th>Aplicacao</th>
+                    <th>Usuário</th>
+                    <th>Aplicação</th>
                     <th>Visualizar</th>
                     <th>Inserir</th>
                     <th>Editar</th>
@@ -39,7 +39,7 @@ render_header('Usuario x Aplicacoes', [
                     <th>Imprimir</th>
                     <th>Exportar</th>
                     <th>Processar</th>
-                    <th class="text-end">Acoes</th>
+                    <th class="text-end">Ações</th>
                 </tr>
             </thead>
             <tbody id="grid"></tbody>
@@ -51,7 +51,7 @@ window.gridConfig = {
     entity: 'usuarios_permissoes',
     form: 'usuarios_permissoes_form.php',
     columns: ['usuario_nome', 'aplicacao_nome', 'visualizar', 'inserir', 'edtiar', 'excluir', 'imprirmir', 'exportar', 'processar'],
-    labels: ['Usuario', 'Aplicacao', 'Visualizar', 'Inserir', 'Editar', 'Excluir', 'Imprimir', 'Exportar', 'Processar']
+    labels: ['Usuário', 'Aplicação', 'Visualizar', 'Inserir', 'Editar', 'Excluir', 'Imprimir', 'Exportar', 'Processar']
 };
 </script>
 <?php render_footer(); ?>

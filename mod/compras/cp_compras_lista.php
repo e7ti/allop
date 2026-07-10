@@ -33,10 +33,11 @@ render_header('Pedidos de Compra', [
                     <th>CD</th>
                     <th>Empresa</th>
                     <th>Fornecedor</th>
-                    <th>Localizacao</th>
+                    <th>Localização</th>
+                    <th>Publicado</th>
                     <th>Total</th>
                     <th>Status</th>
-                    <th class="text-end">Acoes</th>
+                    <th class="text-end">Ações</th>
                 </tr>
             </thead>
             <tbody id="cp-compras-grid"></tbody>

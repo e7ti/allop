@@ -28,10 +28,10 @@ render_header('Empresas CD', [
         <table class="table table-custom align-middle">
             <thead>
                 <tr>
-                    <th>Codigo</th>
+                    <th>Código</th>
                     <th>Nome CD</th>
                     <th>Status</th>
-                    <th class="text-end">Acoes</th>
+                    <th class="text-end">Ações</th>
                 </tr>
             </thead>
             <tbody id="empresas-cd-grid"></tbody>

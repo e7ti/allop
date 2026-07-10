@@ -514,6 +514,24 @@ body {
     color: #055160 !important;
 }
 
+.dashboard-grid-badge {
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    padding: 0.42rem 0.65rem;
+}
+
+.dashboard-publicado-sim {
+    background-color: #d1e7dd !important;
+    color: #0f5132 !important;
+}
+
+.dashboard-publicado-nao {
+    background-color: #f8d7da !important;
+    color: #842029 !important;
+}
+
 /* ==========================================================================
    DASHBOARD CARDS SLIM
    ========================================================================== */
@@ -1071,11 +1089,77 @@ body {
     color: #334e57;
 }
 
+.cp-compras-form-wide .cp-compra-tamanho-title {
+    flex: 0 0 120px;
+    min-width: 96px;
+}
+
+.cp-compras-form-wide .cp-compra-tamanho-summary {
+    align-items: center;
+    display: grid;
+    flex: 1 1 auto;
+    gap: 0.7rem;
+    grid-template-columns: repeat(5, minmax(72px, 1fr));
+    min-width: 0;
+}
+
+.cp-compras-form-wide .cp-compra-summary-metric {
+    min-width: 0;
+}
+
+.cp-compras-form-wide .cp-compra-summary-metric small {
+    color: #6f7d84;
+    display: block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 1.1;
+    text-transform: uppercase;
+}
+
+.cp-compras-form-wide .cp-compra-summary-metric span {
+    display: block;
+    font-size: 0.84rem;
+    font-weight: 700;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cp-compras-form-wide .cp-compra-tamanho-actions {
+    flex: 0 0 auto;
+}
+
 .cp-compras-form-wide .cp-compra-cor-header {
     background: #fff1cc;
     color: #5c4a1f;
     font-size: 0.82rem;
     padding: 0.42rem 0.6rem;
+}
+
+.cp-compras-form-wide .cp-compra-cor-title {
+    flex: 0 0 120px;
+    min-width: 96px;
+}
+
+.cp-compras-form-wide .cp-compra-cor-summary {
+    align-items: center;
+    display: grid;
+    flex: 1 1 auto;
+    gap: 0.55rem;
+    grid-template-columns: repeat(7, minmax(78px, 1fr));
+    min-width: 0;
+}
+
+.cp-compras-form-wide .cp-compra-cor-summary .cp-status-badge {
+    display: inline-flex;
+    justify-content: center;
+    max-width: 100%;
+}
+
+.cp-compras-form-wide .cp-compra-cor-actions {
+    flex: 0 0 auto;
 }
 
 .cp-compras-form-wide .cp-status-badge {
@@ -1119,6 +1203,14 @@ body {
 .cp-compras-form-wide .cp-compra-tamanho-header > :first-child,
 .cp-compras-form-wide .cp-compra-cor-header > :first-child {
     flex: 1 1 auto;
+}
+
+.cp-compras-form-wide .cp-compra-tamanho-header > .cp-compra-tamanho-title {
+    flex: 0 0 120px;
+}
+
+.cp-compras-form-wide .cp-compra-cor-header > .cp-compra-cor-title {
+    flex: 0 0 120px;
 }
 
 .cp-compras-form-wide .cp-compra-tamanho .accordion-body {
@@ -1624,5 +1716,41 @@ body {
     .cp-compras-form-wide .cp-compra-cor-header {
         align-items: flex-start;
         flex-wrap: wrap;
+    }
+
+    .cp-compras-form-wide .cp-compra-tamanho-header > .cp-compra-tamanho-title {
+        flex: 1 1 calc(100% - 2rem);
+    }
+
+    .cp-compras-form-wide .cp-compra-tamanho-summary {
+        flex: 1 1 100%;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        order: 3;
+    }
+
+    .cp-compras-form-wide .cp-compra-cor-header > .cp-compra-cor-title {
+        flex: 1 1 calc(100% - 2rem);
+    }
+
+    .cp-compras-form-wide .cp-compra-cor-summary {
+        flex: 1 1 100%;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        order: 3;
+    }
+
+    .cp-compras-form-wide .cp-compra-tamanho-actions {
+        flex-wrap: wrap;
+        order: 2;
+        width: 100%;
+    }
+
+    .cp-compras-form-wide .cp-compra-cor-actions {
+        flex-wrap: wrap;
+        order: 2;
+        width: 100%;
+    }
+
+    .cp-compras-form-wide .cp-compra-tamanho-actions .btn:not(.btn-icon-only) {
+        flex: 1 1 auto;
     }
 }

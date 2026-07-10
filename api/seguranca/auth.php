@@ -15,7 +15,7 @@ $login = trim((string) ($data['login'] ?? ''));
 $senha = (string) ($data['senha'] ?? '');
 
 if ($login === '' || $senha === '') {
-    api_response(false, ['message' => 'Informe usuario e senha.'], 422);
+    api_response(false, ['message' => 'Informe usuário e senha.'], 422);
 }
 
 $stmt = db()->prepare("SELECT id, nome, login, senha, perfil_id, ativo FROM seg_usuarios WHERE login = :login LIMIT 1");
@@ -23,14 +23,14 @@ $stmt->execute(['login' => $login]);
 $usuario = $stmt->fetch();
 
 if (!$usuario || !(int) ($usuario['ativo'] ?? 1)) {
-    api_response(false, ['message' => 'Usuario ou senha invalidos.'], 401);
+    api_response(false, ['message' => 'Usuário ou senha inválidos.'], 401);
 }
 
 $hash = (string) $usuario['senha'];
 $senhaOk = password_verify($senha, $hash) || hash_equals($hash, $senha);
 
 if (!$senhaOk) {
-    api_response(false, ['message' => 'Usuario ou senha invalidos.'], 401);
+    api_response(false, ['message' => 'Usuário ou senha inválidos.'], 401);
 }
 
 login_user($usuario);

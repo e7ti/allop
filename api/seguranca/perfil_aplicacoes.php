@@ -4,7 +4,7 @@
     Data : 01/06/2026
 */
 $aplicacao_nome = "perfil_aplicacoes.php";
-$aplicacao_descricao = "API para manutencao em lote das permissoes por perfil.";
+$aplicacao_descricao = "API para manutenção em lote das permissões por perfil.";
 
 
 
@@ -83,7 +83,7 @@ try {
 
         $stmt = db()->prepare("DELETE FROM seg_perfil_permissoes WHERE perfil_id = :perfil_id");
         $stmt->execute(['perfil_id' => $perfilId]);
-        api_response(true, ['message' => 'Permissoes excluidas com sucesso.']);
+        api_response(true, ['message' => 'Permissões excluídas com sucesso.']);
     }
 
     if ($action === 'save') {
@@ -95,7 +95,7 @@ try {
         }
 
         if (!is_array($permissions)) {
-            api_response(false, ['message' => 'Permissoes invalidas.'], 422);
+            api_response(false, ['message' => 'Permissões inválidas.'], 422);
         }
 
         db()->beginTransaction();
@@ -157,10 +157,10 @@ try {
         }
 
         db()->commit();
-        api_response(true, ['message' => 'Permissoes atualizadas com sucesso.']);
+        api_response(true, ['message' => 'Permissões atualizadas com sucesso.']);
     }
 
-    api_response(false, ['message' => 'Acao invalida.'], 404);
+    api_response(false, ['message' => 'Ação inválida.'], 404);
 } catch (Throwable $e) {
     if (db()->inTransaction()) {
         db()->rollBack();

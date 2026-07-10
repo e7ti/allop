@@ -190,7 +190,7 @@ function cp_option_select(string $type, string $q): void
         api_response(true, ['results' => $results]);
     }
 
-    api_response(false, ['message' => 'Tipo invalido.'], 404);
+    api_response(false, ['message' => 'Tipo inválido.'], 404);
 }
 
 function cp_single_option(string $table, string $idColumn, string $textColumn): ?array
@@ -223,7 +223,7 @@ function cp_items_from_request(array $data): array
 {
     $items = json_decode((string) ($data['items_json'] ?? '[]'), true);
     if (!is_array($items)) {
-        api_response(false, ['message' => 'Itens invalidos.'], 422);
+        api_response(false, ['message' => 'Itens inválidos.'], 422);
     }
     cp_validate_unique_item_references($items);
     return $items;
@@ -238,7 +238,7 @@ function cp_validate_unique_item_references(array $items): void
             continue;
         }
         if (isset($used[$referencia])) {
-            api_response(false, ['message' => "A referencia $referencia ja foi incluida neste pedido."], 422);
+            api_response(false, ['message' => "A referência $referencia já foi incluída neste pedido."], 422);
         }
         $used[$referencia] = true;
     }
@@ -250,7 +250,7 @@ function cp_validate_item_percentuais(array $items): void
         $referencia = cp_trim($item['referencia_fornecedor'] ?? '');
         $tamanhos = is_array($item['tamanhos'] ?? null) ? $item['tamanhos'] : [];
         if (!$tamanhos) {
-            api_response(false, ['message' => "Informe ao menos um tamanho para a referencia $referencia."], 422);
+            api_response(false, ['message' => "Informe ao menos um tamanho para a referência $referencia."], 422);
         }
 
         $itemAtivo = (int) ($item['Sts'] ?? 1) !== 0;
@@ -259,10 +259,10 @@ function cp_validate_item_percentuais(array $items): void
         foreach ($tamanhos as $tamanho) {
             $nomeTamanho = cp_trim($tamanho['tamanho'] ?? '');
             if ($nomeTamanho === '') {
-                api_response(false, ['message' => "Informe todos os tamanhos da referencia $referencia."], 422);
+                api_response(false, ['message' => "Informe todos os tamanhos da referência $referencia."], 422);
             }
             if (isset($tamanhosUsados[$nomeTamanho])) {
-                api_response(false, ['message' => "O tamanho $nomeTamanho esta duplicado na referencia $referencia."], 422);
+                api_response(false, ['message' => "O tamanho $nomeTamanho está duplicado na referência $referencia."], 422);
             }
             $tamanhosUsados[$nomeTamanho] = true;
 
@@ -288,7 +288,7 @@ function cp_validate_item_percentuais(array $items): void
                     api_response(false, ['message' => "Informe todas as cores do tamanho $nomeTamanho."], 422);
                 }
                 if (isset($coresUsadas[$nomeCor])) {
-                    api_response(false, ['message' => "A cor $nomeCor esta duplicada no tamanho $nomeTamanho."], 422);
+                    api_response(false, ['message' => "A cor $nomeCor está duplicada no tamanho $nomeTamanho."], 422);
                 }
                 $coresUsadas[$nomeCor] = true;
 
@@ -303,7 +303,7 @@ function cp_validate_item_percentuais(array $items): void
             }
         }
         if ($itemAtivo && $tamanhosAtivos === 0) {
-            api_response(false, ['message' => "Informe ao menos um tamanho ativo para a referencia $referencia."], 422);
+            api_response(false, ['message' => "Informe ao menos um tamanho ativo para a referência $referencia."], 422);
         }
     }
 }
@@ -491,10 +491,10 @@ function cp_require_kidstok(int $id, string $operation): void
 {
     $localizacao = cp_pedido_localizacao($id);
     if ($localizacao === null) {
-        api_response(false, ['message' => 'Pedido nao encontrado.'], 404);
+        api_response(false, ['message' => 'Pedido não encontrado.'], 404);
     }
     if (cp_localizacao_fornecedor($localizacao)) {
-        api_response(false, ['message' => "Pedido com localizacao $localizacao nao permite $operation. Apenas visualizacao e impressao."], 403);
+        api_response(false, ['message' => "Pedido com localização $localizacao não permite $operation. Apenas visualização e impressão."], 403);
     }
 }
 
@@ -519,13 +519,13 @@ function cp_image_mime_from_base64(string $base64): string
 function cp_validate_foto_context(int $pedidoId, string $referencia, string $fornecedorId, string $table = 'cp_compras_fotos_ks'): void
 {
     if ($pedidoId <= 0 || $referencia === '' || $fornecedorId === '') {
-        api_response(false, ['message' => 'Informe pedido, referencia e fornecedor para as fotos.'], 422);
+        api_response(false, ['message' => 'Informe pedido, referência e fornecedor para as fotos.'], 422);
     }
     if (!in_array($table, ['cp_compras_fotos_ks', 'cp_compras_fotos'], true)) {
-        api_response(false, ['message' => 'Tabela de fotos invalida.'], 422);
+        api_response(false, ['message' => 'Tabela de fotos inválida.'], 422);
     }
     if (!cp_fotos_table_exists($table)) {
-        api_response(false, ['message' => "Tabela $table nao encontrada."], 500);
+        api_response(false, ['message' => "Tabela $table não encontrada."], 500);
     }
 }
 
@@ -758,43 +758,11 @@ function cp_delete_foto_ks(int $pedidoId, string $referencia, string $fornecedor
     ]);
 
     if ($stmt->rowCount() === 0) {
-        api_response(false, ['message' => 'Foto nao encontrada.'], 404);
+        api_response(false, ['message' => 'Foto não encontrada.'], 404);
     }
 
     $count = cp_sync_foto_flag_ks($pedidoId, $referencia, $fornecedorId);
-    api_response(true, ['message' => 'Foto excluida.', 'count' => $count]);
-}
-
-function cp_delete_children(int $pedidoId): void
-{
-    $stmt = db()->prepare(
-        "DELETE r
-           FROM cp_compras_itens_rateios r
-           JOIN cp_compras_itens_tamanhos t ON t.id = r.compras_itens_tamanho_id
-           JOIN cp_compras_itens i ON i.id = t.compras_itens_id
-          WHERE i.cp_compras_id = :pedido_id"
-    );
-    $stmt->execute(['pedido_id' => $pedidoId]);
-
-    $stmt = db()->prepare(
-        "DELETE c
-           FROM cp_compras_itens_cores c
-           JOIN cp_compras_itens_tamanhos t ON t.id = c.compras_itens_tamanho_id
-           JOIN cp_compras_itens i ON i.id = t.compras_itens_id
-          WHERE i.cp_compras_id = :pedido_id"
-    );
-    $stmt->execute(['pedido_id' => $pedidoId]);
-
-    $stmt = db()->prepare(
-        "DELETE t
-           FROM cp_compras_itens_tamanhos t
-           JOIN cp_compras_itens i ON i.id = t.compras_itens_id
-          WHERE i.cp_compras_id = :pedido_id"
-    );
-    $stmt->execute(['pedido_id' => $pedidoId]);
-
-    $stmt = db()->prepare("DELETE FROM cp_compras_itens WHERE cp_compras_id = :pedido_id");
-    $stmt->execute(['pedido_id' => $pedidoId]);
+    api_response(true, ['message' => 'Foto excluída.', 'count' => $count]);
 }
 
 function cp_required_date(?string $primary, ?string ...$fallbacks): string
@@ -810,15 +778,249 @@ function cp_required_date(?string $primary, ?string ...$fallbacks): string
     return date('Y-m-d');
 }
 
+function cp_id($value): int
+{
+    return max(0, (int) ($value ?? 0));
+}
+
+function cp_delete_missing_ids(string $table, string $parentColumn, int $parentId, array $keepIds): void
+{
+    $keepIds = array_values(array_filter(array_unique(array_map('intval', $keepIds)), static function (int $id): bool {
+        return $id > 0;
+    }));
+
+    $sql = "DELETE FROM `$table` WHERE `$parentColumn` = :parent_id";
+    $params = ['parent_id' => $parentId];
+    if ($keepIds) {
+        $placeholders = [];
+        foreach ($keepIds as $index => $id) {
+            $key = 'id_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $id;
+        }
+        $sql .= ' AND id NOT IN (' . implode(',', $placeholders) . ')';
+    }
+
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+}
+
+function cp_keep_ids_where_not_in(string $column, array $keepIds, array &$params): string
+{
+    $keepIds = array_values(array_filter(array_unique(array_map('intval', $keepIds)), static function (int $id): bool {
+        return $id > 0;
+    }));
+    if (!$keepIds) {
+        return '';
+    }
+
+    $placeholders = [];
+    $paramPrefix = preg_replace('/\W+/', '_', $column);
+    foreach ($keepIds as $index => $id) {
+        $key = $paramPrefix . '_keep_' . $index;
+        $placeholders[] = ':' . $key;
+        $params[$key] = $id;
+    }
+    return " AND $column NOT IN (" . implode(',', $placeholders) . ")";
+}
+
+function cp_delete_missing_cores(int $tamanhoId, array $keepCorIds): void
+{
+    $params = ['tamanho_id' => $tamanhoId];
+    $notIn = cp_keep_ids_where_not_in('compras_itens_cor_id', $keepCorIds, $params);
+    $stmt = db()->prepare(
+        "DELETE FROM cp_compras_itens_rateios
+          WHERE compras_itens_tamanho_id = :tamanho_id$notIn"
+    );
+    $stmt->execute($params);
+
+    cp_delete_missing_ids('cp_compras_itens_cores', 'compras_itens_tamanho_id', $tamanhoId, $keepCorIds);
+}
+
+function cp_delete_missing_tamanhos(int $itemId, array $keepTamanhoIds): void
+{
+    $params = ['item_id' => $itemId];
+    $notIn = cp_keep_ids_where_not_in('t.id', $keepTamanhoIds, $params);
+
+    $stmt = db()->prepare(
+        "DELETE r
+           FROM cp_compras_itens_rateios r
+           JOIN cp_compras_itens_tamanhos t ON t.id = r.compras_itens_tamanho_id
+          WHERE t.compras_itens_id = :item_id$notIn"
+    );
+    $stmt->execute($params);
+
+    $stmt = db()->prepare(
+        "DELETE c
+           FROM cp_compras_itens_cores c
+           JOIN cp_compras_itens_tamanhos t ON t.id = c.compras_itens_tamanho_id
+          WHERE t.compras_itens_id = :item_id$notIn"
+    );
+    $stmt->execute($params);
+
+    cp_delete_missing_ids('cp_compras_itens_tamanhos', 'compras_itens_id', $itemId, $keepTamanhoIds);
+}
+
+function cp_delete_missing_items(int $pedidoId, array $keepItemIds): void
+{
+    $params = ['pedido_id' => $pedidoId];
+    $notIn = cp_keep_ids_where_not_in('i.id', $keepItemIds, $params);
+
+    $stmt = db()->prepare(
+        "DELETE r
+           FROM cp_compras_itens_rateios r
+           JOIN cp_compras_itens_tamanhos t ON t.id = r.compras_itens_tamanho_id
+           JOIN cp_compras_itens i ON i.id = t.compras_itens_id
+          WHERE i.cp_compras_id = :pedido_id$notIn"
+    );
+    $stmt->execute($params);
+
+    $stmt = db()->prepare(
+        "DELETE c
+           FROM cp_compras_itens_cores c
+           JOIN cp_compras_itens_tamanhos t ON t.id = c.compras_itens_tamanho_id
+           JOIN cp_compras_itens i ON i.id = t.compras_itens_id
+          WHERE i.cp_compras_id = :pedido_id$notIn"
+    );
+    $stmt->execute($params);
+
+    $stmt = db()->prepare(
+        "DELETE t
+           FROM cp_compras_itens_tamanhos t
+           JOIN cp_compras_itens i ON i.id = t.compras_itens_id
+          WHERE i.cp_compras_id = :pedido_id$notIn"
+    );
+    $stmt->execute($params);
+
+    cp_delete_missing_ids('cp_compras_itens', 'cp_compras_id', $pedidoId, $keepItemIds);
+}
+
+function cp_delete_children(int $pedidoId): void
+{
+    cp_delete_missing_items($pedidoId, []);
+}
+
+function cp_item_belongs_to_pedido(int $itemId, int $pedidoId): bool
+{
+    if ($itemId <= 0) {
+        return false;
+    }
+    $stmt = db()->prepare("SELECT COUNT(*) FROM cp_compras_itens WHERE id = :id AND cp_compras_id = :pedido_id");
+    $stmt->execute(['id' => $itemId, 'pedido_id' => $pedidoId]);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function cp_tamanho_belongs_to_item(int $tamanhoId, int $itemId): bool
+{
+    if ($tamanhoId <= 0) {
+        return false;
+    }
+    $stmt = db()->prepare("SELECT COUNT(*) FROM cp_compras_itens_tamanhos WHERE id = :id AND compras_itens_id = :item_id");
+    $stmt->execute(['id' => $tamanhoId, 'item_id' => $itemId]);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function cp_cor_belongs_to_tamanho(int $corId, int $tamanhoId): bool
+{
+    if ($corId <= 0) {
+        return false;
+    }
+    $stmt = db()->prepare("SELECT COUNT(*) FROM cp_compras_itens_cores WHERE id = :id AND compras_itens_tamanho_id = :tamanho_id");
+    $stmt->execute(['id' => $corId, 'tamanho_id' => $tamanhoId]);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function cp_find_item_id(int $pedidoId, string $referencia): int
+{
+    if ($pedidoId <= 0 || $referencia === '') {
+        return 0;
+    }
+    $stmt = db()->prepare(
+        "SELECT id
+           FROM cp_compras_itens
+          WHERE cp_compras_id = :pedido_id
+            AND referencia_fornecedor = :referencia
+          LIMIT 1"
+    );
+    $stmt->execute(['pedido_id' => $pedidoId, 'referencia' => $referencia]);
+    return (int) ($stmt->fetchColumn() ?: 0);
+}
+
+function cp_find_tamanho_id(int $itemId, string $tamanho): int
+{
+    if ($itemId <= 0 || $tamanho === '') {
+        return 0;
+    }
+    $stmt = db()->prepare(
+        "SELECT id
+           FROM cp_compras_itens_tamanhos
+          WHERE compras_itens_id = :item_id
+            AND tamanho = :tamanho
+          LIMIT 1"
+    );
+    $stmt->execute(['item_id' => $itemId, 'tamanho' => $tamanho]);
+    return (int) ($stmt->fetchColumn() ?: 0);
+}
+
+function cp_find_cor_id(int $tamanhoId, string $sku, string $cor): int
+{
+    if ($tamanhoId <= 0) {
+        return 0;
+    }
+
+    if ($sku !== '') {
+        $stmt = db()->prepare(
+            "SELECT id
+               FROM cp_compras_itens_cores
+              WHERE compras_itens_tamanho_id = :tamanho_id
+                AND sku = :sku
+              LIMIT 1"
+        );
+        $stmt->execute(['tamanho_id' => $tamanhoId, 'sku' => $sku]);
+        $id = (int) ($stmt->fetchColumn() ?: 0);
+        if ($id > 0) {
+            return $id;
+        }
+    }
+
+    if ($cor === '') {
+        return 0;
+    }
+    $stmt = db()->prepare(
+        "SELECT id
+           FROM cp_compras_itens_cores
+          WHERE compras_itens_tamanho_id = :tamanho_id
+            AND cor = :cor
+          LIMIT 1"
+    );
+    $stmt->execute(['tamanho_id' => $tamanhoId, 'cor' => $cor]);
+    return (int) ($stmt->fetchColumn() ?: 0);
+}
+
 function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string $dataPedido): void
 {
-    $itemStmt = db()->prepare(
+    $itemInsertStmt = db()->prepare(
         "INSERT INTO cp_compras_itens
             (cp_compras_id, referencia_fornecedor, descricao, composicao, ncm, entrega, entrega_anterior, total_qtde, total_produto, Foto, Sts)
          VALUES
             (:cp_compras_id, :referencia_fornecedor, :descricao, :composicao, :ncm, :entrega, :entrega_anterior, :total_qtde, :total_produto, :Foto, :Sts)"
     );
-    $tamanhoStmt = db()->prepare(
+    $itemUpdateStmt = db()->prepare(
+        "UPDATE cp_compras_itens
+            SET referencia_fornecedor = :referencia_fornecedor,
+                descricao = :descricao,
+                composicao = :composicao,
+                ncm = :ncm,
+                entrega = :entrega,
+                entrega_anterior = :entrega_anterior,
+                total_qtde = :total_qtde,
+                total_produto = :total_produto,
+                Foto = :Foto,
+                Sts = :Sts
+          WHERE id = :id
+            AND cp_compras_id = :cp_compras_id"
+    );
+    $tamanhoInsertStmt = db()->prepare(
         "INSERT INTO cp_compras_itens_tamanhos
             (compras_itens_id, tamanho, entrega, entrega_anterior, markup_franquia, markup_loja,
              qtde_total, valor_total, Itens, Sts)
@@ -826,7 +1028,21 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
             (:compras_itens_id, :tamanho, :entrega, :entrega_anterior, :markup_franquia, :markup_loja,
              :qtde_total, :valor_total, :Itens, :Sts)"
     );
-    $corStmt = db()->prepare(
+    $tamanhoUpdateStmt = db()->prepare(
+        "UPDATE cp_compras_itens_tamanhos
+            SET tamanho = :tamanho,
+                entrega = :entrega,
+                entrega_anterior = :entrega_anterior,
+                markup_franquia = :markup_franquia,
+                markup_loja = :markup_loja,
+                qtde_total = :qtde_total,
+                valor_total = :valor_total,
+                Itens = :Itens,
+                Sts = :Sts
+          WHERE id = :id
+            AND compras_itens_id = :compras_itens_id"
+    );
+    $corInsertStmt = db()->prepare(
         "INSERT INTO cp_compras_itens_cores
             (compras_itens_tamanho_id, sku, cor, Qtde, preco_fornecedor, preco_proposta,
              valor_total_produto, preco_franqueado, markup_franquia, preco_loja, markup_loja, markup_total, Sts)
@@ -834,13 +1050,32 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
             (:compras_itens_tamanho_id, :sku, :cor, :Qtde, :preco_fornecedor, :preco_proposta,
              :valor_total_produto, :preco_franqueado, :markup_franquia, :preco_loja, :markup_loja, :markup_total, :Sts)"
     );
+    $corUpdateStmt = db()->prepare(
+        "UPDATE cp_compras_itens_cores
+            SET sku = :sku,
+                cor = :cor,
+                Qtde = :Qtde,
+                preco_fornecedor = :preco_fornecedor,
+                preco_proposta = :preco_proposta,
+                valor_total_produto = :valor_total_produto,
+                preco_franqueado = :preco_franqueado,
+                markup_franquia = :markup_franquia,
+                preco_loja = :preco_loja,
+                markup_loja = :markup_loja,
+                markup_total = :markup_total,
+                Sts = :Sts
+          WHERE id = :id
+            AND compras_itens_tamanho_id = :compras_itens_tamanho_id"
+    );
     $rateioStmt = db()->prepare(
         "INSERT INTO cp_compras_itens_rateios
             (compras_itens_tamanho_id, compras_itens_cor_id, percentual)
          VALUES
             (:compras_itens_tamanho_id, :compras_itens_cor_id, :percentual)"
+        . " ON DUPLICATE KEY UPDATE percentual = VALUES(percentual)"
     );
 
+    $keptItemIds = [];
     foreach ($items as $item) {
         $tamanhos = is_array($item['tamanhos'] ?? null) ? $item['tamanhos'] : [];
         if (cp_trim($item['referencia_fornecedor'] ?? '') === '' && cp_trim($item['descricao'] ?? '') === '' && !$tamanhos) {
@@ -848,6 +1083,7 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
         }
 
         $referencia = cp_trim($item['referencia_fornecedor'] ?? '');
+        $itemId = cp_id($item['id'] ?? 0) ?: cp_find_item_id($pedidoId, $referencia);
         $itemEntrega = cp_trim($item['entrega'] ?? '');
         $itemEntregaAnterior = cp_trim($item['entrega_anterior'] ?? '');
         $itemPayload = [
@@ -863,10 +1099,19 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
             'Foto' => cp_has_fotos_ks($pedidoId, $referencia, $fornecedorId) ? 1 : (int) ($item['Foto'] ?? 0),
             'Sts' => (int) ($item['Sts'] ?? 1),
         ];
-        $itemStmt->execute($itemPayload);
-        $itemId = (int) db()->lastInsertId();
+        if ($itemId > 0) {
+            if (!cp_item_belongs_to_pedido($itemId, $pedidoId)) {
+                api_response(false, ['message' => 'Item inválido para este pedido.'], 422);
+            }
+            $itemUpdateStmt->execute($itemPayload + ['id' => $itemId]);
+        } else {
+            $itemInsertStmt->execute($itemPayload);
+            $itemId = (int) db()->lastInsertId();
+        }
+        $keptItemIds[] = $itemId;
 
         $itemAtivo = (int) ($item['Sts'] ?? 1) !== 0;
+        $keptTamanhoIds = [];
         foreach ($tamanhos as $tamanho) {
             $cores = is_array($tamanho['cores'] ?? null) ? $tamanho['cores'] : [];
             $tamanhoSolicitadoAtivo = (int) ($tamanho['Sts'] ?? 1) !== 0;
@@ -874,9 +1119,11 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
                 return (int) ($cor['Sts'] ?? 1) !== 0;
             }));
             $tamanhoSts = $itemAtivo && $tamanhoSolicitadoAtivo && $itensAtivos > 0 ? 1 : 0;
+            $nomeTamanho = cp_trim($tamanho['tamanho'] ?? '');
+            $tamanhoId = cp_id($tamanho['id'] ?? 0) ?: cp_find_tamanho_id($itemId, $nomeTamanho);
             $tamanhoPayload = [
                 'compras_itens_id' => $itemId,
-                'tamanho' => cp_trim($tamanho['tamanho'] ?? ''),
+                'tamanho' => $nomeTamanho,
                 'entrega' => cp_required_date($tamanho['entrega'] ?? '', $itemEntrega, $dataPedido),
                 'entrega_anterior' => cp_required_date($tamanho['entrega_anterior'] ?? '', $itemEntregaAnterior, $tamanho['entrega'] ?? '', $itemEntrega, $dataPedido),
                 'markup_franquia' => cp_decimal($tamanho['markup_franquia'] ?? 0),
@@ -886,17 +1133,29 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
                 'Itens' => $itensAtivos,
                 'Sts' => $tamanhoSts,
             ];
-            $tamanhoStmt->execute($tamanhoPayload);
-            $tamanhoId = (int) db()->lastInsertId();
+            if ($tamanhoId > 0) {
+                if (!cp_tamanho_belongs_to_item($tamanhoId, $itemId)) {
+                    api_response(false, ['message' => 'Tamanho inválido para este item.'], 422);
+                }
+                $tamanhoUpdateStmt->execute($tamanhoPayload + ['id' => $tamanhoId]);
+            } else {
+                $tamanhoInsertStmt->execute($tamanhoPayload);
+                $tamanhoId = (int) db()->lastInsertId();
+            }
+            $keptTamanhoIds[] = $tamanhoId;
 
+            $keptCorIds = [];
             foreach ($cores as $cor) {
                 $corSts = $tamanhoSts === 1 ? (int) ($cor['Sts'] ?? 1) : 0;
+                $sku = cp_trim($cor['sku'] ?? '');
+                $nomeCor = cp_trim($cor['cor'] ?? '');
+                $corId = cp_id($cor['id'] ?? 0) ?: cp_find_cor_id($tamanhoId, $sku, $nomeCor);
                 $qtde = cp_decimal($cor['Qtde'] ?? 0);
                 $precoProposta = cp_decimal($cor['preco_proposta'] ?? 0);
-                $corStmt->execute([
+                $corPayload = [
                     'compras_itens_tamanho_id' => $tamanhoId,
-                    'sku' => cp_trim($cor['sku'] ?? ''),
-                    'cor' => cp_trim($cor['cor'] ?? ''),
+                    'sku' => $sku,
+                    'cor' => $nomeCor,
                     'Qtde' => $qtde,
                     'preco_fornecedor' => cp_decimal($cor['preco_fornecedor'] ?? 0),
                     'preco_proposta' => $precoProposta,
@@ -907,16 +1166,28 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
                     'markup_loja' => cp_decimal($cor['markup_loja'] ?? 0),
                     'markup_total' => cp_decimal($cor['markup_total'] ?? 0),
                     'Sts' => $corSts,
-                ]);
-                $corId = (int) db()->lastInsertId();
+                ];
+                if ($corId > 0) {
+                    if (!cp_cor_belongs_to_tamanho($corId, $tamanhoId)) {
+                        api_response(false, ['message' => 'Cor inválida para este tamanho.'], 422);
+                    }
+                    $corUpdateStmt->execute($corPayload + ['id' => $corId]);
+                } else {
+                    $corInsertStmt->execute($corPayload);
+                    $corId = (int) db()->lastInsertId();
+                }
+                $keptCorIds[] = $corId;
                 $rateioStmt->execute([
                     'compras_itens_tamanho_id' => $tamanhoId,
                     'compras_itens_cor_id' => $corId,
                     'percentual' => $corSts === 1 ? cp_decimal($cor['percentual'] ?? 0) : 0,
                 ]);
             }
+            cp_delete_missing_cores($tamanhoId, $keptCorIds);
         }
+        cp_delete_missing_tamanhos($itemId, $keptTamanhoIds);
     }
+    cp_delete_missing_items($pedidoId, $keptItemIds);
 }
 
 function cp_current_user_name(): string
@@ -943,7 +1214,7 @@ function cp_send_proposta_email(int $id): int
     $stmt->execute(['id' => $id]);
     $pedido = $stmt->fetch();
     if (!$pedido) {
-        throw new RuntimeException('Pedido nao encontrado.');
+        throw new RuntimeException('Pedido não encontrado.');
     }
 
     $stmt = db()->prepare(
@@ -969,7 +1240,7 @@ function cp_send_proposta_email(int $id): int
     ]);
     $config = $stmt->fetch();
     if (!$config) {
-        throw new RuntimeException('Nao existe uma configuracao de e-mail ativa para o CD e a empresa do pedido.');
+        throw new RuntimeException('Não existe uma configuração de e-mail ativa para o CD e a empresa do pedido.');
     }
 
     $stmt = db()->prepare(
@@ -984,7 +1255,7 @@ function cp_send_proposta_email(int $id): int
     $stmt->execute(['fornecedor_id' => $pedido['Fornecedor_id']]);
     $recipients = $stmt->fetchAll();
     if (!$recipients) {
-        throw new RuntimeException('O fornecedor nao possui usuarios ativos cadastrados para receber a proposta.');
+        throw new RuntimeException('O fornecedor não possui usuários ativos cadastrados para receber a proposta.');
     }
 
     $dataPedido = DateTime::createFromFormat('Y-m-d', (string) $pedido['DataPedido']);
@@ -1012,7 +1283,7 @@ function cp_workflow_update(int $id, string $workflowAction): void
     $stmt->execute(['id' => $id]);
     $pedido = $stmt->fetch();
     if (!$pedido) {
-        api_response(false, ['message' => 'Pedido nao encontrado.'], 404);
+        api_response(false, ['message' => 'Pedido não encontrado.'], 404);
     }
 
     $operation = [
@@ -1022,7 +1293,7 @@ function cp_workflow_update(int $id, string $workflowAction): void
     ][$workflowAction] ?? 'alterar';
     if (cp_localizacao_fornecedor((string) $pedido['Localizacao'])) {
         api_response(false, [
-            'message' => "Pedido com localizacao {$pedido['Localizacao']} nao permite $operation. Apenas visualizacao e impressao.",
+            'message' => "Pedido com localização {$pedido['Localizacao']} não permite $operation. Apenas visualização e impressão.",
         ], 403);
     }
 
@@ -1047,7 +1318,7 @@ function cp_workflow_update(int $id, string $workflowAction): void
 
     if ($workflowAction === 'aprovar') {
         if ((int) ($pedido['Publicado'] ?? 0) !== 1) {
-            api_response(false, ['message' => 'Pedido nao publicado nao pode ser aprovado.'], 422);
+            api_response(false, ['message' => 'Pedido não publicado não pode ser aprovado.'], 422);
         }
         $statusAprovacao = cp_pedido_tem_fotos_fornecedor($id) ? 'Aprovado' : 'Aprovado sem fotos';
         $stmt = db()->prepare(
@@ -1095,7 +1366,7 @@ function cp_workflow_update(int $id, string $workflowAction): void
         api_response(true, ['message' => 'Pedido recusado.']);
     }
 
-    api_response(false, ['message' => 'Acao de workflow invalida.'], 404);
+    api_response(false, ['message' => 'Ação de workflow inválida.'], 404);
 }
 
 try {
@@ -1149,6 +1420,7 @@ try {
                     c.ValorTotalPedido,
                     c.Sts,
                     c.Localizacao,
+                    c.Publicado,
                     c.Fornecedor_id AS fornecedor_codigo,
                     cd.NomeCD AS cd_nome,
                     COALESCE(NULLIF(e.Fantasia, ''), e.Nome) AS empresa_nome,
@@ -1174,11 +1446,11 @@ try {
         $fornecedorId = cp_trim($data['fornecedor_id'] ?? '');
         $codigoReferencia = cp_trim($data['codigo_referencia'] ?? '');
         if ($fornecedorId === '' || $codigoReferencia === '') {
-            api_response(false, ['message' => 'Informe fornecedor e referencia.'], 422);
+            api_response(false, ['message' => 'Informe fornecedor e referência.'], 422);
         }
         $item = cp_load_referencia_item($fornecedorId, $codigoReferencia);
         if (!$item) {
-            api_response(false, ['message' => 'Referencia nao encontrada para este fornecedor.'], 404);
+            api_response(false, ['message' => 'Referência não encontrada para este fornecedor.'], 404);
         }
         api_response(true, ['data' => $item]);
     }
@@ -1217,9 +1489,12 @@ try {
     if ($action === 'delete') {
         $id = (int) ($data['id'] ?? 0);
         cp_require_kidstok($id, 'excluir');
+        db()->beginTransaction();
+        cp_delete_children($id);
         $stmt = db()->prepare("DELETE FROM cp_compras WHERE id = :id");
         $stmt->execute(['id' => $id]);
-        api_response(true, ['message' => 'Pedido excluido.']);
+        db()->commit();
+        api_response(true, ['message' => 'Pedido excluído.']);
     }
 
     if (in_array($action, ['enviar_proposta', 'aprovar', 'recusar'], true)) {
@@ -1292,7 +1567,6 @@ try {
                   WHERE id = :id"
             );
             $stmt->execute($payload);
-            cp_delete_children($id);
             cp_save_items($id, $items, $payload['Fornecedor_id'], $payload['DataPedido']);
             db()->commit();
             api_response(true, ['message' => 'Pedido atualizado.', 'id' => $id]);
@@ -1315,7 +1589,7 @@ try {
         api_response(true, ['message' => 'Pedido inserido.', 'id' => $newId]);
     }
 
-    api_response(false, ['message' => 'Acao invalida.'], 404);
+    api_response(false, ['message' => 'Ação inválida.'], 404);
 } catch (Throwable $e) {
     if (db()->inTransaction()) {
         db()->rollBack();
