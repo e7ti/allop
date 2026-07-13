@@ -55,7 +55,7 @@ function smtp_mailbox(string $email, string $name = ''): string
     return $name === '' ? '<' . $email . '>' : smtp_header_text($name) . ' <' . $email . '>';
 }
 
-function smtp_send(array $config, array $recipients, string $subject, string $body): void
+function smtp_send(array $config, array $recipients, string $subject, string $body, ?string $htmlBody = null): void
 {
     $host = trim((string) ($config['Servidor'] ?? ''));
     $port = (int) ($config['Porta'] ?? 0);
@@ -143,12 +143,28 @@ function smtp_send(array $config, array $recipients, string $subject, string $bo
             'To: ' . $to,
             'Subject: ' . smtp_header_text($subject),
             'MIME-Version: 1.0',
-            'Content-Type: text/plain; charset=UTF-8',
-            'Content-Transfer-Encoding: base64',
         ];
-        $message = implode("\r\n", $headers)
-            . "\r\n\r\n"
-            . chunk_split(base64_encode($body), 76, "\r\n");
+        if ($htmlBody === null) {
+            $headers[] = 'Content-Type: text/plain; charset=UTF-8';
+            $headers[] = 'Content-Transfer-Encoding: base64';
+            $message = implode("\r\n", $headers)
+                . "\r\n\r\n"
+                . chunk_split(base64_encode($body), 76, "\r\n");
+        } else {
+            $boundary = 'allop-' . bin2hex(random_bytes(12));
+            $headers[] = 'Content-Type: multipart/alternative; boundary="' . $boundary . '"';
+            $message = implode("\r\n", $headers)
+                . "\r\n\r\n"
+                . '--' . $boundary . "\r\n"
+                . "Content-Type: text/plain; charset=UTF-8\r\n"
+                . "Content-Transfer-Encoding: base64\r\n\r\n"
+                . chunk_split(base64_encode($body), 76, "\r\n")
+                . "\r\n--" . $boundary . "\r\n"
+                . "Content-Type: text/html; charset=UTF-8\r\n"
+                . "Content-Transfer-Encoding: base64\r\n\r\n"
+                . chunk_split(base64_encode($htmlBody), 76, "\r\n")
+                . "\r\n--" . $boundary . "--\r\n";
+        }
 
         if (fwrite($socket, $message . "\r\n.\r\n") === false) {
             throw new RuntimeException('Não foi possível transmitir o e-mail ao servidor SMTP.');

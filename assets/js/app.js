@@ -1439,6 +1439,7 @@ function emptyCpCompraTamanho() {
         valor_total: 0,
         Itens: 0,
         Sts: 1,
+        tem_log_preco_iteracao: 0,
         _aberto: false,
         cores: []
     };
@@ -1460,6 +1461,7 @@ function emptyCpCompraCor() {
         markup_total: 0,
         percentual: 0,
         Sts: 1,
+        tem_log_preco_iteracao: 0,
         _aberto: false
     };
 }
@@ -1508,6 +1510,7 @@ function mapCpCompraTamanhoFromApi(row) {
         valor_total: Number(row.valor_total || 0),
         Itens: Number(row.Itens || 0),
         Sts: cpCompraStatusValue(row.Sts),
+        tem_log_preco_iteracao: Number(row.tem_log_preco_iteracao || 0),
         cores: (row.cores || []).map(function (cor) {
             return Object.assign(emptyCpCompraCor(), {
                 id: Number(cor.id || cor.ID || 0),
@@ -1523,7 +1526,8 @@ function mapCpCompraTamanhoFromApi(row) {
                 markup_loja: Number(cor.markup_loja || 0),
                 markup_total: Number(cor.markup_total || 0),
                 percentual: Number(cor.percentual || 0),
-                Sts: cpCompraStatusValue(cor.Sts)
+                Sts: cpCompraStatusValue(cor.Sts),
+                tem_log_preco_iteracao: Number(cor.tem_log_preco_iteracao || 0)
             });
         })
     });
@@ -1604,9 +1608,11 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
             const rateioClass = tamanhoInativo ? 'text-muted' : (roundCpPercent(rateio) === 100 ? 'text-success' : 'text-danger');
             const entregaResumo = tamanho.entrega ? formatDateBr(tamanho.entrega) : 'Não definida';
             const totalCores = Number((tamanho.cores || []).length);
+            const temLogPreco = Number(tamanho.tem_log_preco_iteracao || 0) === 1 ||
+                (tamanho.cores || []).some(function (cor) { return Number(cor.tem_log_preco_iteracao || 0) === 1; });
             return '<section class="accordion-item cp-compra-tamanho" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '">' +
-                '<div class="accordion-header cp-compra-tamanho-header' + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
-                '<div class="cp-compra-tamanho-title"><strong>Tamanho ' + escapeHtml(tamanho.tamanho || (tamanhoIndex + 1)) + '</strong></div>' +
+                '<div class="accordion-header cp-compra-tamanho-header' + (temLogPreco ? ' cp-preco-alterado-header' : '') + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
+                '<div class="cp-compra-tamanho-title"><strong>Tamanho ' + escapeHtml(tamanho.tamanho || (tamanhoIndex + 1)) + '</strong>' + (temLogPreco ? '<span class="badge cp-preco-alterado-badge">Preço alterado</span>' : '') + '</div>' +
                 '<div class="cp-compra-tamanho-summary">' +
                 '<div class="cp-compra-summary-metric"><small>Entrega</small><span class="cp-tamanho-summary-entrega">' + escapeHtml(entregaResumo) + '</span></div>' +
                 '<div class="cp-compra-summary-metric"><small>Quantidade</small><span class="cp-tamanho-summary-qtde">' + escapeHtml(tamanho.qtde_total || 0) + '</span></div>' +
@@ -1617,7 +1623,7 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
                 '<div class="d-flex gap-2 align-items-center cp-compra-tamanho-actions" onclick="event.stopPropagation();">' +
                 cpCompraStatusBadge(tamanho.Sts) +
                 (cpCompraReadonly ? '' :
-                    '<button class="btn btn-sm btn-outline-primary" type="button" onclick="ratearCpCompraTamanho(' + itemIndex + ', ' + tamanhoIndex + ')">Ratear</button>' +
+                    '<button class="btn btn-sm btn-outline-primary btn-rateio-item" type="button" onclick="ratearCpCompraTamanho(' + itemIndex + ', ' + tamanhoIndex + ')">Ratear</button>' +
                     '<button class="btn btn-sm btn-orange btn-new" type="button" onclick="addCpCompraCor(' + itemIndex + ', ' + tamanhoIndex + ')">Cor</button>' +
                     '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir tamanho" aria-label="Excluir tamanho" onclick="removeCpCompraTamanho(' + itemIndex + ', ' + tamanhoIndex + ')"></button>') +
                 '</div></div>' +
@@ -1643,10 +1649,12 @@ function renderCpCompraCores(itemIndex, tamanhoIndex, cores) {
     return '<div class="accordion cp-compra-cores-accordion">' + cores.map(function (cor, corIndex) {
         const collapseId = 'cp-cor-collapse-' + itemIndex + '-' + tamanhoIndex + '-' + corIndex;
         const aberto = cor._aberto !== false;
+        const temLogPreco = Number(cor.tem_log_preco_iteracao || 0) === 1;
         return '<section class="accordion-item cp-compra-cor" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '" data-color-index="' + corIndex + '">' +
-            '<div class="accordion-header cp-compra-cor-header' + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
+            '<div class="accordion-header cp-compra-cor-header' + (temLogPreco ? ' cp-preco-alterado-header' : '') + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
             '<div class="cp-compra-cor-title"><strong>Cor ' + escapeHtml(cor.cor || (corIndex + 1)) + '</strong>' +
-            '<small class="d-block text-muted">Rateio: <span class="cp-cor-summary-percentual">' + escapeHtml(formatPercentInput(cor.percentual || 0)) + '%</span></small></div>' +
+            '<small class="d-block text-muted">Rateio: <span class="cp-cor-summary-percentual">' + escapeHtml(formatPercentInput(cor.percentual || 0)) + '%</span></small>' +
+            (temLogPreco ? '<span class="badge cp-preco-alterado-badge">Preço alterado</span>' : '') + '</div>' +
             '<div class="cp-compra-cor-summary">' +
             '<div class="cp-compra-summary-metric"><small>Quantidade</small><span class="cp-cor-summary-qtde">' + escapeHtml(cor.Qtde || 0) + '</span></div>' +
             '<div class="cp-compra-summary-metric"><small>Status</small>' + cpCompraStatusBadge(cor.Sts) + '</div>' +
@@ -1657,6 +1665,7 @@ function renderCpCompraCores(itemIndex, tamanhoIndex, cores) {
             '<div class="cp-compra-summary-metric"><small>Total da cor</small><span class="fw-bold text-success cp-cor-summary-total">R$ ' + escapeHtml(formatMoneyBr(cor.valor_total_produto || 0)) + '</span></div>' +
             '</div>' +
             '<div class="d-flex gap-2 align-items-center cp-compra-cor-actions" onclick="event.stopPropagation();">' +
+            '<button class="btn btn-sm btn-outline-secondary btn-price-log" type="button" title="Visualizar última alteração de preços" onclick="openCpCompraCorLog(' + itemIndex + ', ' + tamanhoIndex + ', ' + corIndex + ')">Preços</button>' +
             (cpCompraReadonly ? '' : '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir cor" aria-label="Excluir cor" onclick="removeCpCompraCor(' + itemIndex + ', ' + tamanhoIndex + ', ' + corIndex + ')"></button>') +
             '</div></div>' +
             '<div id="' + collapseId + '" class="accordion-collapse collapse cp-compra-cor-collapse' + (aberto ? ' show' : '') + '" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '" data-color-index="' + corIndex + '">' +
@@ -2036,6 +2045,89 @@ function fotoBadgeHtml(hasPhoto) {
 
 function fotoStateClass(hasPhoto) {
     return hasPhoto ? 'btn-photo-sim' : 'btn-photo-nao';
+}
+
+function openCpCompraCorLog(itemIndex, tamanhoIndex, corIndex) {
+    const item = cpCompraItens[itemIndex];
+    const tamanho = item?.tamanhos?.[tamanhoIndex];
+    const cor = tamanho?.cores?.[corIndex];
+    const pedidoId = Number($('#cp-compras-form').data('id') || $('#cp-compras-form [name="id"]').val() || 0);
+    const corId = Number(cor?.id || 0);
+    if (!pedidoId || !corId) {
+        appAlert('Salve o pedido antes de consultar o log da cor.', 'warning');
+        return;
+    }
+
+    const $modal = ensureCpCompraCorLogModal();
+    $modal.find('.modal-body').html('<div class="text-center text-muted py-4">Carregando log...</div>');
+    bootstrap.Modal.getOrCreateInstance($modal[0]).show();
+
+    $.getJSON(window.cpComprasFormConfig.api, {
+        action: 'cor_log_ultimo',
+        pedido_id: pedidoId,
+        cor_id: corId
+    }).done(function (response) {
+        $modal.find('.modal-body').html(renderCpCompraCorLog(response.data || null, cor));
+    }).fail(function (xhr) {
+        $modal.find('.modal-body').html('<div class="alert alert-danger mb-0">' + escapeHtml(xhr.responseJSON?.message || 'Não foi possível carregar o log da cor.') + '</div>');
+    });
+}
+
+function ensureCpCompraCorLogModal() {
+    let $modal = $('#cp-cor-log-modal');
+    if (!$modal.length) {
+        $('body').append(
+            '<div class="modal fade" id="cp-cor-log-modal" tabindex="-1" aria-hidden="true">' +
+            '<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">' +
+            '<div class="modal-content">' +
+            '<div class="modal-header">' +
+            '<h5 class="modal-title">Última alteração de preços</h5>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>' +
+            '</div>' +
+            '<div class="modal-body"></div>' +
+            '<div class="modal-footer">' +
+            '<button type="button" class="btn btn-orange" data-bs-dismiss="modal">OK</button>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>'
+        );
+        $modal = $('#cp-cor-log-modal');
+    }
+    return $modal;
+}
+
+function renderCpCompraCorLog(log, corAtual) {
+    if (!log) {
+        return '<div class="alert alert-info mb-0">Nenhum registro de alteração encontrado para esta cor.</div>';
+    }
+
+    const rows = [
+        ['Quantidade', formatNumberBr(log.Qtde), formatNumberBr(corAtual?.Qtde || 0)],
+        ['Preço fornecedor', 'R$ ' + formatMoneyBr(log.preco_fornecedor || 0), 'R$ ' + formatMoneyBr(corAtual?.preco_fornecedor || 0)],
+        ['Preço proposto', 'R$ ' + formatMoneyBr(log.preco_proposta || 0), 'R$ ' + formatMoneyBr(corAtual?.preco_proposta || 0)],
+        ['Preço franqueado', 'R$ ' + formatMoneyBr(log.preco_franqueado || 0), 'R$ ' + formatMoneyBr(corAtual?.preco_franqueado || 0)],
+        ['Preço loja', 'R$ ' + formatMoneyBr(log.preco_loja || 0), 'R$ ' + formatMoneyBr(corAtual?.preco_loja || 0)],
+        ['Total da cor', 'R$ ' + formatMoneyBr(log.valor_total_produto || 0), 'R$ ' + formatMoneyBr(corAtual?.valor_total_produto || 0)]
+    ];
+
+    return '<div class="mb-3">' +
+        '<div class="fw-bold">' + escapeHtml(corAtual?.cor || log.cor || 'Cor') + '</div>' +
+        '<div class="text-muted small">Comparativo entre o último log e os valores atuais da cor.</div>' +
+        '</div>' +
+        '<div class="table-responsive">' +
+        '<table class="table table-custom align-middle mb-0">' +
+        '<thead><tr><th>Campo</th><th>Anterior</th><th>Atual</th></tr></thead>' +
+        '<tbody>' +
+        rows.map(function (row) {
+            const changedClass = String(row[1]) !== String(row[2]) ? ' class="cp-log-preco-atualizado"' : '';
+            return '<tr><td class="fw-bold">' + escapeHtml(row[0]) + '</td><td>' + escapeHtml(row[1] ?? '-') + '</td><td' + changedClass + '>' + escapeHtml(row[2] ?? '-') + '</td></tr>';
+        }).join('') +
+        '</tbody></table></div>';
+}
+
+function formatNumberBr(value) {
+    return Number(value || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 }
 
 function openCpCompraFotos(itemIndex, origem) {

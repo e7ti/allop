@@ -57,6 +57,11 @@ function cp_fix_text_encoding($value): string
     return $text;
 }
 
+function cp_html($value): string
+{
+    return htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
+}
+
 function cp_table_exists(string $table): bool
 {
     $stmt = db()->prepare(
@@ -369,7 +374,22 @@ function cp_load_pedido(int $id): ?array
           ORDER BY tamanho ASC, id ASC"
     );
     $corStmt = db()->prepare(
-        "SELECT c.*, COALESCE(r.percentual, 0) AS percentual
+        "SELECT c.*,
+                COALESCE(r.percentual, 0) AS percentual,
+                EXISTS (
+                    SELECT 1
+                      FROM cp_compras_itens_cores_log l
+                     WHERE l.compras_itens_cores_id = c.id
+                       AND l.Iteracao = :iteracao
+                       AND (
+                            l.preco_fornecedor <> c.preco_fornecedor
+                         OR l.preco_proposta <> c.preco_proposta
+                         OR l.preco_franqueado <> c.preco_franqueado
+                         OR l.preco_loja <> c.preco_loja
+                         OR l.valor_total_produto <> c.valor_total_produto
+                       )
+                     LIMIT 1
+                ) AS tem_log_preco_iteracao
            FROM cp_compras_itens_cores c
            LEFT JOIN cp_compras_itens_rateios r
              ON r.compras_itens_cor_id = c.id
@@ -382,8 +402,16 @@ function cp_load_pedido(int $id): ?array
         $tamanhoStmt->execute(['item_id' => $item['id']]);
         $tamanhos = $tamanhoStmt->fetchAll();
         foreach ($tamanhos as &$tamanho) {
-            $corStmt->execute(['tamanho_id' => $tamanho['id']]);
+            $corStmt->execute([
+                'tamanho_id' => $tamanho['id'],
+                'iteracao' => (int) ($pedido['Iteracao'] ?? 0),
+            ]);
             $tamanho['cores'] = $corStmt->fetchAll();
+            $tamanho['tem_log_preco_iteracao'] = array_reduce(
+                $tamanho['cores'],
+                static fn(bool $carry, array $cor): bool => $carry || (int) ($cor['tem_log_preco_iteracao'] ?? 0) === 1,
+                false
+            ) ? 1 : 0;
         }
         unset($tamanho);
         $item['tamanhos'] = $tamanhos;
@@ -639,6 +667,42 @@ function cp_pedido_tem_fotos_fornecedor(int $pedidoId): bool
     );
     $stmt->execute(['pedido_id' => $pedidoId]);
     return (int) $stmt->fetchColumn() > 0;
+}
+
+function cp_ultimo_log_cor(int $pedidoId, int $corId): ?array
+{
+    if ($pedidoId <= 0 || $corId <= 0) {
+        api_response(false, ['message' => 'Informe pedido e cor.'], 422);
+    }
+    if (!cp_table_exists('cp_compras_itens_cores_log')) {
+        api_response(false, ['message' => 'Tabela de log de cores não encontrada.'], 500);
+    }
+
+    $stmt = db()->prepare(
+        "SELECT l.*
+           FROM cp_compras_itens_cores_log l
+           INNER JOIN cp_compras_itens_cores c ON c.id = l.compras_itens_cores_id
+           INNER JOIN cp_compras_itens_tamanhos t ON t.id = c.compras_itens_tamanho_id
+           INNER JOIN cp_compras_itens i ON i.id = t.compras_itens_id
+          WHERE i.cp_compras_id = :pedido_id
+            AND l.compras_itens_cores_id = :cor_id
+            AND (
+                 l.preco_fornecedor <> c.preco_fornecedor
+              OR l.preco_proposta <> c.preco_proposta
+              OR l.preco_franqueado <> c.preco_franqueado
+              OR l.preco_loja <> c.preco_loja
+              OR l.valor_total_produto <> c.valor_total_produto
+            )
+          ORDER BY l.id DESC
+          LIMIT 1"
+    );
+    $stmt->execute([
+        'pedido_id' => $pedidoId,
+        'cor_id' => $corId,
+    ]);
+    $log = $stmt->fetch();
+
+    return $log ?: null;
 }
 
 function cp_next_foto_sequencia(int $pedidoId, string $referencia, string $fornecedorId): int
@@ -1196,6 +1260,31 @@ function cp_current_user_name(): string
     return (string) ($user['login'] ?? $user['nome'] ?? '');
 }
 
+function cp_portal_fornecedor_url(int $cdId, int $empresaId): string
+{
+    $stmt = db()->prepare(
+        "SELECT url
+           FROM urls_allop
+          WHERE cd_id = :cd_id
+            AND empresa_id = :empresa_id
+            AND modulo = :modulo
+            AND url <> ''
+          ORDER BY id
+          LIMIT 1"
+    );
+    $stmt->execute([
+        'cd_id' => $cdId,
+        'empresa_id' => $empresaId,
+        'modulo' => 'apPF',
+    ]);
+    $url = trim((string) $stmt->fetchColumn());
+    if ($url === '') {
+        throw new RuntimeException('Não existe URL do portal do fornecedor cadastrada em urls_allop para o módulo apPF, CD e empresa do pedido.');
+    }
+
+    return $url;
+}
+
 function cp_send_proposta_email(int $id): int
 {
     $stmt = db()->prepare(
@@ -1261,15 +1350,32 @@ function cp_send_proposta_email(int $id): int
     $dataPedido = DateTime::createFromFormat('Y-m-d', (string) $pedido['DataPedido']);
     $dataPedidoText = $dataPedido ? $dataPedido->format('d/m/Y') : (string) $pedido['DataPedido'];
     $fornecedorNome = cp_fix_text_encoding($pedido['fornecedor_nome']);
+    $portalUrl = cp_portal_fornecedor_url((int) $pedido['cd_id'], (int) $pedido['empresa_id']);
     $subject = 'Portal Fornecedor Kidstok - Pedido #' . $pedido['ID'] . ' ' . $fornecedorNome;
     $body = "Novo Pedido no Portal do Fornecedor\n"
         . "A Kidstok enviou uma proposta comercial e aguarda a sua resposta.\n\n"
         . "Detalhes do Pedido:\n"
         . "Fornecedor: " . $fornecedorNome . "\n"
         . "Data Pedido: " . $dataPedidoText . "\n"
-        . "Valor Total: R$ " . number_format((float) $pedido['ValorTotalPedido'], 2, ',', '.');
+        . "Valor Total: R$ " . number_format((float) $pedido['ValorTotalPedido'], 2, ',', '.') . "\n\n"
+        . "Acesse o Portal do Fornecedor: " . $portalUrl;
 
-    smtp_send($config, $recipients, $subject, $body);
+    $htmlBody = '<!doctype html>'
+        . '<html lang="pt-BR"><head><meta charset="UTF-8"><title>' . cp_html($subject) . '</title></head>'
+        . '<body style="margin:0;padding:0;background:#f6f7f9;font-family:Arial,Helvetica,sans-serif;color:#222;">'
+        . '<div style="max-width:640px;margin:0 auto;padding:28px 18px;">'
+        . '<div style="background:#ffffff;border:1px solid #e4e7ec;border-radius:8px;padding:28px;">'
+        . '<h2 style="margin:0 0 12px;font-size:22px;color:#222;">Novo Pedido no Portal do Fornecedor</h2>'
+        . '<p style="margin:0 0 22px;font-size:15px;line-height:1.5;color:#444;">A Kidstok enviou uma proposta comercial e aguarda a sua resposta.</p>'
+        . '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px;">'
+        . '<tr><td style="padding:8px 0;color:#667085;width:140px;">Fornecedor</td><td style="padding:8px 0;font-weight:bold;">' . cp_html($fornecedorNome) . '</td></tr>'
+        . '<tr><td style="padding:8px 0;color:#667085;">Data Pedido</td><td style="padding:8px 0;">' . cp_html($dataPedidoText) . '</td></tr>'
+        . '<tr><td style="padding:8px 0;color:#667085;">Valor Total</td><td style="padding:8px 0;">R$ ' . cp_html(number_format((float) $pedido['ValorTotalPedido'], 2, ',', '.')) . '</td></tr>'
+        . '</table>'
+        . '<a href="' . cp_html($portalUrl) . '" style="display:inline-block;background:#f58220;color:#ffffff;text-decoration:none;font-weight:bold;border-radius:6px;padding:12px 18px;">Acessar Portal do Fornecedor</a>'
+        . '</div></div></body></html>';
+
+    smtp_send($config, $recipients, $subject, $body, $htmlBody);
     return count($recipients);
 }
 
@@ -1469,6 +1575,12 @@ try {
         $fornecedorId = cp_trim($data['fornecedor_id'] ?? '');
         $fotos = cp_list_fotos_fornecedor($pedidoId, $referencia, $fornecedorId);
         api_response(true, ['data' => $fotos, 'count' => count($fotos)]);
+    }
+
+    if ($action === 'cor_log_ultimo') {
+        $pedidoId = (int) ($data['pedido_id'] ?? 0);
+        $corId = (int) ($data['cor_id'] ?? 0);
+        api_response(true, ['data' => cp_ultimo_log_cor($pedidoId, $corId)]);
     }
 
     if ($action === 'fotos_upload') {
