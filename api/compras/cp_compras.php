@@ -1450,6 +1450,9 @@ function cp_workflow_update(int $id, string $workflowAction): void
 
     if ($workflowAction === 'recusar') {
         $motivo = cp_trim($_POST['motivo'] ?? $_GET['motivo'] ?? '');
+        if ($motivo === '') {
+            api_response(false, ['message' => 'Informe o motivo da recusa.'], 422);
+        }
         $stmt = db()->prepare(
             "UPDATE cp_compras
                 SET Sts = 'Recusado',

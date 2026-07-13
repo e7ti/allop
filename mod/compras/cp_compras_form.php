@@ -43,7 +43,16 @@ $id = (int) ($_GET['id'] ?? 0);
             <div class="col-12 col-md-2"><label class="form-label">Status</label><input class="form-control" name="Sts_display" value="Aberto" readonly></div>
             <div class="col-12 col-md-2"><label class="form-label">Publicado</label><input class="form-control" name="Publicado_display" value="Não Publicado" readonly></div>
             <div class="col-12 col-md-2"><label class="form-label">Localização</label><input class="form-control" name="Localizacao_display" value="KidStok" readonly></div>
-            <div class="col-12 col-md-8 d-none" id="cp-sts-motivo-group"><label class="form-label">Motivo/Observação</label><input class="form-control" name="StsMotivo" maxlength="500"></div>
+            <div class="col-12 d-none" id="cp-sts-motivo-group">
+                <div class="cp-recusa-panel">
+                    <label class="form-label">Motivo da recusa</label>
+                    <textarea class="form-control" name="StsMotivo" rows="3" maxlength="500" placeholder="Informe o motivo da recusa"></textarea>
+                    <div class="d-flex flex-wrap gap-2 justify-content-end mt-2">
+                        <button class="btn btn-outline-secondary btn-back" id="btn-cp-cancelar-recusa" type="button">Cancelar</button>
+                        <button class="btn btn-outline-danger btn-reject" id="btn-cp-confirmar-recusa" type="button">Confirmar recusa</button>
+                    </div>
+                </div>
+            </div>
         </div>
     </section>
     <section class="card card-slim mb-3">

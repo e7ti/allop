@@ -1253,6 +1253,14 @@ body {
     margin-bottom: 0.18rem;
 }
 
+.cp-recusa-panel {
+    background: #fff5f5;
+    border: 1px solid #e6aaaa;
+    border-left: 4px solid #dc3545;
+    border-radius: 7px;
+    padding: 0.9rem;
+}
+
 .cp-compras-form-wide .cp-compra-cor .form-control,
 .cp-compras-form-wide .cp-compra-cor .form-select,
 .cp-compras-form-wide .cp-compra-cor .input-group-text {

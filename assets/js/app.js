@@ -1070,11 +1070,15 @@ function initCpComprasForm() {
     });
 
     $('#btn-cp-recusar').on('click', function () {
-        const motivo = prompt('Informe o motivo da recusa:');
-        if (motivo === null) {
-            return;
-        }
-        executarCpCompraWorkflow($form, 'recusar', 'Recusar este pedido?', { motivo: motivo });
+        mostrarPainelRecusa($form);
+    });
+
+    $('#btn-cp-cancelar-recusa').on('click', function () {
+        ocultarPainelRecusa($form, true);
+    });
+
+    $('#btn-cp-confirmar-recusa').on('click', function () {
+        confirmarRecusa($form);
     });
 
     $('#cp-foto-input').on('change', uploadCpCompraFotos);
@@ -1182,6 +1186,33 @@ function enviarCpCompraProposta($form) {
     });
 }
 
+function mostrarPainelRecusa($form) {
+    const $grupo = $('#cp-sts-motivo-group');
+    $grupo.removeClass('d-none');
+    $('#btn-cp-recusar').prop('disabled', true);
+    setTimeout(function () {
+        $form.find('[name="StsMotivo"]').trigger('focus');
+    }, 50);
+}
+
+function ocultarPainelRecusa($form, limpar) {
+    $('#cp-sts-motivo-group').addClass('d-none');
+    $('#btn-cp-recusar').prop('disabled', false);
+    if (limpar) {
+        $form.find('[name="StsMotivo"]').val('');
+    }
+}
+
+function confirmarRecusa($form) {
+    const motivo = String($form.find('[name="StsMotivo"]').val() || '').trim();
+    if (motivo === '') {
+        appAlert('O motivo da recusa é obrigatório.', 'warning');
+        $form.find('[name="StsMotivo"]').trigger('focus');
+        return;
+    }
+    executarCpCompraWorkflow($form, 'recusar', '', { motivo: motivo });
+}
+
 function executarCpCompraWorkflow($form, action, confirmMessage, extraData) {
     const id = Number($form.data('id') || $form.find('[name="id"]').val() || 0);
     if (!id) {
@@ -1200,7 +1231,7 @@ function executarCpCompraWorkflow($form, action, confirmMessage, extraData) {
         return;
     }
     const data = Object.assign({ id: id }, extraData || {});
-    const $workflowButtons = $('#btn-cp-enviar-proposta, #btn-cp-aprovar, #btn-cp-recusar');
+    const $workflowButtons = $('#btn-cp-enviar-proposta, #btn-cp-aprovar, #btn-cp-recusar, #btn-cp-confirmar-recusa, #btn-cp-cancelar-recusa');
     $workflowButtons.prop('disabled', true);
     $.post(window.cpComprasFormConfig.api + '?action=' + action, data, function (response) {
         appOkAlert(response.message || 'Pedido atualizado.', 'Sucesso', function () {
@@ -1208,6 +1239,9 @@ function executarCpCompraWorkflow($form, action, confirmMessage, extraData) {
         });
     }, 'json').fail(function (xhr) {
         $workflowButtons.prop('disabled', false);
+        if (action === 'recusar' && !$('#cp-sts-motivo-group').hasClass('d-none')) {
+            $('#btn-cp-recusar').prop('disabled', true);
+        }
         appAlert(xhr.responseJSON?.message || 'Não foi possível atualizar o pedido.', 'danger');
     });
 }
@@ -1319,12 +1353,7 @@ function fillCpCompraHeader($form, row) {
 }
 
 function toggleCpCompraMotivo($form) {
-    const status = $form.find('[name="Sts"]').val() || $form.find('[name="Sts_display"]').val() || 'Aberto';
-    const showMotivo = status === 'Recusado';
-    $('#cp-sts-motivo-group').toggleClass('d-none', !showMotivo);
-    if (!showMotivo) {
-        $form.find('[name="StsMotivo"]').val('');
-    }
+    ocultarPainelRecusa($form, false);
 }
 
 function formatPublicadoCpCompra(value) {
