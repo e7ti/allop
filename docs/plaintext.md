@@ -2,7 +2,7 @@
 
 **Documento-base:** 01/06/2026
 **Última revisão do código:** 10/07/2026
-**Última revisão do `banco.sql`:** 10/07/2026
+**Última revisão do `banco.sql`:** 14/07/2026
 **Escopo revisado:** aplicação PHP, APIs, banco principal, banco de fotos, seed, assets e módulos existentes.
 
 ## 1. Objetivo
@@ -205,7 +205,7 @@ Permissões cadastradas:
 
 A configuração executada pelo sistema está em `config/database.php` e atualmente aponta para o banco **`allop_devel`**. Credenciais não devem ser copiadas para documentação, commits ou mensagens; a fonte atual é o arquivo de configuração e, idealmente, deve migrar para variáveis de ambiente.
 
-O schema abaixo foi atualizado a partir do `banco.sql` em 10/07/2026. O arquivo
+O schema abaixo foi atualizado a partir do `banco.sql` em 14/07/2026. O arquivo
 é um dump estrutural parcial do banco `allop_devel`, sem dados, com tabelas do
 módulo Allop e algumas dependências de catálogo/produtos do ERP.
 
@@ -214,9 +214,13 @@ Tabelas presentes no `banco.sql`:
 | Domínio | Tabelas |
 | --- | --- |
 | Segurança | `seg_menu`, `seg_aplicacoes`, `seg_perfil`, `seg_perfil_permissoes`, `seg_usuarios`, `seg_usuarios_permissoes` |
-| Configurações | `empresas_cd`, `empresas`, `urls_allop` |
-| Compras | `cp_compras`, `cp_compras_emails`, `cp_compras_itens`, `cp_compras_itens_log`, `cp_compras_itens_tamanhos`, `cp_compras_itens_tamanhos_log`, `cp_compras_itens_cores`, `cp_compras_itens_cores_log`, `cp_compras_itens_rateios` |
-| Catálogo/fornecedor | `produtos`, `produtos_fornecedor`, `pf_colecao`, `pf_usuarios`, `pf_usuario_fornecedor` |
+| Compras | `cp_compras`, `cp_compras_status`, `cp_compras_emails`, `cp_compras_itens`, `cp_compras_itens_log`, `cp_compras_itens_tamanhos`, `cp_compras_itens_tamanhos_log`, `cp_compras_itens_cores`, `cp_compras_itens_cores_log`, `cp_compras_itens_rateios` |
+| Catálogo/fornecedor | `produtos`, `produtos_colecao`, `produtos_fornecedor`, `pf_colecao`, `pf_usuarios`, `pf_usuarios_copy`, `pf_usuario_fornecedor` |
+
+`empresas`, `empresas_cd` e `urls_allop` deixaram de constar no `banco.sql`
+nesta revisão, apesar de continuarem em uso ativo pelo código (módulo
+Configurações e API de Compras). Ver item correspondente em **Pontos de
+atenção conhecidos**.
 
 O modelo registrado no arquivo organiza as variações de um item na hierarquia
 `cp_compras_itens` → `cp_compras_itens_tamanhos` → `cp_compras_itens_cores`.
@@ -225,11 +229,16 @@ cores e armazena o percentual da quantidade destinado àquela combinação. Os
 percentuais devem totalizar 100% dentro de cada tamanho, e a quantidade da cor
 é calculada por `qtde_total do tamanho × percentual / 100`.
 
-`urls_allop` guarda URLs por CD/empresa, com os campos `modulo` e `url`.
+A tabela `cp_compras` ganhou a coluna `status_id`, com chave estrangeira para
+a nova tabela `cp_compras_status` (`id`, `descricao_compras`,
+`descricao_portal`), no lugar da antiga coluna `Sts` (varchar) que existia
+nesta definição de tabela. Ver divergência com o código em **Pontos de
+atenção conhecidos**.
 
 As tabelas de log registram o snapshot anterior de itens, tamanhos e cores em
 atualizações. Elas também armazenam `Iteracao` e `Localizacao` do pedido no
-momento da alteração:
+momento da alteração e agora possuem chave estrangeira `ON DELETE CASCADE`
+para a tabela de origem (antes não havia esse vínculo):
 
 | Tabela de log | Origem | Observação |
 | --- | --- | --- |
@@ -243,10 +252,14 @@ Triggers presentes no `banco.sql`:
 - `cp_compras_itens_tamanhos_after_update`;
 - `cp_compras_itens_cores_after_update`.
 
+Nesta revisão, `cp_compras_itens_after_update` foi corrigido para gravar
+`compras_itens_id` no log; antes gravava incorretamente o valor de origem na
+coluna `id` (chave primária autoincrementada do próprio log).
+
 O dump possui chaves estrangeiras para tabelas que não estão definidas no próprio
 arquivo, pois pertencem ao schema legado ou não foram exportadas neste recorte:
-`situacao`, `config_email`, `cests_ncm`, `cfops`, `produtos_grupos`,
-`produtos_caracteristicas`, `produtos_categorias`, `produtos_colecao`,
+`situacao`, `config_email`, `cests_ncm`, `cfops`, `empresas`, `empresas_cd`,
+`produtos_grupos`, `produtos_caracteristicas`, `produtos_categorias`,
 `produtos_composicoes`, `produtos_cor`, `produtos_generos`, `produtos_linhas`,
 `produtos_local_fisico`, `produtos_tamanho`, `st_cofins`, `st_icms`, `st_ipi`,
 `st_origem` e `st_pis`.
@@ -359,7 +372,7 @@ Estes itens foram encontrados nas revisões do código e do `banco.sql` de 10/07
 4. **Coluna divergente:** `banco.sql` define `seg_usuarios_permissoes.editar`, mas `api/seguranca/crud.php` usa `edtiar`. A coluna `imprirmir` está grafada dessa forma tanto no schema quanto no código.
 5. **Tabelas de e-mail divergentes:** o módulo de Configurações usa `configuracoes_email`, o envio de propostas usa `config_email`, e o `banco.sql` atual apenas referencia `config_email` por FK em `cp_compras_emails`, sem criar `config_email` nem `configuracoes_email`.
 6. **Tabela de situação ausente no dump:** `empresas.Status` e `empresas_cd.Status` referenciam `situacao.StsNome`, mas `situacao` não está criada no `banco.sql` atual.
-7. **URLs sem uso no código:** `banco.sql` possui `urls_allop`, mas o código atual não consulta essa tabela.
+7. **Tabelas de configuração fora do dump:** `banco.sql` atual não define mais `empresas`, `empresas_cd` nem `urls_allop`, embora as três sigam em uso ativo no código (módulo Configurações e o workflow de envio de proposta em Compras, que consulta `urls_allop` para localizar a URL do portal do fornecedor por CD/empresa).
 8. **Coluna de empresa ausente:** a API de empresas usa a coluna `ibge`, mas ela não existe em `empresas` no `banco.sql` atual.
 9. **Seed divergente do banco:** o seed cria algumas estruturas auxiliares com definições diferentes do `banco.sql`, incluindo tabelas de e-mail e `urls_allop`.
 10. **Dependências de produtos incompletas no dump:** `produtos` possui FKs para várias tabelas legadas que não estão criadas no `banco.sql`, como `cfops`, `cests_ncm`, tabelas `produtos_*` e tabelas `st_*`.
@@ -369,6 +382,8 @@ Estes itens foram encontrados nas revisões do código e do `banco.sql` de 10/07
 14. **Senha legada:** o login aceita senha em texto puro para compatibilidade, embora novas senhas sejam salvas com hash.
 15. **Transação entre bancos:** upload de fotos abre transações separadas nos dois bancos; não existe atomicidade distribuída caso apenas um commit conclua.
 16. **Dependências externas:** a busca de CEP usa ViaCEP pelo navegador e o CSS importa a fonte Poppins do Google Fonts. São as exceções atuais à regra de assets locais.
+17. **Migração de status incompleta:** `banco.sql` já define `cp_compras.status_id` com FK para a nova tabela `cp_compras_status`, mas `api/compras/cp_compras.php` ainda lê e grava exclusivamente a coluna antiga `cp_compras.Sts` (varchar); a coluna e a tabela novas ainda não têm nenhuma referência no código.
+18. **Tabela de backup sem uso:** `pf_usuarios_copy` está presente no `banco.sql` como cópia estrutural de `pf_usuarios`, sem qualquer referência no código; aparenta ser um artefato de backup/teste esquecido no dump.
 
 ## 10. Validação antes de entregar alterações
 

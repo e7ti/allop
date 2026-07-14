@@ -15,8 +15,13 @@ function dashboard_compra_stats(): array
         'total' => 0,
         'abertos' => 0,
         'aprovados' => 0,
+        'aprovados_sem_fotos' => 0,
         'recusados' => 0,
         'valor_total' => 0.0,
+        'valor_abertos' => 0.0,
+        'valor_aprovados' => 0.0,
+        'valor_aprovados_sem_fotos' => 0.0,
+        'valor_recusados' => 0.0,
     ];
 
     try {
@@ -24,9 +29,14 @@ function dashboard_compra_stats(): array
             "SELECT
                     COUNT(*) AS total,
                     SUM(CASE WHEN Sts = 'Aberto' THEN 1 ELSE 0 END) AS abertos,
-                    SUM(CASE WHEN Sts LIKE 'Aprovado%' THEN 1 ELSE 0 END) AS aprovados,
+                    SUM(CASE WHEN Sts = 'Aprovado' THEN 1 ELSE 0 END) AS aprovados,
+                    SUM(CASE WHEN Sts IN ('Aprovado sem fotos', 'Aprovado aguardando foto') THEN 1 ELSE 0 END) AS aprovados_sem_fotos,
                     SUM(CASE WHEN Sts = 'Recusado' THEN 1 ELSE 0 END) AS recusados,
-                    COALESCE(SUM(ValorTotalPedido), 0) AS valor_total
+                    COALESCE(SUM(ValorTotalPedido), 0) AS valor_total,
+                    COALESCE(SUM(CASE WHEN Sts = 'Aberto' THEN ValorTotalPedido ELSE 0 END), 0) AS valor_abertos,
+                    COALESCE(SUM(CASE WHEN Sts = 'Aprovado' THEN ValorTotalPedido ELSE 0 END), 0) AS valor_aprovados,
+                    COALESCE(SUM(CASE WHEN Sts IN ('Aprovado sem fotos', 'Aprovado aguardando foto') THEN ValorTotalPedido ELSE 0 END), 0) AS valor_aprovados_sem_fotos,
+                    COALESCE(SUM(CASE WHEN Sts = 'Recusado' THEN ValorTotalPedido ELSE 0 END), 0) AS valor_recusados
                FROM cp_compras"
         );
         $row = $stmt->fetch() ?: [];
@@ -38,8 +48,13 @@ function dashboard_compra_stats(): array
         'total' => (int) ($row['total'] ?? 0),
         'abertos' => (int) ($row['abertos'] ?? 0),
         'aprovados' => (int) ($row['aprovados'] ?? 0),
+        'aprovados_sem_fotos' => (int) ($row['aprovados_sem_fotos'] ?? 0),
         'recusados' => (int) ($row['recusados'] ?? 0),
         'valor_total' => (float) ($row['valor_total'] ?? 0),
+        'valor_abertos' => (float) ($row['valor_abertos'] ?? 0),
+        'valor_aprovados' => (float) ($row['valor_aprovados'] ?? 0),
+        'valor_aprovados_sem_fotos' => (float) ($row['valor_aprovados_sem_fotos'] ?? 0),
+        'valor_recusados' => (float) ($row['valor_recusados'] ?? 0),
     ];
 }
 
@@ -97,7 +112,7 @@ function dashboard_status_badge($status, $localizacao = ''): string
     $label = $status !== '' ? $status : 'Aberto';
     $normalized = strtolower($label);
 
-    if (strpos($normalized, 'aprovado sem fotos') === 0) {
+    if (strpos($normalized, 'aprovado sem fotos') === 0 || strpos($normalized, 'aprovado aguardando foto') === 0) {
         $class = 'badge-status-awaiting-photo';
     } elseif (strpos($normalized, 'aprovado') === 0) {
         $class = 'badge-status-approved';
@@ -146,19 +161,23 @@ function dashboard_publicado_badge($publicado): string
 
 $stats = dashboard_compra_stats();
 $ultimosPedidos = dashboard_ultimos_pedidos();
-$chartKnownTotal = $stats['abertos'] + $stats['aprovados'] + $stats['recusados'];
+$chartKnownTotal = $stats['abertos'] + $stats['aprovados'] + $stats['aprovados_sem_fotos'] + $stats['recusados'];
 $chartTotal = max(1, $chartKnownTotal);
 $abertosPct = dashboard_percent($stats['abertos'], $chartTotal);
 $aprovadosPct = dashboard_percent($stats['aprovados'], $chartTotal);
+$aprovadosSemFotosPct = dashboard_percent($stats['aprovados_sem_fotos'], $chartTotal);
 $recusadosPct = dashboard_percent($stats['recusados'], $chartTotal);
 $aprovadosStart = $abertosPct;
-$recusadosStart = $abertosPct + $aprovadosPct;
+$aprovadosSemFotosStart = $abertosPct + $aprovadosPct;
+$recusadosStart = $aprovadosSemFotosStart + $aprovadosSemFotosPct;
 $donutStyle = sprintf(
-    '--abertos:%s%%; --aprovados:%s%%; --recusados:%s%%; --aprovados-start:%s%%; --recusados-start:%s%%;',
+    '--abertos:%s%%; --aprovados:%s%%; --aprovados-sem-fotos:%s%%; --recusados:%s%%; --aprovados-start:%s%%; --aprovados-sem-fotos-start:%s%%; --recusados-start:%s%%;',
     number_format($abertosPct, 2, '.', ''),
     number_format($aprovadosPct, 2, '.', ''),
+    number_format($aprovadosSemFotosPct, 2, '.', ''),
     number_format($recusadosPct, 2, '.', ''),
     number_format($aprovadosStart, 2, '.', ''),
+    number_format($aprovadosSemFotosStart, 2, '.', ''),
     number_format($recusadosStart, 2, '.', '')
 );
 $donutClass = $chartKnownTotal > 0 ? '' : ' dashboard-donut-empty';
@@ -175,6 +194,12 @@ $cards = [
         'valor' => $stats['aprovados'],
         'texto' => 'Aprovados no fluxo',
         'classe' => 'dashboard-status-approved',
+    ],
+    [
+        'titulo' => 'Aprovados sem fotos',
+        'valor' => $stats['aprovados_sem_fotos'],
+        'texto' => 'Sem fotos do fornecedor',
+        'classe' => 'dashboard-status-awaiting-photo',
     ],
     [
         'titulo' => 'Pedidos recusados',
@@ -203,7 +228,7 @@ render_header('Dashboard');
 
     <div class="row g-3 mb-3">
         <?php foreach ($cards as $card): ?>
-            <div class="col-12 col-md-6 col-xl-3">
+            <div class="col-12 col-md-6 col-xl">
                 <section class="card card-slim dashboard-tile dashboard-compra-tile h-100 <?= h($card['classe']) ?>">
                     <div class="card-body">
                         <span class="page-kicker">Pedidos</span>
@@ -224,26 +249,41 @@ render_header('Dashboard');
                 <div class="card-header"><strong>Gráfico de pedidos por status</strong></div>
                 <div class="card-body">
                     <div class="dashboard-status-bars">
-                        <div class="dashboard-status-row">
-                            <div class="dashboard-status-label">Abertos</div>
-                            <div class="dashboard-status-track">
+                        <div class="dashboard-status-row" style="grid-template-columns: 150px 360px 220px; justify-content: start;">
+                            <div class="dashboard-status-label" style="white-space: nowrap;">
+                                <span style="display: block;">Abertos</span>
+                            </div>
+                            <div class="dashboard-status-track" style="width: 360px;">
                                 <span class="dashboard-status-bar dashboard-status-open" style="width: <?= h((string) $abertosPct) ?>%"></span>
                             </div>
-                            <div class="dashboard-status-value"><?= h($stats['abertos']) ?></div>
+                            <div class="dashboard-status-value"><strong><?= h($stats['abertos']) ?></strong><span>R$ <?= h(number_format($stats['valor_abertos'], 2, ',', '.')) ?></span></div>
                         </div>
-                        <div class="dashboard-status-row">
-                            <div class="dashboard-status-label">Aprovados</div>
-                            <div class="dashboard-status-track">
+                        <div class="dashboard-status-row" style="grid-template-columns: 150px 360px 220px; justify-content: start;">
+                            <div class="dashboard-status-label" style="white-space: nowrap;">
+                                <span style="display: block;">Aprovados</span>
+                            </div>
+                            <div class="dashboard-status-track" style="width: 360px;">
                                 <span class="dashboard-status-bar dashboard-status-approved" style="width: <?= h((string) $aprovadosPct) ?>%"></span>
                             </div>
-                            <div class="dashboard-status-value"><?= h($stats['aprovados']) ?></div>
+                            <div class="dashboard-status-value"><strong><?= h($stats['aprovados']) ?></strong><span>R$ <?= h(number_format($stats['valor_aprovados'], 2, ',', '.')) ?></span></div>
                         </div>
-                        <div class="dashboard-status-row">
-                            <div class="dashboard-status-label">Recusados</div>
-                            <div class="dashboard-status-track">
+                        <div class="dashboard-status-row" style="grid-template-columns: 150px 360px 220px; justify-content: start;">
+                            <div class="dashboard-status-label" style="white-space: nowrap;">
+                                <span style="display: block;">Sem fotos</span>
+                            </div>
+                            <div class="dashboard-status-track" style="width: 360px;">
+                                <span class="dashboard-status-bar dashboard-status-awaiting-photo" style="width: <?= h((string) $aprovadosSemFotosPct) ?>%"></span>
+                            </div>
+                            <div class="dashboard-status-value"><strong><?= h($stats['aprovados_sem_fotos']) ?></strong><span>R$ <?= h(number_format($stats['valor_aprovados_sem_fotos'], 2, ',', '.')) ?></span></div>
+                        </div>
+                        <div class="dashboard-status-row" style="grid-template-columns: 150px 360px 220px; justify-content: start;">
+                            <div class="dashboard-status-label" style="white-space: nowrap;">
+                                <span style="display: block;">Recusados</span>
+                            </div>
+                            <div class="dashboard-status-track" style="width: 360px;">
                                 <span class="dashboard-status-bar dashboard-status-rejected" style="width: <?= h((string) $recusadosPct) ?>%"></span>
                             </div>
-                            <div class="dashboard-status-value"><?= h($stats['recusados']) ?></div>
+                            <div class="dashboard-status-value"><strong><?= h($stats['recusados']) ?></strong><span>R$ <?= h(number_format($stats['valor_recusados'], 2, ',', '.')) ?></span></div>
                         </div>
                     </div>
                 </div>
@@ -263,6 +303,7 @@ render_header('Dashboard');
                     <div class="dashboard-donut-legend">
                         <span><i class="dashboard-status-open"></i>Abertos</span>
                         <span><i class="dashboard-status-approved"></i>Aprovados</span>
+                        <span><i class="dashboard-status-awaiting-photo"></i>Sem fotos</span>
                         <span><i class="dashboard-status-rejected"></i>Recusados</span>
                     </div>
                     <div class="dashboard-total-value">

@@ -476,23 +476,23 @@ body {
 }
 
 .badge-status-open {
-    background-color: #fff3cd !important;
-    color: #664d03 !important;
+    background-color: var(--ks-orange) !important;
+    color: #ffffff !important;
 }
 
 .badge-status-approved {
-    background-color: #d1e7dd !important;
-    color: #0f5132 !important;
+    background-color: #2eb872 !important;
+    color: #ffffff !important;
 }
 
 .badge-status-awaiting-photo {
-    background-color: #ffe5d0 !important;
-    color: #9a3f00 !important;
+    background-color: #0ea5e9 !important;
+    color: #ffffff !important;
 }
 
 .badge-status-rejected {
-    background-color: #ead7e2 !important;
-    color: #5a1438 !important;
+    background-color: #d9534f !important;
+    color: #ffffff !important;
 }
 
 .cp-localizacao-badge {
@@ -658,6 +658,11 @@ body {
 .dashboard-compra-tile.dashboard-status-approved::after,
 .dashboard-status-approved {
     background: #2eb872;
+}
+
+.dashboard-compra-tile.dashboard-status-awaiting-photo::after,
+.dashboard-status-awaiting-photo {
+    background: #0ea5e9;
 }
 
 .dashboard-compra-tile.dashboard-status-rejected::after,
@@ -841,14 +846,16 @@ body {
 .dashboard-status-row {
     align-items: center;
     display: grid;
-    gap: 0.75rem;
-    grid-template-columns: 110px 1fr 48px;
+    gap: 0.6rem;
+    grid-template-columns: 180px 90px 46px 220px;
+    justify-content: start;
 }
 
 .dashboard-status-label {
     color: var(--appf-block-title-gray);
     font-size: 0.86rem;
     font-weight: 700;
+    white-space: nowrap;
 }
 
 .dashboard-status-track {
@@ -856,6 +863,7 @@ body {
     border-radius: 999px;
     height: 16px;
     overflow: hidden;
+    width: 90px;
 }
 
 .dashboard-status-bar {
@@ -865,11 +873,43 @@ body {
     min-width: 2px;
 }
 
+.dashboard-status-count,
 .dashboard-status-value {
     color: var(--ks-muted);
     font-size: 0.85rem;
     font-weight: 700;
     text-align: right;
+    white-space: nowrap;
+}
+
+.dashboard-status-value {
+    color: var(--appf-block-title-gray);
+    font-size: 0.82rem;
+    text-align: left;
+}
+
+.dashboard-status-value strong {
+    color: var(--ks-muted);
+    display: inline-block;
+    margin-right: 0.7rem;
+    min-width: 1.5rem;
+    text-align: right;
+}
+
+.dashboard-status-value span {
+    white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+    .dashboard-status-row {
+        grid-template-columns: 1fr;
+        gap: 0.35rem;
+    }
+
+    .dashboard-status-count,
+    .dashboard-status-value {
+        text-align: left;
+    }
 }
 
 .dashboard-donut-wrap {
@@ -886,7 +926,8 @@ body {
         radial-gradient(circle at center, #fff 0 55%, transparent 56%),
         conic-gradient(
             var(--ks-orange) 0 var(--abertos),
-            #2eb872 var(--aprovados-start) var(--recusados-start),
+            #2eb872 var(--aprovados-start) var(--aprovados-sem-fotos-start),
+            #0ea5e9 var(--aprovados-sem-fotos-start) var(--recusados-start),
             #d9534f var(--recusados-start) 100%
         );
     border-radius: 50%;

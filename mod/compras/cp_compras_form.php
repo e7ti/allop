@@ -78,7 +78,7 @@ $id = (int) ($_GET['id'] ?? 0);
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title">Rateio de Quantidades</h5>
-                    <div class="text-muted small">Informe a quantidade do tamanho e o percentual de cada cor.</div>
+                    <div class="text-muted small">Informe a quantidade total do tamanho e a quantidade de cada cor.</div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
@@ -91,7 +91,7 @@ $id = (int) ($_GET['id'] ?? 0);
                     </div>
                     <div class="col-12 col-md-4">
                         <label class="form-label">Quantidade total</label>
-                        <input class="form-control text-end" id="cp-rateio-qtde-total" type="number" min="0" step="1" inputmode="numeric">
+                        <input class="form-control text-end" id="cp-rateio-qtde-total" type="number" min="1" step="1" inputmode="numeric" required>
                     </div>
                     <div class="col-12 col-md-4">
                         <label class="form-label">Total dos percentuais</label>

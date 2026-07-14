@@ -284,9 +284,14 @@ function cp_validate_item_percentuais(array $items): void
             if (!$coresAtivas) {
                 api_response(false, ['message' => "Informe ao menos uma cor ativa para o tamanho $nomeTamanho."], 422);
             }
+            $qtdeTotalTamanho = max(0, (int) ($tamanho['qtde_total'] ?? 0));
+            if ($qtdeTotalTamanho <= 0) {
+                api_response(false, ['message' => "Item $referencia, tamanho $nomeTamanho: informe a quantidade total no rateio."], 422);
+            }
 
             $coresUsadas = [];
             $total = 0.0;
+            $totalQtdeCores = 0;
             foreach ($coresAtivas as $cor) {
                 $nomeCor = cp_trim($cor['cor'] ?? '');
                 if ($nomeCor === '') {
@@ -299,12 +304,24 @@ function cp_validate_item_percentuais(array $items): void
 
                 $percentual = cp_decimal($cor['percentual'] ?? 0);
                 if ($percentual < 0 || $percentual > 100) {
-                    api_response(false, ['message' => 'Cada percentual de rateio deve estar entre 0% e 100%.'], 422);
+                    api_response(false, ['message' => "Item $referencia, tamanho $nomeTamanho, cor $nomeCor: o percentual deve estar entre 0% e 100%."], 422);
                 }
                 $total += $percentual;
+                $totalQtdeCores += max(0, (int) ($cor['Qtde'] ?? 0));
+            }
+            if ($totalQtdeCores !== $qtdeTotalTamanho) {
+                api_response(false, ['message' => "Item $referencia, tamanho $nomeTamanho: a soma das quantidades das cores deve bater com a quantidade total. Total informado: $qtdeTotalTamanho. Soma das cores: $totalQtdeCores."], 422);
             }
             if (round($total, 4) !== 100.0000) {
-                api_response(false, ['message' => "O rateio das cores do tamanho $nomeTamanho deve totalizar 100%."], 422);
+                $corReferencia = $coresAtivas[0];
+                foreach ($coresAtivas as $cor) {
+                    if (cp_decimal($cor['percentual'] ?? 0) <= 0) {
+                        $corReferencia = $cor;
+                        break;
+                    }
+                }
+                $nomeCorReferencia = cp_trim($corReferencia['cor'] ?? '') ?: 'sem identificação';
+                api_response(false, ['message' => "Item $referencia, tamanho $nomeTamanho, cor $nomeCorReferencia: o rateio do tamanho deve totalizar 100%. Total atual: " . number_format($total, 2, ',', '.') . "%."], 422);
             }
         }
         if ($itemAtivo && $tamanhosAtivos === 0) {
@@ -423,6 +440,7 @@ function cp_load_pedido(int $id): ?array
     }
     unset($item);
 
+    $pedido['TemFotosFornecedor'] = cp_pedido_tem_fotos_fornecedor((int) $pedido['id']) ? 1 : 0;
     $pedido['items'] = $items;
     return $pedido;
 }
@@ -1385,7 +1403,7 @@ function cp_workflow_update(int $id, string $workflowAction): void
         api_response(false, ['message' => 'Informe o pedido.'], 422);
     }
 
-    $stmt = db()->prepare("SELECT id, id AS ID, Localizacao, Publicado FROM cp_compras WHERE id = :id");
+    $stmt = db()->prepare("SELECT id, id AS ID, Localizacao, Publicado, Sts FROM cp_compras WHERE id = :id");
     $stmt->execute(['id' => $id]);
     $pedido = $stmt->fetch();
     if (!$pedido) {
@@ -1426,7 +1444,11 @@ function cp_workflow_update(int $id, string $workflowAction): void
         if ((int) ($pedido['Publicado'] ?? 0) !== 1) {
             api_response(false, ['message' => 'Pedido não publicado não pode ser aprovado.'], 422);
         }
-        $statusAprovacao = cp_pedido_tem_fotos_fornecedor($id) ? 'Aprovado' : 'Aprovado sem fotos';
+        $temFotosFornecedor = cp_pedido_tem_fotos_fornecedor($id);
+        if ((string) ($pedido['Sts'] ?? '') === 'Aprovado aguardando foto' && !$temFotosFornecedor) {
+            api_response(false, ['message' => 'Insira fotos do fornecedor antes de aprovar este pedido.'], 422);
+        }
+        $statusAprovacao = $temFotosFornecedor ? 'Aprovado' : 'Aprovado sem fotos';
         $stmt = db()->prepare(
             "UPDATE cp_compras
                 SET Sts = :status_aprovacao,

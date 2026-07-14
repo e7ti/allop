@@ -15,7 +15,6 @@
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
 -- Copiando estrutura para tabela allop_devel.cp_compras
-DROP TABLE IF EXISTS `cp_compras`;
 CREATE TABLE IF NOT EXISTS `cp_compras` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `cd_id` int(11) NOT NULL,
@@ -26,7 +25,7 @@ CREATE TABLE IF NOT EXISTS `cp_compras` (
   `MarkupFranquia` decimal(6,2) NOT NULL,
   `MarkupTotal` decimal(6,2) NOT NULL,
   `ValorTotalPedido` decimal(15,2) NOT NULL DEFAULT '0.00',
-  `Sts` varchar(30) CHARACTER SET latin1 NOT NULL DEFAULT 'Aberto' COMMENT 'Aberto/Aprovado/Recusado/Aprovado aguardando foto/Consolidado',
+  `status_id` int(11) NOT NULL DEFAULT '0' COMMENT 'Id da tabela cp_compras_status',
   `TemFotos` tinyint(4) NOT NULL DEFAULT '0' COMMENT '0 - Não tem, 1 - Tem',
   `StsMotivo` varchar(500) CHARACTER SET latin1 DEFAULT '',
   `Localizacao` varchar(15) CHARACTER SET latin1 NOT NULL DEFAULT 'KidStok' COMMENT 'Allop/Fornecedor',
@@ -43,15 +42,16 @@ CREATE TABLE IF NOT EXISTS `cp_compras` (
   KEY `FK_cp_compras_produtos_fornecedor` (`Fornecedor_id`),
   KEY `FK_cp_compras_empresas` (`empresa_id`),
   KEY `FK_cp_compras_empresas_cd` (`cd_id`) USING BTREE,
+  KEY `FK_cp_compras_cp_compras_status` (`status_id`),
+  CONSTRAINT `FK_cp_compras_cp_compras_status` FOREIGN KEY (`status_id`) REFERENCES `cp_compras_status` (`id`) ON UPDATE NO ACTION,
   CONSTRAINT `FK_cp_compras_empresas` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`Codigo`) ON UPDATE NO ACTION,
   CONSTRAINT `FK_cp_compras_empresas_cd` FOREIGN KEY (`cd_id`) REFERENCES `empresas_cd` (`Codigo`) ON UPDATE NO ACTION,
   CONSTRAINT `FK_cp_compras_produtos_fornecedor` FOREIGN KEY (`Fornecedor_id`) REFERENCES `produtos_fornecedor` (`Codigo`) ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_swedish_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_swedish_ci;
 
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.cp_compras_emails
-DROP TABLE IF EXISTS `cp_compras_emails`;
 CREATE TABLE IF NOT EXISTS `cp_compras_emails` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `config_email_id` int(11) NOT NULL,
@@ -68,7 +68,6 @@ CREATE TABLE IF NOT EXISTS `cp_compras_emails` (
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.cp_compras_itens
-DROP TABLE IF EXISTS `cp_compras_itens`;
 CREATE TABLE IF NOT EXISTS `cp_compras_itens` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `cp_compras_id` bigint(20) unsigned NOT NULL DEFAULT '0',
@@ -85,12 +84,11 @@ CREATE TABLE IF NOT EXISTS `cp_compras_itens` (
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `Index 3` (`cp_compras_id`,`referencia_fornecedor`),
   CONSTRAINT `FK_cp_compras_itens_cp_compras` FOREIGN KEY (`cp_compras_id`) REFERENCES `cp_compras` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=206 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=214 DEFAULT CHARSET=latin1;
 
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.cp_compras_itens_cores
-DROP TABLE IF EXISTS `cp_compras_itens_cores`;
 CREATE TABLE IF NOT EXISTS `cp_compras_itens_cores` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `compras_itens_tamanho_id` bigint(20) unsigned NOT NULL DEFAULT '0',
@@ -108,12 +106,11 @@ CREATE TABLE IF NOT EXISTS `cp_compras_itens_cores` (
   `Sts` tinyint(4) NOT NULL DEFAULT '1' COMMENT '0 - inativo, 1 - ativo',
   PRIMARY KEY (`id`) USING BTREE,
   KEY `FK_cp_compras_itens_cores_cp_compras_itens_tamanhos` (`compras_itens_tamanho_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=4633 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=4869 DEFAULT CHARSET=latin1;
 
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.cp_compras_itens_cores_log
-DROP TABLE IF EXISTS `cp_compras_itens_cores_log`;
 CREATE TABLE IF NOT EXISTS `cp_compras_itens_cores_log` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `compras_itens_cores_id` bigint(20) unsigned NOT NULL,
@@ -134,13 +131,13 @@ CREATE TABLE IF NOT EXISTS `cp_compras_itens_cores_log` (
   `Localizacao` varchar(15) NOT NULL DEFAULT 'KidStok' COMMENT 'Allop/Fornecedor',
   PRIMARY KEY (`id`),
   KEY `IDXTamanho_id` (`compras_itens_tamanho_id`),
-  KEY `IDXid` (`compras_itens_cores_id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=latin1;
+  KEY `IDXid` (`compras_itens_cores_id`) USING BTREE,
+  CONSTRAINT `FK_cp_compras_itens_cores_log_cp_compras_itens_cores` FOREIGN KEY (`compras_itens_cores_id`) REFERENCES `cp_compras_itens_cores` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=latin1;
 
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.cp_compras_itens_log
-DROP TABLE IF EXISTS `cp_compras_itens_log`;
 CREATE TABLE IF NOT EXISTS `cp_compras_itens_log` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `compras_itens_id` bigint(20) unsigned NOT NULL,
@@ -159,13 +156,13 @@ CREATE TABLE IF NOT EXISTS `cp_compras_itens_log` (
   `Localizacao` varchar(15) NOT NULL DEFAULT 'KidStok' COMMENT 'Allop/Fornecedor',
   PRIMARY KEY (`id`),
   KEY `IDXCompras_id` (`cp_compras_id`),
-  KEY `IDXId` (`compras_itens_id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
+  KEY `IDXId` (`compras_itens_id`) USING BTREE,
+  CONSTRAINT `FK_cp_compras_itens_log_cp_compras_itens` FOREIGN KEY (`compras_itens_id`) REFERENCES `cp_compras_itens` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
 
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.cp_compras_itens_rateios
-DROP TABLE IF EXISTS `cp_compras_itens_rateios`;
 CREATE TABLE IF NOT EXISTS `cp_compras_itens_rateios` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `compras_itens_tamanho_id` bigint(20) unsigned NOT NULL,
@@ -176,12 +173,11 @@ CREATE TABLE IF NOT EXISTS `cp_compras_itens_rateios` (
   KEY `IDXRateioCor` (`compras_itens_cor_id`),
   CONSTRAINT `FK_cp_compras_itens_rateios_cp_compras_itens_tamanhos` FOREIGN KEY (`compras_itens_tamanho_id`) REFERENCES `cp_compras_itens_tamanhos` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
   CONSTRAINT `FK_rateio_cor` FOREIGN KEY (`compras_itens_cor_id`) REFERENCES `cp_compras_itens_cores` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=423 DEFAULT CHARSET=latin1 COMMENT='Rateio percentual das cores para cada tamanho';
+) ENGINE=InnoDB AUTO_INCREMENT=1467 DEFAULT CHARSET=latin1 COMMENT='Rateio percentual das cores para cada tamanho';
 
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.cp_compras_itens_tamanhos
-DROP TABLE IF EXISTS `cp_compras_itens_tamanhos`;
 CREATE TABLE IF NOT EXISTS `cp_compras_itens_tamanhos` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `compras_itens_id` bigint(20) unsigned NOT NULL DEFAULT '0' COMMENT 'id do item',
@@ -197,12 +193,11 @@ CREATE TABLE IF NOT EXISTS `cp_compras_itens_tamanhos` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `IDXItensTamanho` (`compras_itens_id`,`tamanho`) USING BTREE,
   CONSTRAINT `FK_cp_compras_itens_tamanhos_cp_compras_itens` FOREIGN KEY (`compras_itens_id`) REFERENCES `cp_compras_itens` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=126 DEFAULT CHARSET=latin1 COMMENT='Tabela de itens de tamanhos, separação de tamanhos.';
+) ENGINE=InnoDB AUTO_INCREMENT=182 DEFAULT CHARSET=latin1 COMMENT='Tabela de itens de tamanhos, separação de tamanhos.';
 
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.cp_compras_itens_tamanhos_log
-DROP TABLE IF EXISTS `cp_compras_itens_tamanhos_log`;
 CREATE TABLE IF NOT EXISTS `cp_compras_itens_tamanhos_log` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `compras_itens_tamanho_id` bigint(20) unsigned NOT NULL,
@@ -220,67 +215,23 @@ CREATE TABLE IF NOT EXISTS `cp_compras_itens_tamanhos_log` (
   `Localizacao` varchar(15) NOT NULL DEFAULT 'KidStok' COMMENT 'Allop/Fornecedor',
   PRIMARY KEY (`id`),
   KEY `IDXIdItensTamanho` (`compras_itens_id`,`tamanho`),
-  KEY `IDXId` (`compras_itens_tamanho_id`) USING BTREE
-) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=latin1 COMMENT='Tabela de itens de tamanhos, separação de tamanhos.';
+  KEY `IDXId` (`compras_itens_tamanho_id`) USING BTREE,
+  CONSTRAINT `FK_cp_compras_itens_tamanhos_log_cp_compras_itens_tamanhos` FOREIGN KEY (`compras_itens_tamanho_id`) REFERENCES `cp_compras_itens_tamanhos` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
+) ENGINE=InnoDB AUTO_INCREMENT=524 DEFAULT CHARSET=latin1 COMMENT='Tabela de itens de tamanhos, separação de tamanhos.';
 
 -- Exportação de dados foi desmarcado.
 
--- Copiando estrutura para tabela allop_devel.empresas
-DROP TABLE IF EXISTS `empresas`;
-CREATE TABLE IF NOT EXISTS `empresas` (
-  `Codigo` int(11) NOT NULL,
-  `EmpresaCD` int(11) NOT NULL,
-  `Nome` varchar(50) NOT NULL,
-  `Fantasia` varchar(50) NOT NULL,
-  `CNPJ` varchar(14) NOT NULL,
-  `IE` varchar(15) NOT NULL DEFAULT '',
-  `CEP` varchar(8) NOT NULL DEFAULT '',
-  `TipoEndereco` varchar(25) NOT NULL DEFAULT '',
-  `Endereco` varchar(60) NOT NULL DEFAULT '',
-  `Numero` varchar(10) NOT NULL DEFAULT '',
-  `Complemento` varchar(40) NOT NULL DEFAULT '',
-  `Bairro` varchar(50) NOT NULL DEFAULT '',
-  `Cidade` varchar(60) NOT NULL DEFAULT '',
-  `UF` varchar(2) NOT NULL DEFAULT '',
-  `FoneDDD` varchar(2) NOT NULL DEFAULT '',
-  `FoneNro` varchar(10) NOT NULL DEFAULT '',
-  `CelularDDD` varchar(2) NOT NULL DEFAULT '',
-  `CelularNro` varchar(10) NOT NULL DEFAULT '',
-  `Responsavel` varchar(60) NOT NULL DEFAULT '',
-  `Observacoes` varchar(250) NOT NULL DEFAULT '',
-  `CRT` varchar(1) NOT NULL DEFAULT '3',
-  `Status` varchar(8) NOT NULL DEFAULT '',
-  `Usuario` varchar(60) NOT NULL DEFAULT '',
-  `Inclusao` date DEFAULT NULL,
-  `Alteracao` date DEFAULT NULL,
-  PRIMARY KEY (`Codigo`),
-  UNIQUE KEY `IDXNome` (`Nome`) USING BTREE,
-  UNIQUE KEY `IDXFantasia` (`Fantasia`) USING BTREE,
-  UNIQUE KEY `IDXCnpj` (`CNPJ`),
-  KEY `FK_empresas_situacao` (`Status`),
-  KEY `FK_empresas_empresas_cd` (`EmpresaCD`),
-  CONSTRAINT `FK_empresas_empresas_cd` FOREIGN KEY (`EmpresaCD`) REFERENCES `empresas_cd` (`Codigo`) ON UPDATE NO ACTION,
-  CONSTRAINT `FK_empresas_situacao` FOREIGN KEY (`Status`) REFERENCES `situacao` (`StsNome`) ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-
--- Exportação de dados foi desmarcado.
-
--- Copiando estrutura para tabela allop_devel.empresas_cd
-DROP TABLE IF EXISTS `empresas_cd`;
-CREATE TABLE IF NOT EXISTS `empresas_cd` (
-  `Codigo` int(11) NOT NULL,
-  `NomeCD` varchar(50) NOT NULL,
-  `Status` varchar(8) NOT NULL,
-  PRIMARY KEY (`Codigo`),
-  UNIQUE KEY `IDXNomeCD` (`NomeCD`),
-  KEY `FK_empresas_cd_situacao` (`Status`),
-  CONSTRAINT `FK_empresas_cd_situacao` FOREIGN KEY (`Status`) REFERENCES `situacao` (`StsNome`) ON DELETE NO ACTION ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+-- Copiando estrutura para tabela allop_devel.cp_compras_status
+CREATE TABLE IF NOT EXISTS `cp_compras_status` (
+  `id` int(11) NOT NULL,
+  `descricao_compras` varchar(120) NOT NULL DEFAULT '',
+  `descricao_portal` varchar(120) NOT NULL DEFAULT '',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.pf_colecao
-DROP TABLE IF EXISTS `pf_colecao`;
 CREATE TABLE IF NOT EXISTS `pf_colecao` (
   `id_item` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `colecao_id` int(11) unsigned NOT NULL COMMENT 'Coluna "Colecao" do CSV',
@@ -307,7 +258,6 @@ CREATE TABLE IF NOT EXISTS `pf_colecao` (
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.pf_usuarios
-DROP TABLE IF EXISTS `pf_usuarios`;
 CREATE TABLE IF NOT EXISTS `pf_usuarios` (
   `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `nome` varchar(100) NOT NULL,
@@ -322,8 +272,22 @@ CREATE TABLE IF NOT EXISTS `pf_usuarios` (
 
 -- Exportação de dados foi desmarcado.
 
+-- Copiando estrutura para tabela allop_devel.pf_usuarios_copy
+CREATE TABLE IF NOT EXISTS `pf_usuarios_copy` (
+  `id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `nome` varchar(100) NOT NULL,
+  `email` varchar(100) NOT NULL,
+  `senha` varchar(255) NOT NULL,
+  `perfil` enum('admin','fornecedor') DEFAULT 'fornecedor',
+  `status` tinyint(1) DEFAULT '1' COMMENT '0 - Inativo, 1 - Ativo',
+  `criado_em` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `email` (`email`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 ROW_FORMAT=DYNAMIC;
+
+-- Exportação de dados foi desmarcado.
+
 -- Copiando estrutura para tabela allop_devel.pf_usuario_fornecedor
-DROP TABLE IF EXISTS `pf_usuario_fornecedor`;
 CREATE TABLE IF NOT EXISTS `pf_usuario_fornecedor` (
   `id_usuario` int(10) unsigned NOT NULL,
   `id_fornecedor` varchar(2) CHARACTER SET latin1 NOT NULL,
@@ -336,7 +300,6 @@ CREATE TABLE IF NOT EXISTS `pf_usuario_fornecedor` (
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.produtos
-DROP TABLE IF EXISTS `produtos`;
 CREATE TABLE IF NOT EXISTS `produtos` (
   `Codigo` varchar(8) NOT NULL,
   `Distribuidora` varchar(15) DEFAULT NULL,
@@ -432,8 +395,21 @@ CREATE TABLE IF NOT EXISTS `produtos` (
 
 -- Exportação de dados foi desmarcado.
 
+-- Copiando estrutura para tabela allop_devel.produtos_colecao
+CREATE TABLE IF NOT EXISTS `produtos_colecao` (
+  `Codigo` int(11) unsigned NOT NULL AUTO_INCREMENT,
+  `Colecao` varchar(40) NOT NULL,
+  `Status` varchar(8) NOT NULL,
+  `Inclusao` date NOT NULL,
+  `Alteracao` date NOT NULL,
+  `Usuario` varchar(30) NOT NULL,
+  PRIMARY KEY (`Codigo`) USING BTREE,
+  UNIQUE KEY `IDXModelo` (`Colecao`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=38 DEFAULT CHARSET=latin1 COMMENT='tbModelos - Modelos';
+
+-- Exportação de dados foi desmarcado.
+
 -- Copiando estrutura para tabela allop_devel.produtos_fornecedor
-DROP TABLE IF EXISTS `produtos_fornecedor`;
 CREATE TABLE IF NOT EXISTS `produtos_fornecedor` (
   `Codigo` varchar(2) NOT NULL,
   `NomeFornecedor` varchar(30) NOT NULL,
@@ -452,7 +428,6 @@ CREATE TABLE IF NOT EXISTS `produtos_fornecedor` (
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.seg_aplicacoes
-DROP TABLE IF EXISTS `seg_aplicacoes`;
 CREATE TABLE IF NOT EXISTS `seg_aplicacoes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nome` varchar(60) NOT NULL,
@@ -466,7 +441,6 @@ CREATE TABLE IF NOT EXISTS `seg_aplicacoes` (
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.seg_menu
-DROP TABLE IF EXISTS `seg_menu`;
 CREATE TABLE IF NOT EXISTS `seg_menu` (
   `id` int(11) NOT NULL,
   `menu` varchar(60) NOT NULL DEFAULT '',
@@ -476,7 +450,6 @@ CREATE TABLE IF NOT EXISTS `seg_menu` (
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.seg_perfil
-DROP TABLE IF EXISTS `seg_perfil`;
 CREATE TABLE IF NOT EXISTS `seg_perfil` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `nome` varchar(60) NOT NULL,
@@ -486,7 +459,6 @@ CREATE TABLE IF NOT EXISTS `seg_perfil` (
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.seg_perfil_permissoes
-DROP TABLE IF EXISTS `seg_perfil_permissoes`;
 CREATE TABLE IF NOT EXISTS `seg_perfil_permissoes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `aplicacao_id` int(11) NOT NULL,
@@ -508,7 +480,6 @@ CREATE TABLE IF NOT EXISTS `seg_perfil_permissoes` (
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.seg_usuarios
-DROP TABLE IF EXISTS `seg_usuarios`;
 CREATE TABLE IF NOT EXISTS `seg_usuarios` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `perfil_id` int(11) NOT NULL,
@@ -524,7 +495,6 @@ CREATE TABLE IF NOT EXISTS `seg_usuarios` (
 -- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.seg_usuarios_permissoes
-DROP TABLE IF EXISTS `seg_usuarios_permissoes`;
 CREATE TABLE IF NOT EXISTS `seg_usuarios_permissoes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `usuario_id` int(11) NOT NULL,
@@ -545,32 +515,14 @@ CREATE TABLE IF NOT EXISTS `seg_usuarios_permissoes` (
 
 -- Exportação de dados foi desmarcado.
 
--- Copiando estrutura para tabela allop_devel.urls_allop
-DROP TABLE IF EXISTS `urls_allop`;
-CREATE TABLE IF NOT EXISTS `urls_allop` (
-  `id` int(11) NOT NULL AUTO_INCREMENT,
-  `cd_id` int(11) NOT NULL,
-  `empresa_id` int(11) NOT NULL,
-  `modulo` varchar(60) NOT NULL DEFAULT '',
-  `url` varchar(255) NOT NULL DEFAULT '',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `IDXCdEmpresa` (`cd_id`,`empresa_id`),
-  KEY `FK_cp_compras_config_empresas` (`empresa_id`),
-  CONSTRAINT `FK_cp_compras_config_empresas` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`Codigo`) ON UPDATE NO ACTION,
-  CONSTRAINT `FK_cp_compras_config_empresas_cd` FOREIGN KEY (`cd_id`) REFERENCES `empresas_cd` (`Codigo`) ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=latin1;
-
--- Exportação de dados foi desmarcado.
-
 -- Copiando estrutura para trigger allop_devel.cp_compras_itens_after_update
-DROP TRIGGER IF EXISTS `cp_compras_itens_after_update`;
 SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
 DELIMITER //
 CREATE TRIGGER `cp_compras_itens_after_update` AFTER UPDATE ON `cp_compras_itens` FOR EACH ROW BEGIN
 	-- Só grava o log se houver alteração real em colunas relevantes (opcional, mas recomendado)
    IF OLD.total_qtde <> NEW.total_qtde OR OLD.Sts <> NEW.Sts OR OLD.entrega <> NEW.entrega THEN
 		INSERT INTO cp_compras_itens_log (
-	            id, 
+	            compras_itens_id, 
 	            cp_compras_id, 
 	            referencia_fornecedor, 
 	            descricao, 
@@ -628,7 +580,6 @@ DELIMITER ;
 SET SQL_MODE=@OLDTMP_SQL_MODE;
 
 -- Copiando estrutura para trigger allop_devel.cp_compras_itens_cores_after_update
-DROP TRIGGER IF EXISTS `cp_compras_itens_cores_after_update`;
 SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
 DELIMITER //
 CREATE TRIGGER `cp_compras_itens_cores_after_update` AFTER UPDATE ON `cp_compras_itens_cores` FOR EACH ROW BEGIN
@@ -714,7 +665,6 @@ DELIMITER ;
 SET SQL_MODE=@OLDTMP_SQL_MODE;
 
 -- Copiando estrutura para trigger allop_devel.cp_compras_itens_tamanhos_after_update
-DROP TRIGGER IF EXISTS `cp_compras_itens_tamanhos_after_update`;
 SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
 DELIMITER //
 CREATE TRIGGER `cp_compras_itens_tamanhos_after_update` AFTER UPDATE ON `cp_compras_itens_tamanhos` FOR EACH ROW BEGIN

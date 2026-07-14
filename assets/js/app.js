@@ -1083,7 +1083,7 @@ function initCpComprasForm() {
 
     $('#cp-foto-input').on('change', uploadCpCompraFotos);
     $('#btn-aplicar-cp-rateio').on('click', aplicarCpCompraRateio);
-    $('#cp-rateio-modal').on('input', '.cp-rateio-percentual, #cp-rateio-qtde-total', updateCpCompraRateioModalTotal);
+    $('#cp-rateio-modal').on('input', '.cp-rateio-percentual, .cp-rateio-qtde, #cp-rateio-qtde-total', updateCpCompraRateioModalTotal);
 
     $form.on('shown.bs.collapse hidden.bs.collapse', '.cp-compra-item-collapse', function (event) {
         cpCompraItensOpen[$(this).data('item-index')] = event.type === 'shown';
@@ -1306,12 +1306,14 @@ function updateCpCompraWorkflowButtons(row) {
     const localizacao = row.Localizacao || 'KidStok';
     const status = row.Sts || 'Aberto';
     const publicado = Number(row.Publicado || 0) === 1;
+    const temFotosFornecedor = Number(row.TemFotosFornecedor || 0) === 1;
     const pedidoId = Number($('#cp-compras-form').data('id') || $('#cp-compras-form [name="id"]').val() || 0);
-    const isClosed = status === 'Aprovado' || status === 'Aprovado sem fotos' || status === 'Recusado';
+    const isClosed = status === 'Aprovado' || status === 'Aprovado sem fotos' || status === 'Aprovado aguardando foto' || status === 'Recusado';
+    const podeAprovarAguardandoFoto = status === 'Aprovado aguardando foto' && temFotosFornecedor;
     $('#btn-cp-enviar-proposta').toggleClass('d-none', !pedidoId || localizacao !== 'KidStok' || isClosed);
     $('#btn-cp-aprovar').toggleClass(
         'd-none',
-        !pedidoId || !publicado || cpLocalizacaoEhFornecedor(localizacao) || isClosed
+        !pedidoId || !publicado || cpLocalizacaoEhFornecedor(localizacao) || (isClosed && !podeAprovarAguardandoFoto)
     );
     $('#btn-cp-recusar').toggleClass(
         'd-none',
@@ -1373,7 +1375,7 @@ function cpPedidoStatusBadge(value, localizacao) {
     const statusKey = status.toLocaleLowerCase();
     let label = status;
     let className = 'badge-status-open';
-    if (statusKey === 'aprovado sem fotos') {
+    if (statusKey === 'aprovado sem fotos' || statusKey === 'aprovado aguardando foto') {
         className = 'badge-status-awaiting-photo';
     } else if (statusKey === 'aprovado') {
         className = 'badge-status-approved';
@@ -1594,7 +1596,6 @@ function renderCpCompraItens() {
             '<span class="fw-bold text-success cp-compra-item-total">R$ ' + escapeHtml(formatMoneyBr(item.total_produto || 0)) + '</span>' +
             '</div>' +
             (cpCompraReadonly ? '' : '<div class="d-flex flex-wrap gap-2 cp-compra-item-actions" onclick="event.stopPropagation();">' +
-                (item.item_confirmado ? '<button class="btn btn-sm btn-orange btn-new" type="button" onclick="addCpCompraTamanho(' + index + ')">Tamanho</button>' : '') +
                 '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraItem(' + index + ')"></button>' +
                 '</div>') +
             '</div>' +
@@ -1653,7 +1654,6 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
                 cpCompraStatusBadge(tamanho.Sts) +
                 (cpCompraReadonly ? '' :
                     '<button class="btn btn-sm btn-outline-primary btn-rateio-item" type="button" onclick="ratearCpCompraTamanho(' + itemIndex + ', ' + tamanhoIndex + ')">Ratear</button>' +
-                    '<button class="btn btn-sm btn-orange btn-new" type="button" onclick="addCpCompraCor(' + itemIndex + ', ' + tamanhoIndex + ')">Cor</button>' +
                     '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir tamanho" aria-label="Excluir tamanho" onclick="removeCpCompraTamanho(' + itemIndex + ', ' + tamanhoIndex + ')"></button>') +
                 '</div></div>' +
                 '<div id="' + collapseId + '" class="accordion-collapse collapse cp-compra-tamanho-collapse' + (aberto ? ' show' : '') + '" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '">' +
@@ -1997,6 +1997,10 @@ function cpCompraTamanhoPercentualTotal(tamanho) {
 
 function roundCpPercent(value) {
     return Math.round((Number(value) || 0) * 10000) / 10000;
+}
+
+function roundCpPercentDisplay(value) {
+    return Math.round((Number(value) || 0) * 100) / 100;
 }
 
 function parsePercentInput(value) {
@@ -2449,50 +2453,88 @@ function renderCpCompraRateioModal(tamanho, coresAtivas) {
         const originalIndex = (tamanho.cores || []).indexOf(cor);
         return '<tr data-color-index="' + originalIndex + '">' +
             '<td>' + escapeHtml(cor.cor || 'Cor ' + (originalIndex + 1)) + '</td>' +
+            '<td><input class="form-control form-control-sm text-end cp-rateio-qtde" type="number" min="0" step="1" inputmode="numeric" value="' + escapeAttr(parseInt(cor.Qtde || 0, 10) || 0) + '"></td>' +
             '<td><input class="form-control form-control-sm text-end cp-rateio-percentual" inputmode="decimal" value="' + escapeAttr(formatPercentInput(cor.percentual || 0)) + '"></td>' +
-            '<td class="text-end cp-rateio-qtde-cor">' + escapeHtml(parseInt(cor.Qtde || 0, 10)) + '</td>' +
             '</tr>';
     }).join('');
 
     $('#cp-rateio-content').html(
         '<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-2">' +
-        '<span class="text-muted small">A soma dos percentuais deve totalizar 100% para este tamanho.</span>' +
+        '<span class="text-muted small">Informe percentual ou quantidade por cor. O sistema recalcula o outro campo automaticamente.</span>' +
         '<button class="btn btn-sm btn-outline-primary" type="button" onclick="distribuirCpCompraRateioIgual()">Dividir igualmente</button>' +
         '</div>' +
         '<div class="table-responsive"><table class="table table-sm table-striped align-middle mb-0">' +
-        '<thead><tr><th>Cor</th><th class="text-end" style="width: 180px;">Percentual</th><th class="text-end" style="width: 140px;">Qtde</th></tr></thead>' +
+        '<thead><tr><th>Cor</th><th class="text-end" style="width: 140px;">Qtde</th><th class="text-end" style="width: 180px;">Percentual</th></tr></thead>' +
         '<tbody>' + rows + '</tbody></table></div>'
     );
     updateCpCompraRateioModalTotal();
 }
 
-function updateCpCompraRateioModalTotal() {
+function updateCpCompraRateioModalTotal(event) {
+    $('#cp-rateio-alert').addClass('d-none').text('');
     const qtdeTotal = Math.max(0, parseInt(String($('#cp-rateio-qtde-total').val() || '0').replace(/\D/g, ''), 10) || 0);
-    let totalPercentual = 0;
-    let qtdeAplicada = 0;
     const $rows = $('#cp-rateio-content tbody tr');
+    const forcarQuantidade = event === 'quantidade';
+    const $source = event && event.target ? $(event.target) : $();
+    const percentuaisDigitados = [];
+    let totalPercentual = 0;
 
     $rows.each(function () {
-        const $row = $(this);
-        const percentual = parsePercentInput($row.find('.cp-rateio-percentual').val());
-        const qtde = Math.floor(qtdeTotal * percentual / 100);
+        const percentual = parsePercentInput($(this).find('.cp-rateio-percentual').val());
+        percentuaisDigitados.push(percentual);
         totalPercentual = roundCpPercent(totalPercentual + percentual);
-        qtdeAplicada += qtde;
-        $row.find('.cp-rateio-qtde-cor').text(qtde);
     });
 
-    if ($rows.length && roundCpPercent(totalPercentual) === 100) {
-        let sobra = qtdeTotal - qtdeAplicada;
-        let rowIndex = 0;
-        while (sobra > 0) {
-            const $row = $rows.eq(rowIndex % $rows.length);
-            $row.find('.cp-rateio-qtde-cor').text((parseInt($row.find('.cp-rateio-qtde-cor').text() || '0', 10) || 0) + 1);
-            sobra -= 1;
-            rowIndex += 1;
+    const atualizarPorPercentual = !forcarQuantidade && (!$source.length ||
+        $source.hasClass('cp-rateio-percentual') ||
+        ($source.is('#cp-rateio-qtde-total') && totalPercentual > 0));
+    let qtdeAplicada = 0;
+
+    if (atualizarPorPercentual) {
+        $rows.each(function (index) {
+            const percentual = percentuaisDigitados[index] || 0;
+            let qtde = qtdeTotal > 0 ? Math.floor(qtdeTotal * percentual / 100) : 0;
+            $(this).find('.cp-rateio-qtde').val(qtde);
+            qtdeAplicada += qtde;
+        });
+        if ($rows.length && qtdeTotal > 0 && roundCpPercent(totalPercentual) === 100) {
+            let sobra = qtdeTotal - qtdeAplicada;
+            let rowIndex = 0;
+            while (sobra > 0) {
+                const $input = $rows.eq(rowIndex % $rows.length).find('.cp-rateio-qtde');
+                $input.val((parseInt($input.val() || '0', 10) || 0) + 1);
+                sobra -= 1;
+                rowIndex += 1;
+            }
+            qtdeAplicada = qtdeTotal;
+        }
+    } else {
+        const qties = [];
+        $rows.each(function () {
+            const qtde = Math.max(0, parseInt(String($(this).find('.cp-rateio-qtde').val() || '0').replace(/\D/g, ''), 10) || 0);
+            qties.push(qtde);
+            qtdeAplicada += qtde;
+        });
+
+        totalPercentual = 0;
+        $rows.each(function (index) {
+            const $row = $(this);
+            const qtde = qties[index] || 0;
+            const percentual = qtdeTotal > 0
+                ? (qtdeAplicada === qtdeTotal && index === $rows.length - 1
+                    ? roundCpPercentDisplay(100 - totalPercentual)
+                    : roundCpPercentDisplay((qtde / qtdeTotal) * 100))
+                : 0;
+            totalPercentual = roundCpPercentDisplay(totalPercentual + percentual);
+            $row.find('.cp-rateio-percentual').val(formatPercentInput(percentual));
+        });
+
+        if (qtdeAplicada !== qtdeTotal) {
+            totalPercentual = qtdeTotal > 0 ? roundCpPercentDisplay((qtdeAplicada / qtdeTotal) * 100) : 0;
         }
     }
 
-    const valido = roundCpPercent(totalPercentual) === 100;
+    const valido = qtdeTotal > 0 && qtdeAplicada === qtdeTotal && roundCpPercent(totalPercentual) === 100;
     $('#cp-rateio-total-percentual')
         .val(formatPercentInput(totalPercentual) + '%')
         .toggleClass('text-success', valido)
@@ -2500,20 +2542,33 @@ function updateCpCompraRateioModalTotal() {
 }
 
 function distribuirCpCompraRateioIgual() {
-    const $inputs = $('#cp-rateio-content .cp-rateio-percentual');
-    if (!$inputs.length) {
+    const $rows = $('#cp-rateio-content tbody tr');
+    if (!$rows.length) {
         return;
     }
-    const base = Math.floor((100 / $inputs.length) * 100) / 100;
-    let acumulado = 0;
-    $inputs.each(function (index) {
-        const percentual = index === $inputs.length - 1
-            ? roundCpPercent(100 - acumulado)
-            : base;
-        $(this).val(formatPercentInput(percentual));
-        acumulado = roundCpPercent(acumulado + percentual);
+    const qtdeTotal = Math.max(0, parseInt(String($('#cp-rateio-qtde-total').val() || '0').replace(/\D/g, ''), 10) || 0);
+    if (qtdeTotal <= 0) {
+        $('#cp-rateio-alert').removeClass('d-none').text('Informe a quantidade total antes de dividir.');
+        return;
+    }
+    $('#cp-rateio-alert').addClass('d-none').text('');
+    const base = Math.floor(qtdeTotal / $rows.length);
+    let restante = qtdeTotal - (base * $rows.length);
+    let totalPercentual = 0;
+    $rows.each(function (index) {
+        const qtde = base + (restante > 0 ? 1 : 0);
+        const percentual = index === $rows.length - 1
+            ? roundCpPercentDisplay(100 - totalPercentual)
+            : roundCpPercentDisplay((qtde / qtdeTotal) * 100);
+        totalPercentual = roundCpPercentDisplay(totalPercentual + percentual);
+        $(this).find('.cp-rateio-qtde').val(qtde);
+        $(this).find('.cp-rateio-percentual').val(formatPercentInput(percentual));
+        restante -= 1;
     });
-    updateCpCompraRateioModalTotal();
+    $('#cp-rateio-total-percentual')
+        .val(formatPercentInput(totalPercentual) + '%')
+        .toggleClass('text-success', roundCpPercentDisplay(totalPercentual) === 100)
+        .toggleClass('text-danger', roundCpPercentDisplay(totalPercentual) !== 100);
 }
 
 function aplicarCpCompraRateio() {
@@ -2525,20 +2580,33 @@ function aplicarCpCompraRateio() {
 
     const qtdeTotal = Math.max(0, parseInt(String($('#cp-rateio-qtde-total').val() || '0').replace(/\D/g, ''), 10) || 0);
     let totalPercentual = 0;
-    const percentuais = [];
+    let totalQtdeCores = 0;
+    const rateios = [];
 
     $('#cp-rateio-content tbody tr').each(function () {
         const corIndex = Number($(this).data('color-index'));
+        const qtde = Math.max(0, parseInt(String($(this).find('.cp-rateio-qtde').val() || '0').replace(/\D/g, ''), 10) || 0);
         const percentual = parsePercentInput($(this).find('.cp-rateio-percentual').val());
-        if (percentual < 0 || percentual > 100) {
-            percentuais.push({ corIndex: corIndex, percentual: percentual, invalido: true });
-            return;
-        }
+        totalQtdeCores += qtde;
         totalPercentual = roundCpPercent(totalPercentual + percentual);
-        percentuais.push({ corIndex: corIndex, percentual: percentual, invalido: false });
+        rateios.push({
+            corIndex: corIndex,
+            qtde: qtde,
+            percentual: percentual,
+            invalido: percentual < 0 || percentual > 100
+        });
     });
 
-    if (percentuais.some(function (row) { return row.invalido; })) {
+    if (qtdeTotal <= 0) {
+        $('#cp-rateio-alert').removeClass('d-none').text('Informe a quantidade total do tamanho.');
+        return;
+    }
+    if (totalQtdeCores !== qtdeTotal) {
+        $('#cp-rateio-alert').removeClass('d-none').text('A soma das quantidades das cores deve bater com a quantidade total. Total informado: ' + qtdeTotal + '. Soma das cores: ' + totalQtdeCores + '.');
+        return;
+    }
+
+    if (rateios.some(function (row) { return row.invalido; })) {
         $('#cp-rateio-alert').removeClass('d-none').text('Cada percentual deve estar entre 0% e 100%.');
         return;
     }
@@ -2552,8 +2620,9 @@ function aplicarCpCompraRateio() {
             cor.percentual = 0;
         }
     });
-    percentuais.forEach(function (row) {
+    rateios.forEach(function (row) {
         if (tamanho.cores[row.corIndex]) {
+            tamanho.cores[row.corIndex].Qtde = row.qtde;
             tamanho.cores[row.corIndex].percentual = row.percentual;
         }
     });
@@ -2868,26 +2937,39 @@ function validarCpCompraForm($form) {
                 return String(cor.Sts) !== '0';
             });
             if (!coresAtivas.length) {
-                return 'Informe ao menos uma cor ativa para o tamanho ' + nomeTamanho + '.';
+                return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ': informe ao menos uma cor ativa.';
+            }
+            const qtdeTotalTamanho = Math.max(0, parseInt(Number(tamanho.qtde_total || 0), 10) || 0);
+            if (qtdeTotalTamanho <= 0) {
+                return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ': informe a quantidade total no rateio.';
             }
             const coresUsadas = {};
+            let totalQtdeCores = 0;
             for (let corIndex = 0; corIndex < coresAtivas.length; corIndex++) {
                 const nomeCor = String(coresAtivas[corIndex].cor || '').trim();
                 if (!nomeCor) {
-                    return 'Informe todas as cores do tamanho ' + nomeTamanho + '.';
+                    return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ': informe todas as cores.';
                 }
                 if (coresUsadas[nomeCor]) {
-                    return 'A cor ' + nomeCor + ' está duplicada no tamanho ' + nomeTamanho + '.';
+                    return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ', cor ' + nomeCor + ': cor duplicada.';
                 }
                 coresUsadas[nomeCor] = true;
                 const percentual = Number(coresAtivas[corIndex].percentual || 0);
                 if (percentual < 0 || percentual > 100) {
-                    return 'Cada percentual deve estar entre 0% e 100%.';
+                    return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ', cor ' + nomeCor + ': o percentual deve estar entre 0% e 100%.';
                 }
+                totalQtdeCores += Math.max(0, parseInt(Number(coresAtivas[corIndex].Qtde || 0), 10) || 0);
+            }
+            if (totalQtdeCores !== qtdeTotalTamanho) {
+                return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ': a soma das quantidades das cores deve bater com a quantidade total. Total informado: ' + qtdeTotalTamanho + '. Soma das cores: ' + totalQtdeCores + '.';
             }
             const totalPercentual = cpCompraTamanhoPercentualTotal(tamanho);
             if (roundCpPercent(totalPercentual) !== 100) {
-                return 'O rateio das cores do tamanho ' + nomeTamanho + ' deve totalizar 100%. Total atual: ' + formatPercentInput(totalPercentual) + '%.';
+                const corReferencia = coresAtivas.find(function (cor) {
+                    return Number(cor.percentual || 0) <= 0;
+                }) || coresAtivas[0];
+                const nomeCorReferencia = String(corReferencia.cor || '').trim() || 'sem identificação';
+                return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ', cor ' + nomeCorReferencia + ': o rateio do tamanho deve totalizar 100%. Total atual: ' + formatPercentInput(totalPercentual) + '%.';
             }
         }
         if (itemAtivo && tamanhosAtivos === 0) {
