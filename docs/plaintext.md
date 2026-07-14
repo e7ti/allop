@@ -168,6 +168,15 @@ Regras atuais de compras:
 - os destinatários são usuários ativos de `pf_usuarios` vinculados ao fornecedor em `pf_usuario_fornecedor`;
 - fotos são armazenadas em Base64 no banco de fotos; `cp_compras_fotos_ks` guarda fotos KidStok e `cp_compras_fotos` guarda fotos do fornecedor.
 
+### 4.4 Dashboard
+
+O `dashboard.php` exibe cinco cards de indicadores de pedidos de compra (status Aberto, Aprovado, Aprovado Aguardando Foto Fornecedor e Recusado, mais o total geral), um gráfico de barras por status, um resumo financeiro em rosca (donut) e a grid dos últimos 10 pedidos.
+
+- os títulos dos quatro cards de status vêm de `cp_compras_status.descricao_compras` (o mesmo campo usado na coluna Status do grid de últimos pedidos), com fallback para os textos padrão do seed quando a tabela estiver vazia ou indisponível;
+- cada card também exibe o valor total (R$) somado dos pedidos daquele status, calculado na mesma consulta agregada dos contadores;
+- o fundo de cada card usa a cor do respectivo status (laranja para Aberto, verde para Aprovado, azul-claro para Aguardando Foto, vermelho para Recusado); título, valor numérico e valor em R$ ficam em branco para contraste sobre o fundo colorido, e o rótulo `PEDIDOS` (`page-kicker`) fica em preto;
+- o card "Total de pedidos" não está vinculado a um status específico e mantém o azul padrão do sistema.
+
 ## 5. Autenticação, menu e permissões
 
 ### Autenticação
@@ -176,7 +185,8 @@ Regras atuais de compras:
 - páginas internas chamam `require_login()`;
 - APIs internas normalmente chamam `api_require_login()`;
 - respostas de API seguem o formato `{"success": true|false, ...}`;
-- falhas usam os códigos HTTP 401, 403, 404, 422 ou 500, conforme o caso.
+- falhas usam os códigos HTTP 401, 403, 404, 422 ou 500, conforme o caso;
+- o campo de senha da tela de login tem um botão para mostrar/ocultar a senha digitada; a alternância é somente client-side (JavaScript) e não altera o contrato da API de autenticação.
 
 ### Menu
 
