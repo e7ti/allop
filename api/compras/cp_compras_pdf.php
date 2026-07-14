@@ -72,11 +72,14 @@ $stmt = db()->prepare(
             e.Nome AS empresa_razao_social,
             e.Fantasia AS empresa_fantasia,
             e.CNPJ AS empresa_cnpj,
-            f.NomeFornecedor AS fornecedor_nome
+            f.NomeFornecedor AS fornecedor_nome,
+            COALESCE(cst.descricao_compras, '') AS descricao_compras,
+            COALESCE(cst.descricao_compras, '') AS Sts
        FROM cp_compras c
        LEFT JOIN empresas_cd cd ON cd.Codigo = c.cd_id
        LEFT JOIN empresas e ON e.Codigo = c.empresa_id
        LEFT JOIN produtos_fornecedor f ON f.Codigo = c.Fornecedor_id
+       LEFT JOIN cp_compras_status cst ON cst.id = c.status_id
       WHERE c.id = :id"
 );
 $stmt->execute(['id' => $pedidoId]);
@@ -205,7 +208,7 @@ ob_start();
         <tr>
             <td><span class="label">Código</span><span class="value"><?= pdf_h($pedido['ID']) ?></span></td>
             <td><span class="label">Data do pedido</span><span class="value"><?= pdf_date($pedido['DataPedido']) ?></span></td>
-            <td><span class="label">Status</span><span class="value"><?= pdf_h($pedido['Sts']) ?></span></td>
+            <td><span class="label">Status</span><span class="value"><?= pdf_h($pedido['descricao_compras'] ?? $pedido['Sts']) ?></span></td>
             <td><span class="label">Localização</span><span class="value"><?= pdf_h($pedido['Localizacao']) ?></span></td>
         </tr>
         <tr>

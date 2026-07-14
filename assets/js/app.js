@@ -955,7 +955,8 @@ function cpCompraListaOptionText(row) {
     const fornecedor = fornecedorCodigo && fornecedorNome && fornecedorCodigo !== fornecedorNome
         ? fornecedorCodigo + ' - ' + fornecedorNome
         : (fornecedorNome || fornecedorCodigo || 'Não informado');
-    const status = row.Sts ? ' - Status: ' + row.Sts : '';
+    const statusDescricao = row.descricao_compras || row.Sts || '';
+    const status = statusDescricao ? ' - Status: ' + statusDescricao : '';
     return 'Pedido ' + (row.ID || row.id || '') + ' - Fornecedor: ' + fornecedor + status;
 }
 
@@ -981,7 +982,7 @@ function loadCpComprasGrid() {
                     '<td data-label="Localização">' + cpLocalizacaoBadge(localizacao) + '</td>' +
                     '<td data-label="Publicado">' + cpPublicadoBadge(row.Publicado) + '</td>' +
                     '<td data-label="Total">' + escapeHtml(formatMoneyBr(row.ValorTotalPedido || 0)) + '</td>' +
-                    '<td data-label="Status">' + cpPedidoStatusBadge(row.Sts, localizacao) + '</td>' +
+                    '<td data-label="Status">' + cpPedidoStatusBadge(row.descricao_compras || row.Sts, localizacao) + '</td>' +
                     '<td data-label="Ações" class="text-end">' +
                     actions +
                     '</td>' +
@@ -1304,12 +1305,12 @@ function applyCpCompraReadonly($form) {
 
 function updateCpCompraWorkflowButtons(row) {
     const localizacao = row.Localizacao || 'KidStok';
-    const status = row.Sts || 'Aberto';
+    const status = row.descricao_compras || row.Sts || 'Aberto';
     const publicado = Number(row.Publicado || 0) === 1;
     const temFotosFornecedor = Number(row.TemFotosFornecedor || 0) === 1;
     const pedidoId = Number($('#cp-compras-form').data('id') || $('#cp-compras-form [name="id"]').val() || 0);
-    const isClosed = status === 'Aprovado' || status === 'Aprovado sem fotos' || status === 'Aprovado aguardando foto' || status === 'Recusado';
-    const podeAprovarAguardandoFoto = status === 'Aprovado aguardando foto' && temFotosFornecedor;
+    const isClosed = status === 'Aprovado' || status === 'Aprovado sem fotos' || status === 'Aprovado aguardando foto' || status === 'Aprovado Aguardando Foto Fornecedor' || status === 'Recusado';
+    const podeAprovarAguardandoFoto = (status === 'Aprovado aguardando foto' || status === 'Aprovado Aguardando Foto Fornecedor') && temFotosFornecedor;
     $('#btn-cp-enviar-proposta').toggleClass('d-none', !pedidoId || localizacao !== 'KidStok' || isClosed);
     $('#btn-cp-aprovar').toggleClass(
         'd-none',
@@ -1341,7 +1342,7 @@ function fillCpCompraHeader($form, row) {
             $field.val(row[name]).trigger('change');
         }
         if (name === 'Sts') {
-            $form.find('[name="Sts_display"]').val(row[name] || 'Aberto');
+            $form.find('[name="Sts_display"]').val(row.descricao_compras || row[name] || 'Aberto');
         }
         if (name === 'Publicado') {
             $form.find('[name="Publicado_display"]').val(formatPublicadoCpCompra(row[name]));
@@ -1375,14 +1376,12 @@ function cpPedidoStatusBadge(value, localizacao) {
     const statusKey = status.toLocaleLowerCase();
     let label = status;
     let className = 'badge-status-open';
-    if (statusKey === 'aprovado sem fotos' || statusKey === 'aprovado aguardando foto') {
+    if (statusKey === 'aprovado sem fotos' || statusKey === 'aprovado aguardando foto' || statusKey === 'aprovado aguardando foto fornecedor') {
         className = 'badge-status-awaiting-photo';
     } else if (statusKey === 'aprovado') {
         className = 'badge-status-approved';
     } else if (statusKey === 'recusado') {
         className = 'badge-status-rejected';
-    } else if (statusKey === 'aberto') {
-        label = cpLocalizacaoEhFornecedor(localizacao) ? 'Aberto Aguardando Fornecedor' : 'Aberto Aguardando KidStok';
     }
     return '<span class="badge dashboard-grid-badge ' + className + '">' +
         escapeHtml(label) +

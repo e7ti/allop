@@ -25,19 +25,22 @@ function dashboard_compra_stats(): array
     ];
 
     try {
+        // IDs fixos do catalogo cp_compras_status:
+        // 0-Aberto, 1-Aprovado Aguardando Foto Fornecedor,
+        // 2-Aprovado, 3-Recusado.
         $stmt = db()->query(
             "SELECT
                     COUNT(*) AS total,
-                    SUM(CASE WHEN Sts = 'Aberto' THEN 1 ELSE 0 END) AS abertos,
-                    SUM(CASE WHEN Sts = 'Aprovado' THEN 1 ELSE 0 END) AS aprovados,
-                    SUM(CASE WHEN Sts IN ('Aprovado sem fotos', 'Aprovado aguardando foto') THEN 1 ELSE 0 END) AS aprovados_sem_fotos,
-                    SUM(CASE WHEN Sts = 'Recusado' THEN 1 ELSE 0 END) AS recusados,
-                    COALESCE(SUM(ValorTotalPedido), 0) AS valor_total,
-                    COALESCE(SUM(CASE WHEN Sts = 'Aberto' THEN ValorTotalPedido ELSE 0 END), 0) AS valor_abertos,
-                    COALESCE(SUM(CASE WHEN Sts = 'Aprovado' THEN ValorTotalPedido ELSE 0 END), 0) AS valor_aprovados,
-                    COALESCE(SUM(CASE WHEN Sts IN ('Aprovado sem fotos', 'Aprovado aguardando foto') THEN ValorTotalPedido ELSE 0 END), 0) AS valor_aprovados_sem_fotos,
-                    COALESCE(SUM(CASE WHEN Sts = 'Recusado' THEN ValorTotalPedido ELSE 0 END), 0) AS valor_recusados
-               FROM cp_compras"
+                    SUM(CASE WHEN c.status_id = 0 THEN 1 ELSE 0 END) AS abertos,
+                    SUM(CASE WHEN c.status_id = 2 THEN 1 ELSE 0 END) AS aprovados,
+                    SUM(CASE WHEN c.status_id = 1 THEN 1 ELSE 0 END) AS aprovados_sem_fotos,
+                    SUM(CASE WHEN c.status_id = 3 THEN 1 ELSE 0 END) AS recusados,
+                    COALESCE(SUM(c.ValorTotalPedido), 0) AS valor_total,
+                    COALESCE(SUM(CASE WHEN c.status_id = 0 THEN c.ValorTotalPedido ELSE 0 END), 0) AS valor_abertos,
+                    COALESCE(SUM(CASE WHEN c.status_id = 2 THEN c.ValorTotalPedido ELSE 0 END), 0) AS valor_aprovados,
+                    COALESCE(SUM(CASE WHEN c.status_id = 1 THEN c.ValorTotalPedido ELSE 0 END), 0) AS valor_aprovados_sem_fotos,
+                    COALESCE(SUM(CASE WHEN c.status_id = 3 THEN c.ValorTotalPedido ELSE 0 END), 0) AS valor_recusados
+               FROM cp_compras c"
         );
         $row = $stmt->fetch() ?: [];
     } catch (Throwable $e) {
@@ -75,7 +78,8 @@ function dashboard_ultimos_pedidos(): array
                     c.id AS ID,
                     c.DataPedido,
                     c.ValorTotalPedido,
-                    c.Sts,
+                    COALESCE(cst.descricao_compras, '') AS descricao_compras,
+                    COALESCE(cst.descricao_compras, '') AS Sts,
                     c.Localizacao,
                     c.Publicado,
                     cd.NomeCD AS cd_nome,
@@ -85,6 +89,7 @@ function dashboard_ultimos_pedidos(): array
                LEFT JOIN empresas_cd cd ON cd.Codigo = c.cd_id
                LEFT JOIN empresas e ON e.Codigo = c.empresa_id
                LEFT JOIN produtos_fornecedor f ON f.Codigo = c.Fornecedor_id
+               LEFT JOIN cp_compras_status cst ON cst.id = c.status_id
               ORDER BY c.id DESC
               LIMIT 10"
         );
@@ -112,7 +117,11 @@ function dashboard_status_badge($status, $localizacao = ''): string
     $label = $status !== '' ? $status : 'Aberto';
     $normalized = strtolower($label);
 
-    if (strpos($normalized, 'aprovado sem fotos') === 0 || strpos($normalized, 'aprovado aguardando foto') === 0) {
+    if (
+        strpos($normalized, 'aprovado aguardando foto fornecedor') === 0 ||
+        strpos($normalized, 'aprovado aguardando foto') === 0 ||
+        strpos($normalized, 'aprovado sem fotos') === 0
+    ) {
         $class = 'badge-status-awaiting-photo';
     } elseif (strpos($normalized, 'aprovado') === 0) {
         $class = 'badge-status-approved';
@@ -120,12 +129,6 @@ function dashboard_status_badge($status, $localizacao = ''): string
         $class = 'badge-status-rejected';
     } else {
         $class = 'badge-status-open';
-        if ($normalized === 'aberto') {
-            $localizacao = trim((string) ($localizacao ?? 'KidStok'));
-            $label = strcasecmp($localizacao, 'Fornecedor') === 0
-                ? 'Aberto Aguardando Fornecedor'
-                : 'Aberto Aguardando KidStok';
-        }
     }
 
     return '<span class="badge dashboard-grid-badge ' . h($class) . '">' . h($label) . '</span>';
@@ -196,9 +199,9 @@ $cards = [
         'classe' => 'dashboard-status-approved',
     ],
     [
-        'titulo' => 'Aprovados sem fotos',
+        'titulo' => 'Aguardando foto',
         'valor' => $stats['aprovados_sem_fotos'],
-        'texto' => 'Sem fotos do fornecedor',
+        'texto' => 'Aprovado aguardando foto fornecedor',
         'classe' => 'dashboard-status-awaiting-photo',
     ],
     [
@@ -269,7 +272,7 @@ render_header('Dashboard');
                         </div>
                         <div class="dashboard-status-row" style="grid-template-columns: 150px 360px 220px; justify-content: start;">
                             <div class="dashboard-status-label" style="white-space: nowrap;">
-                                <span style="display: block;">Sem fotos</span>
+                                <span style="display: block;">Aguardando Foto</span>
                             </div>
                             <div class="dashboard-status-track" style="width: 360px;">
                                 <span class="dashboard-status-bar dashboard-status-awaiting-photo" style="width: <?= h((string) $aprovadosSemFotosPct) ?>%"></span>
@@ -303,7 +306,7 @@ render_header('Dashboard');
                     <div class="dashboard-donut-legend">
                         <span><i class="dashboard-status-open"></i>Abertos</span>
                         <span><i class="dashboard-status-approved"></i>Aprovados</span>
-                        <span><i class="dashboard-status-awaiting-photo"></i>Sem fotos</span>
+                        <span><i class="dashboard-status-awaiting-photo"></i>Aguardando Foto</span>
                         <span><i class="dashboard-status-rejected"></i>Recusados</span>
                     </div>
                     <div class="dashboard-total-value">
@@ -348,7 +351,7 @@ render_header('Dashboard');
                                 <td data-label="CD"><?= h((string) ($pedido['cd_nome'] ?? '')) ?></td>
                                 <td data-label="Empresa"><?= h((string) ($pedido['empresa_nome'] ?? '')) ?></td>
                                 <td data-label="Fornecedor"><?= h((string) ($pedido['fornecedor_nome'] ?? '')) ?></td>
-                                <td data-label="Status"><?= dashboard_status_badge($pedido['Sts'] ?? '', $pedido['Localizacao'] ?? '') ?></td>
+                                <td data-label="Status"><?= dashboard_status_badge($pedido['descricao_compras'] ?? $pedido['Sts'] ?? '', $pedido['Localizacao'] ?? '') ?></td>
                                 <td data-label="Localização"><?= dashboard_localizacao_badge($pedido['Localizacao'] ?? '') ?></td>
                                 <td data-label="Publicado"><?= dashboard_publicado_badge($pedido['Publicado'] ?? 0) ?></td>
                                 <td data-label="Valor" class="text-end">R$ <?= h(number_format((float) ($pedido['ValorTotalPedido'] ?? 0), 2, ',', '.')) ?></td>

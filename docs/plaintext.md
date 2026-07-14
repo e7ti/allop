@@ -132,7 +132,7 @@ Principais ações da API:
 | `fotos_fornecedor_list` | Lista fotos do fornecedor em `cp_compras_fotos`. |
 | `fotos_upload` / `fotos_delete` | Mantém fotos da KidStok e sincroniza o indicador do item. |
 | `enviar_proposta` | Envia e-mail, publica o pedido e transfere a localização para `Fornecedor`. |
-| `aprovar` | Aprova somente pedido publicado, devolve a localização para `KidStok` e marca como `Aprovado` ou `Aprovado sem fotos` conforme fotos do fornecedor. |
+| `aprovar` | Aprova somente pedido publicado, devolve a localização para `KidStok` e marca como `Aprovado` ou `Aprovado Aguardando Foto Fornecedor` conforme fotos do fornecedor. |
 | `recusar` | Marca como `Recusado`, registra motivo e devolve para `KidStok`. |
 
 O botão **Imprimir PDF** é exibido em pedidos já gravados. O relatório contém dados do cabeçalho, auditoria, itens, tamanhos, cores, preços, markups e um resumo do rateio das cores de cada tamanho. A geração usa Dompdf instalado localmente pelo Composer.
@@ -151,7 +151,7 @@ Regras atuais de compras:
 - itens, tamanhos, cores e rateios existentes são atualizados ao editar; somente registros removidos da hierarquia são excluídos;
 - pedido localizado no `Fornecedor` fica somente para visualização e impressão; não pode ser editado, excluído, aprovado, recusado nem ter fotos KidStok alteradas;
 - pedido não publicado não pode ser aprovado;
-- pedido aprovado sem fotos do fornecedor fica com status `Aprovado sem fotos`;
+- pedido aprovado sem fotos do fornecedor fica com status `Aprovado Aguardando Foto Fornecedor`;
 - o envio de proposta usa a configuração ativa de `config_email` para o CD/empresa;
 - os destinatários são usuários ativos de `pf_usuarios` vinculados ao fornecedor em `pf_usuario_fornecedor`;
 - fotos são armazenadas em Base64 no banco de fotos.
@@ -232,8 +232,29 @@ percentuais devem totalizar 100% dentro de cada tamanho, e a quantidade da cor
 A tabela `cp_compras` ganhou a coluna `status_id`, com chave estrangeira para
 a nova tabela `cp_compras_status` (`id`, `descricao_compras`,
 `descricao_portal`), no lugar da antiga coluna `Sts` (varchar) que existia
-nesta definição de tabela. Ver divergência com o código em **Pontos de
-atenção conhecidos**.
+nesta definição de tabela. O código (`api/compras/cp_compras.php`,
+`dashboard.php`, `api/compras/cp_compras_pdf.php`) já persiste e consulta o
+pedido por `status_id`; toda leitura faz `LEFT JOIN cp_compras_status` e expõe
+o texto como `descricao_compras` (mantido com o nome de campo `Sts` na
+resposta da API e no HTML, para preservar o contrato com o frontend). Ver
+seed automático do catálogo em **Pontos de atenção conhecidos**.
+
+Status oficiais de `cp_compras_status`:
+
+| id | descricao_compras | descricao_portal | Uso no sistema |
+| --- | --- | --- | --- |
+| 0 | Aberto | Aberto | Pedido em aberto, ainda em andamento. |
+| 1 | Aprovado Aguardando Foto Fornecedor | Aprovado Aguardando Foto Fornecedor | Pedido aprovado comercialmente, mas ainda aguardando fotos do fornecedor. |
+| 2 | Aprovado | Aprovado | Pedido aprovado com fotos do fornecedor quando exigidas. |
+| 3 | Recusado | Recusado | Pedido recusado, com motivo, data e usuário da recusa. |
+
+Nas telas internas do sistema, incluindo `cp_compras_lista`, dashboard,
+formulário e PDF, o status apresentado ao usuário deve ser sempre
+`cp_compras_status.descricao_compras`. O campo `descricao_portal` é reservado
+para o portal do fornecedor. A localização do pedido (`KidStok` ou
+`Fornecedor`) deve aparecer somente nos campos/colunas de localização; ela não
+deve ser concatenada ao status nem gerar rótulos como `Aberto Aguardando
+KidStok` ou `Aberto Aguardando Fornecedor`.
 
 As tabelas de log registram o snapshot anterior de itens, tamanhos e cores em
 atualizações. Elas também armazenam `Iteracao` e `Localizacao` do pedido no
@@ -382,8 +403,8 @@ Estes itens foram encontrados nas revisões do código e do `banco.sql` de 10/07
 14. **Senha legada:** o login aceita senha em texto puro para compatibilidade, embora novas senhas sejam salvas com hash.
 15. **Transação entre bancos:** upload de fotos abre transações separadas nos dois bancos; não existe atomicidade distribuída caso apenas um commit conclua.
 16. **Dependências externas:** a busca de CEP usa ViaCEP pelo navegador e o CSS importa a fonte Poppins do Google Fonts. São as exceções atuais à regra de assets locais.
-17. **Migração de status incompleta:** `banco.sql` já define `cp_compras.status_id` com FK para a nova tabela `cp_compras_status`, mas `api/compras/cp_compras.php` ainda lê e grava exclusivamente a coluna antiga `cp_compras.Sts` (varchar); a coluna e a tabela novas ainda não têm nenhuma referência no código.
-18. **Tabela de backup sem uso:** `pf_usuarios_copy` está presente no `banco.sql` como cópia estrutural de `pf_usuarios`, sem qualquer referência no código; aparenta ser um artefato de backup/teste esquecido no dump.
+17. **Tabela de backup sem uso:** `pf_usuarios_copy` está presente no `banco.sql` como cópia estrutural de `pf_usuarios`, sem qualquer referência no código; aparenta ser um artefato de backup/teste esquecido no dump.
+18. **Seed do catálogo de status:** `cp_compras_status` não tem dados no `banco.sql` (dump sem dados). `api/compras/cp_compras.php` semeia automaticamente as 4 linhas padrão (`Aberto`, `Aprovado Aguardando Foto Fornecedor`, `Aprovado`, `Recusado`, IDs 0-3) na primeira leitura se a tabela estiver vazia; se o ambiente já tiver essas linhas com texto diferente, `cp_status_id()` cai para `Aberto` como fallback.
 
 ## 10. Validação antes de entregar alterações
 

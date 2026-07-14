@@ -25,9 +25,13 @@ Tabelas conhecidas no banco principal, conforme banco.sql:
 - cp_compras
 - cp_compras_emails
 - cp_compras_itens
-- cp_compras_itens_detalhe
-- cp_compras_itens_detalhe_log
-- cp_compras_itens_percentuais
+- cp_compras_itens_log
+- cp_compras_itens_tamanhos
+- cp_compras_itens_tamanhos_log
+- cp_compras_itens_cores
+- cp_compras_itens_cores_log
+- cp_compras_itens_rateios
+- cp_compras_status
 - pf_colecao
 - pf_usuario_fornecedor
 - pf_usuarios
@@ -56,6 +60,30 @@ Regras de acesso aos bancos:
 - Usar conexao separada para tabelas de fotos.
 - Fotos de compras KidStok usam cp_compras_fotos_ks no banco allop_devel_fotos.
 - Nao procurar tabelas de fotos no banco principal.
+
+
+COMPRAS - STATUS
+- A tabela oficial de status dos pedidos de compra e cp_compras_status.
+- O pedido grava o codigo do status em cp_compras.status_id.
+- O sistema interno deve apresentar sempre cp_compras_status.descricao_compras.
+- O campo cp_compras_status.descricao_portal e reservado para o portal do fornecedor.
+- Nao montar status a partir da Localizacao do pedido.
+- Localizacao deve aparecer somente em campo/coluna propria, com valores como KidStok ou Fornecedor.
+- Nao apresentar status derivados como "Aberto Aguardando KidStok" ou "Aberto Aguardando Fornecedor" se estes textos nao existirem em cp_compras_status.descricao_compras.
+
+Status oficiais de cp_compras_status:
+- 0 - Aberto
+- 1 - Aprovado Aguardando Foto Fornecedor
+- 2 - Aprovado
+- 3 - Recusado
+
+Onde houver apresentacao de status no sistema interno:
+- cp_compras_lista
+- dashboard
+- cp_compras_form
+- PDF de pedido de compra
+
+deve ser usado o valor de cp_compras_status.descricao_compras.
 
 
 ESTRUTURA DO PROJETO

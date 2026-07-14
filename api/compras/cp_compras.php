@@ -349,6 +349,63 @@ function cp_header_payload(array $data): array
     ];
 }
 
+const CP_STATUS_ABERTO = 0;
+const CP_STATUS_APROVADO_AGUARDANDO_FOTO = 1;
+const CP_STATUS_APROVADO = 2;
+const CP_STATUS_RECUSADO = 3;
+
+function cp_status_catalog_seed(): array
+{
+    return [
+        CP_STATUS_ABERTO => ['descricao_compras' => 'Aberto', 'descricao_portal' => 'Aberto'],
+        CP_STATUS_APROVADO_AGUARDANDO_FOTO => ['descricao_compras' => 'Aprovado Aguardando Foto Fornecedor', 'descricao_portal' => 'Aprovado Aguardando Foto Fornecedor'],
+        CP_STATUS_APROVADO => ['descricao_compras' => 'Aprovado', 'descricao_portal' => 'Aprovado'],
+        CP_STATUS_RECUSADO => ['descricao_compras' => 'Recusado', 'descricao_portal' => 'Recusado'],
+    ];
+}
+
+function cp_ensure_status_catalog(): void
+{
+    static $checked = false;
+    if ($checked || !cp_table_exists('cp_compras_status')) {
+        return;
+    }
+    $checked = true;
+
+    // Upsert (não só "se vazia") para autocorrigir IDs canônicos que já
+    // existam com texto diferente do esperado, sem apagar linhas extras.
+    $stmt = db()->prepare(
+        'INSERT INTO cp_compras_status (id, descricao_compras, descricao_portal)
+         VALUES (:id, :descricao_compras, :descricao_portal)
+         ON DUPLICATE KEY UPDATE
+            descricao_compras = VALUES(descricao_compras),
+            descricao_portal = VALUES(descricao_portal)'
+    );
+    foreach (cp_status_catalog_seed() as $id => $row) {
+        $stmt->execute(['id' => $id] + $row);
+    }
+}
+
+function cp_status_id(string $label): int
+{
+    static $cache = [];
+
+    cp_ensure_status_catalog();
+    $label = cp_trim($label) ?: 'Aberto';
+    if (array_key_exists($label, $cache)) {
+        return $cache[$label];
+    }
+
+    $stmt = db()->prepare('SELECT id FROM cp_compras_status WHERE descricao_compras = :label LIMIT 1');
+    $stmt->execute(['label' => $label]);
+    $id = $stmt->fetchColumn();
+    if ($id === false) {
+        return $label === 'Aberto' ? CP_STATUS_ABERTO : ($cache[$label] = cp_status_id('Aberto'));
+    }
+
+    return $cache[$label] = (int) $id;
+}
+
 function cp_load_pedido(int $id): ?array
 {
     $fornecedorJoin = cp_table_exists('produtos_fornecedor')
@@ -367,10 +424,13 @@ function cp_load_pedido(int $id): ?array
                 c.id AS ID,
                 cd.NomeCD AS cd_id_text,
                 COALESCE(NULLIF(e.Fantasia, ''), e.Nome) AS empresa_id_text,
-                $fornecedorText AS Fornecedor_id_text
+                $fornecedorText AS Fornecedor_id_text,
+                COALESCE(cst.descricao_compras, '') AS descricao_compras,
+                COALESCE(cst.descricao_compras, '') AS Sts
            FROM cp_compras c
            LEFT JOIN empresas_cd cd ON cd.Codigo = c.cd_id
            LEFT JOIN empresas e ON e.Codigo = c.empresa_id
+           LEFT JOIN cp_compras_status cst ON cst.id = c.status_id
            $fornecedorJoin
           WHERE c.id = :id"
     );
@@ -1403,7 +1463,11 @@ function cp_workflow_update(int $id, string $workflowAction): void
         api_response(false, ['message' => 'Informe o pedido.'], 422);
     }
 
-    $stmt = db()->prepare("SELECT id, id AS ID, Localizacao, Publicado, Sts FROM cp_compras WHERE id = :id");
+    $stmt = db()->prepare(
+        "SELECT c.id, c.id AS ID, c.Localizacao, c.Publicado, c.status_id
+           FROM cp_compras c
+          WHERE c.id = :id"
+    );
     $stmt->execute(['id' => $id]);
     $pedido = $stmt->fetch();
     if (!$pedido) {
@@ -1445,13 +1509,13 @@ function cp_workflow_update(int $id, string $workflowAction): void
             api_response(false, ['message' => 'Pedido não publicado não pode ser aprovado.'], 422);
         }
         $temFotosFornecedor = cp_pedido_tem_fotos_fornecedor($id);
-        if ((string) ($pedido['Sts'] ?? '') === 'Aprovado aguardando foto' && !$temFotosFornecedor) {
+        if ((int) ($pedido['status_id'] ?? 0) === CP_STATUS_APROVADO_AGUARDANDO_FOTO && !$temFotosFornecedor) {
             api_response(false, ['message' => 'Insira fotos do fornecedor antes de aprovar este pedido.'], 422);
         }
-        $statusAprovacao = $temFotosFornecedor ? 'Aprovado' : 'Aprovado sem fotos';
+        $statusIdAprovacao = $temFotosFornecedor ? CP_STATUS_APROVADO : CP_STATUS_APROVADO_AGUARDANDO_FOTO;
         $stmt = db()->prepare(
             "UPDATE cp_compras
-                SET Sts = :status_aprovacao,
+                SET status_id = :status_id,
                     Localizacao = 'KidStok',
                     DataAprovacao = :data_aprovacao,
                     UsuarioAprovacao = :usuario_aprovacao,
@@ -1460,14 +1524,14 @@ function cp_workflow_update(int $id, string $workflowAction): void
               WHERE id = :id"
         );
         $stmt->execute([
-            'status_aprovacao' => $statusAprovacao,
+            'status_id' => $statusIdAprovacao,
             'data_aprovacao' => date('Y-m-d'),
             'alteracao' => date('Y-m-d'),
             'usuario_aprovacao' => $usuario,
             'usuario' => $usuario,
             'id' => $id,
         ]);
-        api_response(true, ['message' => $statusAprovacao === 'Aprovado' ? 'Pedido aprovado.' : 'Pedido aprovado sem fotos do fornecedor.']);
+        api_response(true, ['message' => $statusIdAprovacao === CP_STATUS_APROVADO ? 'Pedido aprovado.' : 'Pedido aprovado aguardando foto fornecedor.']);
     }
 
     if ($workflowAction === 'recusar') {
@@ -1477,7 +1541,7 @@ function cp_workflow_update(int $id, string $workflowAction): void
         }
         $stmt = db()->prepare(
             "UPDATE cp_compras
-                SET Sts = 'Recusado',
+                SET status_id = :status_id,
                     StsMotivo = :motivo,
                     Localizacao = 'KidStok',
                     DataRecusa = :data_recusa,
@@ -1487,6 +1551,7 @@ function cp_workflow_update(int $id, string $workflowAction): void
               WHERE id = :id"
         );
         $stmt->execute([
+            'status_id' => CP_STATUS_RECUSADO,
             'motivo' => $motivo,
             'data_recusa' => date('Y-m-d'),
             'alteracao' => date('Y-m-d'),
@@ -1518,7 +1583,7 @@ try {
         $params = [];
         if ($term !== '') {
             $where = "WHERE CAST(c.id AS CHAR) LIKE :q_id
-                         OR c.Sts LIKE :q_sts
+                         OR cst.descricao_compras LIKE :q_sts
                          OR c.Localizacao LIKE :q_localizacao
                          OR c.Fornecedor_id LIKE :q_fornecedor_codigo
                          OR COALESCE(NULLIF(e.Fantasia, ''), e.Nome) LIKE :q_empresa
@@ -1549,7 +1614,8 @@ try {
                     c.id AS ID,
                     c.DataPedido,
                     c.ValorTotalPedido,
-                    c.Sts,
+                    COALESCE(cst.descricao_compras, '') AS descricao_compras,
+                    COALESCE(cst.descricao_compras, '') AS Sts,
                     c.Localizacao,
                     c.Publicado,
                     c.Fornecedor_id AS fornecedor_codigo,
@@ -1559,6 +1625,7 @@ try {
                FROM cp_compras c
                LEFT JOIN empresas_cd cd ON cd.Codigo = c.cd_id
                LEFT JOIN empresas e ON e.Codigo = c.empresa_id
+               LEFT JOIN cp_compras_status cst ON cst.id = c.status_id
                $fornecedorJoin
                $where
               ORDER BY c.id DESC
@@ -1679,6 +1746,9 @@ try {
             $payload['Localizacao'] = 'KidStok';
         }
 
+        $payload['status_id'] = cp_status_id($payload['Sts']);
+        unset($payload['Sts']);
+
         db()->beginTransaction();
 
         if ($id > 0) {
@@ -1694,7 +1764,7 @@ try {
                         MarkupFranquia = :MarkupFranquia,
                         MarkupTotal = :MarkupTotal,
                         ValorTotalPedido = :ValorTotalPedido,
-                        Sts = :Sts,
+                        status_id = :status_id,
                         TemFotos = :TemFotos,
                         Publicado = :Publicado,
                         StsMotivo = :StsMotivo,
@@ -1714,10 +1784,10 @@ try {
         $stmt = db()->prepare(
             "INSERT INTO cp_compras
                 (cd_id, empresa_id, Fornecedor_id, DataPedido, MarkupFranqueadora, MarkupFranquia, MarkupTotal,
-                 ValorTotalPedido, Sts, TemFotos, Publicado, StsMotivo, Localizacao, Inclusao, Alteracao, Usuario)
+                 ValorTotalPedido, status_id, TemFotos, Publicado, StsMotivo, Localizacao, Inclusao, Alteracao, Usuario)
              VALUES
                 (:cd_id, :empresa_id, :Fornecedor_id, :DataPedido, :MarkupFranqueadora, :MarkupFranquia, :MarkupTotal,
-                 :ValorTotalPedido, :Sts, :TemFotos, :Publicado, :StsMotivo, :Localizacao, :Inclusao, :Alteracao, :Usuario)"
+                 :ValorTotalPedido, :status_id, :TemFotos, :Publicado, :StsMotivo, :Localizacao, :Inclusao, :Alteracao, :Usuario)"
         );
         $stmt->execute($payload);
         $newId = (int) db()->lastInsertId();
