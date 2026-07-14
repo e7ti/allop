@@ -1085,6 +1085,18 @@ function initCpComprasForm() {
     $('#cp-foto-input').on('change', uploadCpCompraFotos);
     $('#btn-aplicar-cp-rateio').on('click', aplicarCpCompraRateio);
     $('#cp-rateio-modal').on('input', '.cp-rateio-percentual, .cp-rateio-qtde, #cp-rateio-qtde-total', updateCpCompraRateioModalTotal);
+    $form.on('focusin', 'input', function () {
+        selectCpCompraInputContent(this);
+    });
+    $('#cp-rateio-modal').on('focusin', 'input', function () {
+        selectCpCompraInputContent(this);
+    });
+    $form.on('keydown', 'input, select', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            moveCpCompraFocusToNextField(this);
+        }
+    });
 
     $form.on('shown.bs.collapse hidden.bs.collapse', '.cp-compra-item-collapse', function (event) {
         cpCompraItensOpen[$(this).data('item-index')] = event.type === 'shown';
@@ -1153,6 +1165,9 @@ function initCpComprasForm() {
 }
 
 function salvarCpCompraForm($form, done) {
+    if ($form.data('saving') === true) {
+        return;
+    }
     syncCpCompraItensFromDom();
     const message = validarCpCompraForm($form);
     if (message) {
@@ -1160,6 +1175,7 @@ function salvarCpCompraForm($form, done) {
         return;
     }
     recalcCpCompraTotal();
+    setCpCompraSaving($form, true);
     const data = $form.serializeArray();
     data.push({ name: 'items_json', value: JSON.stringify(cpCompraItens) });
     $.post(window.cpComprasFormConfig.api + '?action=save', $.param(data), function (response) {
@@ -1174,7 +1190,41 @@ function salvarCpCompraForm($form, done) {
         }
     }, 'json').fail(function (xhr) {
         appAlert(xhr.responseJSON?.message || 'Não foi possível salvar o pedido.', 'danger');
+    }).always(function () {
+        setCpCompraSaving($form, false);
     });
+}
+
+function selectCpCompraInputContent(input) {
+    const type = String(input.type || '').toLowerCase();
+    if (['hidden', 'file', 'checkbox', 'radio', 'button', 'submit'].includes(type)) {
+        return;
+    }
+    setTimeout(function () {
+        try {
+            input.select();
+        } catch (error) {
+            // Alguns tipos nativos, como date em certos navegadores, nao aceitam select().
+        }
+    }, 0);
+}
+
+function setCpCompraSaving($form, saving) {
+    const $button = $form.find('.btn-save-main[type="submit"]');
+    $form.data('saving', saving === true);
+    if (!$button.length) {
+        return;
+    }
+    if ($button.data('original-html') === undefined) {
+        $button.data('original-html', $button.html());
+    }
+    $button.prop('disabled', saving === true);
+    $button.toggleClass('cp-saving', saving === true);
+    if (saving === true) {
+        $button.html('<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Salvando...');
+    } else {
+        $button.html($button.data('original-html'));
+    }
 }
 
 function enviarCpCompraProposta($form) {
@@ -1591,10 +1641,15 @@ function renderCpCompraItens() {
             '<span>' + Number((item.tamanhos || []).length) + '</span>' +
             '</div>' +
             '<div class="text-end d-none d-md-block">' +
+            '<small class="text-muted d-block extra-small text-uppercase">Rateio</small>' +
+            '<span class="' + (roundCpPercent(cpCompraItemPercentualTotal(item)) === 100 ? 'text-success' : 'text-danger') + '">' + escapeHtml(formatPercentInput(cpCompraItemPercentualTotal(item))) + '%</span>' +
+            '</div>' +
+            '<div class="text-end d-none d-md-block">' +
             '<small class="text-muted d-block extra-small text-uppercase">Total do Item</small>' +
             '<span class="fw-bold text-success cp-compra-item-total">R$ ' + escapeHtml(formatMoneyBr(item.total_produto || 0)) + '</span>' +
             '</div>' +
             (cpCompraReadonly ? '' : '<div class="d-flex flex-wrap gap-2 cp-compra-item-actions" onclick="event.stopPropagation();">' +
+                '<button class="btn btn-sm btn-outline-primary btn-rateio-item" type="button" onclick="ratearCpCompraItem(' + index + ')">Ratear</button>' +
                 '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraItem(' + index + ')"></button>' +
                 '</div>') +
             '</div>' +
@@ -1652,7 +1707,6 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
                 '<div class="d-flex gap-2 align-items-center cp-compra-tamanho-actions" onclick="event.stopPropagation();">' +
                 cpCompraStatusBadge(tamanho.Sts) +
                 (cpCompraReadonly ? '' :
-                    '<button class="btn btn-sm btn-outline-primary btn-rateio-item" type="button" onclick="ratearCpCompraTamanho(' + itemIndex + ', ' + tamanhoIndex + ')">Ratear</button>' +
                     '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir tamanho" aria-label="Excluir tamanho" onclick="removeCpCompraTamanho(' + itemIndex + ', ' + tamanhoIndex + ')"></button>') +
                 '</div></div>' +
                 '<div id="' + collapseId + '" class="accordion-collapse collapse cp-compra-tamanho-collapse' + (aberto ? ' show' : '') + '" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '">' +
@@ -1660,7 +1714,7 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
                 '<div class="row g-3 mb-3">' +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'tamanho', 'Tamanho', tamanho.tamanho, 'col-12 col-md-2', 'text', true) +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'entrega', 'Entrega', tamanho.entrega, 'col-12 col-md-2', 'date') +
-                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'qtde_total', 'Quantidade do tamanho', tamanho.qtde_total, 'col-12 col-md-2', 'number', true) +
+                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'qtde_total', 'Quantidade do tamanho', tamanho.qtde_total, 'col-12 col-md-2', 'number') +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'valor_total', 'Total do tamanho', tamanho.valor_total, 'col-12 col-md-2', 'money', true) +
                 cpCompraTamanhoStatus(itemIndex, tamanhoIndex, tamanho.Sts, 'col-12 col-md-2') +
                 '<div class="col-12 col-md-2"><label class="form-label">Total do rateio</label><input class="form-control ' + rateioClass + ' fw-bold cp-tamanho-rateio-total" value="' + escapeAttr(formatPercentInput(rateio)) + '%" readonly></div>' +
@@ -1700,7 +1754,7 @@ function renderCpCompraCores(itemIndex, tamanhoIndex, cores) {
             '<div class="accordion-body"><div class="row g-2">' +
             cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'sku', 'SKU', cor.sku, 'col-12 col-md-3', 'text', true) +
             cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'cor', 'Cor', cor.cor, 'col-12 col-md-3', 'text', true) +
-            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'Qtde', 'Quantidade rateada', cor.Qtde, 'col-12 col-md-2', 'number', true) +
+            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'Qtde', 'Quantidade', cor.Qtde, 'col-12 col-md-2', 'number') +
             cpCompraCorStatus(itemIndex, tamanhoIndex, corIndex, cor.Sts, 'col-12 col-md-2') +
             cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_proposta', 'Preço proposto', cor.preco_proposta, 'col-12 col-md-3', 'money') +
             cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_fornecedor', 'Preço fornecedor', cor.preco_fornecedor, 'col-12 col-md-3', 'money', true) +
@@ -1726,7 +1780,8 @@ function cpCompraNestedInput(level, itemIndex, tamanhoIndex, corIndex, name, lab
     const displayValue = isMoney ? formatMoneyInput(value || 0) : (isPercent ? formatPercentInput(value || 0) : escapeAttr(value || ''));
     const readonlyAttr = (readonly || cpCompraReadonly) ? ' readonly' : '';
     const inputMode = (isMoney || isPercent || inputType === 'number') ? ' inputmode="decimal"' : '';
-    const className = 'form-control cp-compra-' + level + '-field' + (isMoney ? ' cp-money-field text-end' : '') + (isPercent ? ' cp-percentual-field text-end' : '');
+    const destaqueClass = level === 'cor' && (name === 'Qtde' || name === 'preco_proposta') ? ' cp-compra-campo-destaque' : '';
+    const className = 'form-control cp-compra-' + level + '-field' + (isMoney ? ' cp-money-field text-end' : '') + (isPercent ? ' cp-percentual-field text-end' : '') + destaqueClass;
     const attrs = cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, name);
     const input = '<input class="' + className + '" type="' + inputType + '"' + inputMode + readonlyAttr + ' value="' + displayValue + '" ' + attrs + '>';
     return '<div class="' + colClass + '"><label class="form-label">' + label + '</label>' + (isMoney ? moneyInputGroup(input, false) : input) + '</div>';
@@ -1900,8 +1955,14 @@ function updateCpCompraItemStatus($field) {
     }
     const status = normalizeCpCompraValue('Sts', $field.val()) === 0 ? 0 : 1;
     item.Sts = status;
+    if (status === 0) {
+        item.total_qtde = 0;
+    }
     (item.tamanhos || []).forEach(function (tamanho) {
         tamanho.Sts = status;
+        if (status === 0) {
+            tamanho.qtde_total = 0;
+        }
         (tamanho.cores || []).forEach(function (cor) {
             cor.Sts = status;
             if (status === 0) {
@@ -1943,6 +2004,11 @@ function updateCpCompraNestedField($field) {
     }
     if (corIndexRaw === undefined) {
         tamanho[name] = normalizeCpCompraValue(name, $field.val());
+        if (name === 'qtde_total') {
+            (tamanho.cores || []).forEach(function (cor) {
+                delete cor._qtde_manual;
+            });
+        }
         if (name === 'Sts') {
             cascadeCpCompraTamanhoStatus(tamanho, tamanho[name]);
             cpCompraItensOpen[itemIndex] = true;
@@ -1958,6 +2024,10 @@ function updateCpCompraNestedField($field) {
             return;
         }
         cor[name] = normalizeCpCompraValue(name, $field.val());
+        if (name === 'Qtde') {
+            cor._qtde_manual = true;
+            limitarCpCompraQuantidadeCor(tamanho, cor, $field);
+        }
         if (name === 'Sts') {
             updateCpCompraTamanhoStatusFromCores(tamanho);
             $('.cp-compra-tamanho-field[data-item-index="' + itemIndex + '"][data-size-index="' + tamanhoIndex + '"][data-field="Sts"]').val(String(tamanho.Sts));
@@ -1968,9 +2038,39 @@ function updateCpCompraNestedField($field) {
     $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
 }
 
+function moveCpCompraFocusToNextField(field) {
+    const fields = $('#cp-compras-form')
+        .find('input:not([type="hidden"]):not([readonly]):not(:disabled), select:not(:disabled), textarea:not([readonly]):not(:disabled), button:not(:disabled)')
+        .filter(':visible')
+        .toArray();
+    const index = fields.indexOf(field);
+    if (index >= 0 && fields[index + 1]) {
+        fields[index + 1].focus();
+    }
+}
+
+function limitarCpCompraQuantidadeCor(tamanho, corAtual, $field) {
+    const qtdeTotal = Math.max(0, parseInt(Number(tamanho.qtde_total || 0), 10) || 0);
+    const totalOutrasCores = (tamanho.cores || []).reduce(function (total, cor) {
+        if (cor === corAtual || String(cor.Sts) === '0') {
+            return total;
+        }
+        return total + Math.max(0, parseInt(Number(cor.Qtde || 0), 10) || 0);
+    }, 0);
+    const limite = Math.max(0, qtdeTotal - totalOutrasCores);
+    if (Number(corAtual.Qtde || 0) > limite) {
+        corAtual.Qtde = limite;
+        $field.val(limite);
+        appAlert('A soma das quantidades das cores não pode passar da quantidade total do tamanho. Quantidade ajustada para ' + limite + '.', 'warning');
+    }
+}
+
 function cascadeCpCompraTamanhoStatus(tamanho, status) {
     const statusValue = Number(status) === 0 ? 0 : 1;
     tamanho.Sts = statusValue;
+    if (statusValue === 0) {
+        tamanho.qtde_total = 0;
+    }
     (tamanho.cores || []).forEach(function (cor) {
         cor.Sts = statusValue;
         if (statusValue === 0) {
@@ -2054,7 +2154,7 @@ function photoButtonHtml(itemIndex, item) {
     const hasFornecedorPhoto = Number(item.FotoFornecedor || 0) === 1;
     const isConfirmed = Boolean(item.item_confirmado);
     const kidStokLabel = isConfirmed ? (hasKidStokPhoto ? 'Ver Fotos' : 'Inserir Fotos') : 'Confirmar item';
-    const fornecedorLabel = isConfirmed ? 'Ver Fotos' : 'Confirmar item';
+    const fornecedorLabel = isConfirmed ? (hasFornecedorPhoto ? 'Ver Fotos' : 'Inserir Fotos') : 'Confirmar item';
     const kidStokBadge = fotoBadgeHtml(hasKidStokPhoto);
     const fornecedorBadge = fotoBadgeHtml(hasFornecedorPhoto);
     const disabledAttr = isConfirmed ? '' : ' disabled';
@@ -2183,8 +2283,8 @@ function openCpCompraFotos(itemIndex, origem) {
     cpCompraFotoOrigem = origem === 'fornecedor' ? 'fornecedor' : 'kidstok';
     $('#cp-foto-referencia').text(referencia);
     $('#cp-fotos-modal .modal-title').text(cpCompraFotoOrigem === 'fornecedor' ? 'Fotos Fornecedor' : 'Fotos KidStok');
-    $('#cp-foto-input').val('').prop('disabled', cpCompraReadonly || cpCompraFotoOrigem === 'fornecedor');
-    $('#cp-foto-upload-block').toggleClass('d-none', cpCompraReadonly || cpCompraFotoOrigem === 'fornecedor');
+    $('#cp-foto-input').val('').prop('disabled', cpCompraReadonly);
+    $('#cp-foto-upload-block').toggleClass('d-none', cpCompraReadonly);
     $('#cp-fotos-list').html('<div class="text-center text-muted py-4">Carregando fotos...</div>');
 
     const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-fotos-modal'));
@@ -2217,7 +2317,7 @@ function loadCpCompraFotos() {
 
 function uploadCpCompraFotos() {
     const context = cpCompraFotoContext();
-    if (!context || cpCompraReadonly || context.origem !== 'kidstok') {
+    if (!context || cpCompraReadonly) {
         return;
     }
 
@@ -2230,6 +2330,7 @@ function uploadCpCompraFotos() {
     formData.append('pedido_id', context.pedidoId);
     formData.append('referencia', context.referencia);
     formData.append('fornecedor_id', context.fornecedorId);
+    formData.append('origem', context.origem);
     Array.from(files).forEach(function (file) {
         formData.append('fotos[]', file);
     });
@@ -2244,7 +2345,11 @@ function uploadCpCompraFotos() {
         contentType: false
     }).done(function (response) {
         appAlert(response.message || 'Fotos inseridas.', 'success');
-        updateCpCompraFotoFlag(context.itemIndex, 1);
+        if (context.origem === 'kidstok') {
+            updateCpCompraFotoFlag(context.itemIndex, 1);
+        } else {
+            updateCpCompraFotoFornecedorFlag(context.itemIndex, 1);
+        }
         $('#cp-foto-input').val('');
         loadCpCompraFotos();
     }).fail(function (xhr) {
@@ -2254,7 +2359,7 @@ function uploadCpCompraFotos() {
 
 function deleteCpCompraFoto(fotoId) {
     const context = cpCompraFotoContext();
-    if (!context || cpCompraReadonly || context.origem !== 'kidstok') {
+    if (!context || cpCompraReadonly) {
         return;
     }
     if (!confirm('Excluir esta foto?')) {
@@ -2265,10 +2370,15 @@ function deleteCpCompraFoto(fotoId) {
         pedido_id: context.pedidoId,
         referencia: context.referencia,
         fornecedor_id: context.fornecedorId,
+        origem: context.origem,
         foto_id: fotoId
     }, function (response) {
         appAlert(response.message || 'Foto excluída.', 'success');
-        updateCpCompraFotoFlag(context.itemIndex, Number(response.count || 0) > 0 ? 1 : 0);
+        if (context.origem === 'kidstok') {
+            updateCpCompraFotoFlag(context.itemIndex, Number(response.count || 0) > 0 ? 1 : 0);
+        } else {
+            updateCpCompraFotoFornecedorFlag(context.itemIndex, Number(response.count || 0) > 0 ? 1 : 0);
+        }
         loadCpCompraFotos();
     }, 'json').fail(function (xhr) {
         appAlert(xhr.responseJSON?.message || 'Não foi possível excluir a foto.', 'danger');
@@ -2300,7 +2410,7 @@ function renderCpCompraFotos(fotos) {
     }
 
     $list.html(fotos.map(function (foto) {
-        const deleteButton = (cpCompraReadonly || cpCompraFotoOrigem !== 'kidstok') ? '' :
+        const deleteButton = cpCompraReadonly ? '' :
             '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only cp-foto-delete" title="Excluir" aria-label="Excluir" type="button" onclick="deleteCpCompraFoto(' + Number(foto.id || 0) + ')"></button>';
         return '<figure class="cp-foto-card">' +
             '<img src="' + escapeAttr(foto.src || '') + '" alt="Foto ' + escapeAttr(foto.Sequencia || '') + '" title="Ampliar foto" onclick="openCpCompraFotoPreview(this)">' +
@@ -2341,8 +2451,14 @@ function updateCpCompraFotoFornecedorFlag(itemIndex, value) {
     const $button = $('.cp-compra-item[data-item-index="' + itemIndex + '"] .cp-foto-fornecedor');
     if ($button.length) {
         $button.toggleClass('btn-photo-sim', Boolean(value)).toggleClass('btn-photo-nao', !Boolean(value));
-        $button.html('Ver Fotos' + fotoBadgeHtml(Boolean(value)));
+        $button.html((value ? 'Ver Fotos' : 'Inserir Fotos') + fotoBadgeHtml(Boolean(value)));
     }
+    updateCpCompraWorkflowButtons({
+        Localizacao: $('#cp-compras-form [name="Localizacao"]').val() || 'KidStok',
+        Sts: $('#cp-compras-form [name="Sts_display"]').val() || $('#cp-compras-form [name="Sts"]').val() || 'Aberto',
+        Publicado: $('#cp-compras-form [name="Publicado"]').val() || 0,
+        TemFotosFornecedor: value
+    });
 }
 
 function itemStatusSelectHtml(itemIndex, value, colClass) {
@@ -2420,6 +2536,110 @@ function addCpCompraCor(itemIndex, tamanhoIndex) {
     renderCpCompraItens();
 }
 
+function cpCompraItemCoresAtivas(item) {
+    const map = {};
+    (item.tamanhos || []).forEach(function (tamanho) {
+        if (String(tamanho.Sts) === '0') {
+            return;
+        }
+        (tamanho.cores || []).forEach(function (cor) {
+            const nome = String(cor.cor || '').trim();
+            if (nome && String(cor.Sts) !== '0') {
+                map[nome] = true;
+            }
+        });
+    });
+    return Object.keys(map).sort();
+}
+
+function cpCompraItemRateioStatus(item) {
+    const tamanhosAtivos = (item.tamanhos || []).filter(function (tamanho) {
+        return String(tamanho.Sts) !== '0';
+    });
+    if (!tamanhosAtivos.length) {
+        return { ok: false, message: 'Informe ao menos um tamanho ativo para ratear o item.' };
+    }
+    let referencia = null;
+    for (let index = 0; index < tamanhosAtivos.length; index++) {
+        const tamanho = tamanhosAtivos[index];
+        const cores = (tamanho.cores || [])
+            .filter(function (cor) { return String(cor.Sts) !== '0' && String(cor.cor || '').trim() !== ''; })
+            .map(function (cor) { return String(cor.cor || '').trim(); })
+            .sort();
+        if (!cores.length) {
+            return { ok: false, message: 'O tamanho ' + (tamanho.tamanho || index + 1) + ' não possui cores ativas para rateio.' };
+        }
+        if (referencia === null) {
+            referencia = cores;
+        } else if (referencia.length !== cores.length || referencia.join('|') !== cores.join('|')) {
+            return { ok: false, message: 'Todos os tamanhos do item devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio.' };
+        }
+    }
+    return { ok: true, cores: referencia || [] };
+}
+
+function cpCompraItemPercentualTotal(item) {
+    const rateios = {};
+    (item.tamanhos || []).some(function (tamanho) {
+        if (String(tamanho.Sts) === '0') {
+            return false;
+        }
+        (tamanho.cores || []).forEach(function (cor) {
+            const nome = String(cor.cor || '').trim();
+            if (nome && String(cor.Sts) !== '0' && rateios[nome] === undefined) {
+                rateios[nome] = Number(cor.percentual || 0);
+            }
+        });
+        return Object.keys(rateios).length > 0;
+    });
+    return Object.keys(rateios).reduce(function (total, cor) {
+        return roundCpPercent(total + Number(rateios[cor] || 0));
+    }, 0);
+}
+
+function cpCompraItemPercentualCor(item, corNome) {
+    corNome = String(corNome || '').trim();
+    for (let tamanhoIndex = 0; tamanhoIndex < (item.tamanhos || []).length; tamanhoIndex++) {
+        const tamanho = item.tamanhos[tamanhoIndex];
+        for (let corIndex = 0; corIndex < (tamanho.cores || []).length; corIndex++) {
+            const cor = tamanho.cores[corIndex];
+            if (String(cor.cor || '').trim() === corNome) {
+                return Number(cor.percentual || 0);
+            }
+        }
+    }
+    return 0;
+}
+
+function applyCpCompraItemRateio(item, rateios) {
+    (item.tamanhos || []).forEach(function (tamanho) {
+        (tamanho.cores || []).forEach(function (cor) {
+            const nome = String(cor.cor || '').trim();
+            cor.percentual = String(cor.Sts) === '0' ? 0 : Number(rateios[nome] || 0);
+            delete cor._qtde_manual;
+        });
+    });
+}
+
+function ratearCpCompraItem(itemIndex) {
+    syncCpCompraItensFromDom();
+    const item = cpCompraItens[itemIndex];
+    if (!item) {
+        return;
+    }
+    const status = cpCompraItemRateioStatus(item);
+    if (!status.ok) {
+        appAlert(status.message, 'warning');
+        return;
+    }
+    cpCompraRateioContext = {
+        itemIndex: itemIndex,
+        tamanhoIndex: null
+    };
+    renderCpCompraRateioItemModal(item, status.cores);
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-rateio-modal')).show();
+}
+
 function ratearCpCompraTamanho(itemIndex, tamanhoIndex) {
     syncCpCompraItensFromDom();
     const tamanho = cpCompraItens[itemIndex]?.tamanhos?.[tamanhoIndex];
@@ -2443,8 +2663,40 @@ function ratearCpCompraTamanho(itemIndex, tamanhoIndex) {
     bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-rateio-modal')).show();
 }
 
-function renderCpCompraRateioModal(tamanho, coresAtivas) {
+function renderCpCompraRateioItemModal(item, cores) {
+    $('#cp-rateio-modal .modal-title').text('Rateio das Cores');
+    $('#cp-rateio-modal .modal-header .text-muted.small').text('Informe o percentual de rateio das cores do item.');
     $('#cp-rateio-alert').addClass('d-none').text('');
+    $('#cp-rateio-tamanho').closest('.col-12').find('label').text('Item');
+    $('#cp-rateio-tamanho').val(item.referencia_fornecedor || '');
+    $('#cp-rateio-qtde-total').closest('.col-12').addClass('d-none');
+    $('#cp-rateio-total-percentual').closest('.col-12').removeClass('d-none');
+
+    const rows = cores.map(function (corNome, index) {
+        return '<tr data-cor="' + escapeAttr(corNome) + '">' +
+            '<td>' + escapeHtml(corNome || 'Cor ' + (index + 1)) + '</td>' +
+            '<td><input class="form-control form-control-sm text-end cp-rateio-percentual" inputmode="decimal" value="' + escapeAttr(formatPercentInput(cpCompraItemPercentualCor(item, corNome))) + '"></td>' +
+            '</tr>';
+    }).join('');
+
+    $('#cp-rateio-content').html(
+        '<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-2">' +
+        '<span class="text-muted small">A soma dos percentuais das cores deve totalizar 100%.</span>' +
+        '<button class="btn btn-sm btn-outline-primary" type="button" onclick="distribuirCpCompraRateioIgual()">Dividir igualmente</button>' +
+        '</div>' +
+        '<div class="table-responsive"><table class="table table-sm table-striped align-middle mb-0">' +
+        '<thead><tr><th>Cor</th><th class="text-end" style="width: 180px;">Percentual</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table></div>'
+    );
+    updateCpCompraRateioModalTotal();
+}
+
+function renderCpCompraRateioModal(tamanho, coresAtivas) {
+    $('#cp-rateio-modal .modal-title').text('Rateio de Quantidades');
+    $('#cp-rateio-modal .modal-header .text-muted.small').text('Informe a quantidade total do tamanho e a quantidade de cada cor.');
+    $('#cp-rateio-alert').addClass('d-none').text('');
+    $('#cp-rateio-tamanho').closest('.col-12').find('label').text('Tamanho');
+    $('#cp-rateio-qtde-total').closest('.col-12').removeClass('d-none');
     $('#cp-rateio-tamanho').val(tamanho.tamanho || '');
     $('#cp-rateio-qtde-total').val(parseInt(tamanho.qtde_total || 0, 10) || 0);
 
@@ -2471,6 +2723,18 @@ function renderCpCompraRateioModal(tamanho, coresAtivas) {
 
 function updateCpCompraRateioModalTotal(event) {
     $('#cp-rateio-alert').addClass('d-none').text('');
+    if (cpCompraRateioContext && cpCompraRateioContext.tamanhoIndex === null) {
+        let totalItemPercentual = 0;
+        $('#cp-rateio-content tbody tr').each(function () {
+            totalItemPercentual = roundCpPercent(totalItemPercentual + parsePercentInput($(this).find('.cp-rateio-percentual').val()));
+        });
+        const validoItem = roundCpPercent(totalItemPercentual) === 100;
+        $('#cp-rateio-total-percentual')
+            .val(formatPercentInput(totalItemPercentual) + '%')
+            .toggleClass('text-success', validoItem)
+            .toggleClass('text-danger', !validoItem);
+        return;
+    }
     const qtdeTotal = Math.max(0, parseInt(String($('#cp-rateio-qtde-total').val() || '0').replace(/\D/g, ''), 10) || 0);
     const $rows = $('#cp-rateio-content tbody tr');
     const forcarQuantidade = event === 'quantidade';
@@ -2545,6 +2809,20 @@ function distribuirCpCompraRateioIgual() {
     if (!$rows.length) {
         return;
     }
+    if (cpCompraRateioContext && cpCompraRateioContext.tamanhoIndex === null) {
+        $('#cp-rateio-alert').addClass('d-none').text('');
+        const basePercentual = roundCpPercentDisplay(100 / $rows.length);
+        let totalPercentualItem = 0;
+        $rows.each(function (index) {
+            const percentual = index === $rows.length - 1
+                ? roundCpPercentDisplay(100 - totalPercentualItem)
+                : basePercentual;
+            totalPercentualItem = roundCpPercentDisplay(totalPercentualItem + percentual);
+            $(this).find('.cp-rateio-percentual').val(formatPercentInput(percentual));
+        });
+        updateCpCompraRateioModalTotal();
+        return;
+    }
     const qtdeTotal = Math.max(0, parseInt(String($('#cp-rateio-qtde-total').val() || '0').replace(/\D/g, ''), 10) || 0);
     if (qtdeTotal <= 0) {
         $('#cp-rateio-alert').removeClass('d-none').text('Informe a quantidade total antes de dividir.');
@@ -2572,6 +2850,46 @@ function distribuirCpCompraRateioIgual() {
 
 function aplicarCpCompraRateio() {
     const context = cpCompraRateioContext;
+    if (context && context.tamanhoIndex === null) {
+        const item = cpCompraItens[context.itemIndex] || null;
+        if (!item) {
+            return;
+        }
+        const rateiosItem = {};
+        let totalPercentualItem = 0;
+        let invalidoItem = false;
+        $('#cp-rateio-content tbody tr').each(function () {
+            const corNome = String($(this).data('cor') || '').trim();
+            const percentual = parsePercentInput($(this).find('.cp-rateio-percentual').val());
+            if (percentual < 0 || percentual > 100) {
+                invalidoItem = true;
+            }
+            rateiosItem[corNome] = percentual;
+            totalPercentualItem = roundCpPercent(totalPercentualItem + percentual);
+        });
+        if (invalidoItem) {
+            $('#cp-rateio-alert').removeClass('d-none').text('Cada percentual deve estar entre 0% e 100%.');
+            return;
+        }
+        if (roundCpPercent(totalPercentualItem) !== 100) {
+            $('#cp-rateio-alert').removeClass('d-none').text('O rateio das cores do item deve totalizar 100%. Total atual: ' + formatPercentInput(totalPercentualItem) + '%.');
+            return;
+        }
+        applyCpCompraItemRateio(item, rateiosItem);
+        cpCompraItensOpen[context.itemIndex] = true;
+        (item.tamanhos || []).forEach(function (tamanho) {
+            tamanho._aberto = true;
+        });
+        recalcCpCompraItem(item);
+        renderCpCompraItens();
+        recalcCpCompraTotal();
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-rateio-modal'));
+        $('#cp-rateio-modal').one('hidden.bs.modal', function () {
+            focusCpCompraQuantidadeTamanho(context.itemIndex);
+        });
+        modal.hide();
+        return;
+    }
     const tamanho = context ? cpCompraItens[context.itemIndex]?.tamanhos?.[context.tamanhoIndex] : null;
     if (!tamanho) {
         return;
@@ -2623,6 +2941,7 @@ function aplicarCpCompraRateio() {
         if (tamanho.cores[row.corIndex]) {
             tamanho.cores[row.corIndex].Qtde = row.qtde;
             tamanho.cores[row.corIndex].percentual = row.percentual;
+            delete tamanho.cores[row.corIndex]._qtde_manual;
         }
     });
 
@@ -2652,6 +2971,10 @@ function confirmCpCompraItem(itemIndex) {
         tamanho.entrega = tamanho.entrega || item.entrega || '';
         tamanho.entrega_anterior = tamanho.entrega_anterior || item.entrega_anterior || tamanho.entrega || item.entrega || '';
     });
+    const rateioStatus = cpCompraItemRateioStatus(item);
+    if (!rateioStatus.ok) {
+        appAlert(rateioStatus.message + ' Não será possível informar rateio para este item enquanto houver divergência.', 'warning');
+    }
     item._pendingTamanhos = [];
     cpCompraItensOpen[itemIndex] = false;
     recalcCpCompraItem(item);
@@ -2659,8 +2982,20 @@ function confirmCpCompraItem(itemIndex) {
     recalcCpCompraTotal();
 }
 
+function focusCpCompraQuantidadeTamanho(itemIndex) {
+    setTimeout(function () {
+        const $field = $('.cp-compra-tamanho-field[data-item-index="' + itemIndex + '"][data-field="qtde_total"]').first();
+        if ($field.length) {
+            $field.trigger('focus').select();
+        }
+    }, 80);
+}
+
 function removeCpCompraItem(itemIndex) {
     syncCpCompraItensFromDom();
+    if (!confirm('Excluir este item?')) {
+        return;
+    }
     cpCompraItens.splice(itemIndex, 1);
     cpCompraItensOpen = {};
     renderCpCompraItens();
@@ -2669,6 +3004,9 @@ function removeCpCompraItem(itemIndex) {
 
 function removeCpCompraTamanho(itemIndex, tamanhoIndex) {
     syncCpCompraItensFromDom();
+    if (!confirm('Excluir este tamanho?')) {
+        return;
+    }
     cpCompraItens[itemIndex]?.tamanhos?.splice(tamanhoIndex, 1);
     renderCpCompraItens();
     recalcCpCompraTotal();
@@ -2676,6 +3014,9 @@ function removeCpCompraTamanho(itemIndex, tamanhoIndex) {
 
 function removeCpCompraCor(itemIndex, tamanhoIndex, corIndex) {
     syncCpCompraItensFromDom();
+    if (!confirm('Excluir esta cor?')) {
+        return;
+    }
     cpCompraItens[itemIndex]?.tamanhos?.[tamanhoIndex]?.cores?.splice(corIndex, 1);
     renderCpCompraItens();
     recalcCpCompraTotal();
@@ -2741,26 +3082,40 @@ function recalcCpCompraItem(item) {
     (item.tamanhos || []).forEach(function (tamanho) {
         if (String(item.Sts) === '0') {
             tamanho.Sts = 0;
+            tamanho.qtde_total = 0;
         } else if ((tamanho.cores || []).length) {
             updateCpCompraTamanhoStatusFromCores(tamanho);
         }
         const tamanhoAtivo = String(tamanho.Sts) !== '0';
+        if (!tamanhoAtivo) {
+            tamanho.qtde_total = 0;
+        }
         const coresAtivas = (tamanho.cores || []).filter(function (cor) {
             return tamanhoAtivo && String(cor.Sts) !== '0';
         });
         const totalPercentual = cpCompraTamanhoPercentualTotal(tamanho);
+        const temRateioItem = roundCpPercent(totalPercentual) > 0;
         const totalQtde = Math.max(0, parseInt(Number(tamanho.qtde_total || 0), 10) || 0);
+        const temQtdeManual = coresAtivas.some(function (cor) {
+            return cor._qtde_manual === true;
+        });
         let qtdeAplicada = 0;
 
         (tamanho.cores || []).forEach(function (cor) {
-            if (!tamanhoAtivo || String(cor.Sts) === '0' || roundCpPercent(totalPercentual) !== 100) {
+            if (!tamanhoAtivo || String(cor.Sts) === '0') {
                 cor.Qtde = 0;
+            } else if (temQtdeManual) {
+                cor.Qtde = Math.max(0, parseInt(Number(cor.Qtde || 0), 10) || 0);
+            } else if (!temRateioItem && coresAtivas.length) {
+                cor.Qtde = Math.floor(totalQtde / coresAtivas.length);
             } else {
-                cor.Qtde = Math.floor(totalQtde * Number(cor.percentual || 0) / 100);
-                qtdeAplicada += cor.Qtde;
+                cor.Qtde = roundCpPercent(totalPercentual) === 100
+                    ? Math.floor(totalQtde * Number(cor.percentual || 0) / 100)
+                    : 0;
             }
+            qtdeAplicada += Number(cor.Qtde || 0);
         });
-        if (coresAtivas.length && roundCpPercent(totalPercentual) === 100) {
+        if (!temQtdeManual && coresAtivas.length && (!temRateioItem || roundCpPercent(totalPercentual) === 100)) {
             let sobra = totalQtde - qtdeAplicada;
             let corSobraIndex = 0;
             while (sobra > 0) {
@@ -2769,7 +3124,6 @@ function recalcCpCompraItem(item) {
                 corSobraIndex += 1;
             }
         }
-
         let totalTamanho = 0;
         (tamanho.cores || []).forEach(function (cor) {
             applyCpCompraDetailMarkups(cor, markups);
@@ -2782,7 +3136,7 @@ function recalcCpCompraItem(item) {
         tamanho.Itens = coresAtivas.length;
         tamanho.markup_franquia = roundCpMoney(markups.franquia || 0);
         tamanho.markup_loja = roundCpMoney(markups.franqueadora || 0);
-        totalQtdeItem += tamanhoAtivo ? totalQtde : 0;
+        totalQtdeItem += tamanhoAtivo ? (temQtdeManual ? qtdeAplicada : totalQtde) : 0;
         totalItem += totalTamanho;
     });
     item.total_qtde = totalQtdeItem;
@@ -2911,14 +3265,23 @@ function validarCpCompraForm($form) {
         }
         referencias[referencia] = true;
 
+        const itemAtivo = String(item.Sts) !== '0';
+        if (!itemAtivo) {
+            continue;
+        }
         if (!(item.tamanhos || []).length) {
             return 'Informe ao menos um tamanho para a referência ' + referencia + '.';
         }
-        const itemAtivo = String(item.Sts) !== '0';
         let tamanhosAtivos = 0;
         const tamanhosUsados = {};
+        let coresReferencia = null;
+        const rateioItem = {};
         for (let tamanhoIndex = 0; tamanhoIndex < item.tamanhos.length; tamanhoIndex++) {
             const tamanho = item.tamanhos[tamanhoIndex];
+            const tamanhoAtivo = String(tamanho.Sts) !== '0';
+            if (!tamanhoAtivo) {
+                continue;
+            }
             const nomeTamanho = String(tamanho.tamanho || '').trim();
             if (!nomeTamanho) {
                 return 'Informe o tamanho ' + (tamanhoIndex + 1) + ' da referência ' + referencia + '.';
@@ -2927,10 +3290,6 @@ function validarCpCompraForm($form) {
                 return 'O tamanho ' + nomeTamanho + ' está duplicado na referência ' + referencia + '.';
             }
             tamanhosUsados[nomeTamanho] = true;
-            const tamanhoAtivo = String(tamanho.Sts) !== '0';
-            if (!itemAtivo || !tamanhoAtivo) {
-                continue;
-            }
             tamanhosAtivos += 1;
             const coresAtivas = (tamanho.cores || []).filter(function (cor) {
                 return String(cor.Sts) !== '0';
@@ -2943,6 +3302,7 @@ function validarCpCompraForm($form) {
                 return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ': informe a quantidade total no rateio.';
             }
             const coresUsadas = {};
+            const coresTamanho = [];
             let totalQtdeCores = 0;
             for (let corIndex = 0; corIndex < coresAtivas.length; corIndex++) {
                 const nomeCor = String(coresAtivas[corIndex].cor || '').trim();
@@ -2953,26 +3313,35 @@ function validarCpCompraForm($form) {
                     return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ', cor ' + nomeCor + ': cor duplicada.';
                 }
                 coresUsadas[nomeCor] = true;
+                coresTamanho.push(nomeCor);
                 const percentual = Number(coresAtivas[corIndex].percentual || 0);
                 if (percentual < 0 || percentual > 100) {
-                    return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ', cor ' + nomeCor + ': o percentual deve estar entre 0% e 100%.';
+                    return 'Item ' + referencia + ', cor ' + nomeCor + ': o percentual do rateio deve estar entre 0% e 100%.';
+                }
+                if (rateioItem[nomeCor] === undefined) {
+                    rateioItem[nomeCor] = percentual;
+                } else if (roundCpPercent(rateioItem[nomeCor]) !== roundCpPercent(percentual)) {
+                    return 'Item ' + referencia + ', cor ' + nomeCor + ': o percentual do rateio deve ser igual em todos os tamanhos do item.';
                 }
                 totalQtdeCores += Math.max(0, parseInt(Number(coresAtivas[corIndex].Qtde || 0), 10) || 0);
+            }
+            coresTamanho.sort();
+            if (coresReferencia === null) {
+                coresReferencia = coresTamanho;
+            } else if (coresReferencia.length !== coresTamanho.length || coresReferencia.join('|') !== coresTamanho.join('|')) {
+                return 'Item ' + referencia + ': todos os tamanhos ativos devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio. Verifique o tamanho ' + nomeTamanho + '.';
             }
             if (totalQtdeCores !== qtdeTotalTamanho) {
                 return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ': a soma das quantidades das cores deve bater com a quantidade total. Total informado: ' + qtdeTotalTamanho + '. Soma das cores: ' + totalQtdeCores + '.';
             }
-            const totalPercentual = cpCompraTamanhoPercentualTotal(tamanho);
-            if (roundCpPercent(totalPercentual) !== 100) {
-                const corReferencia = coresAtivas.find(function (cor) {
-                    return Number(cor.percentual || 0) <= 0;
-                }) || coresAtivas[0];
-                const nomeCorReferencia = String(corReferencia.cor || '').trim() || 'sem identificação';
-                return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ', cor ' + nomeCorReferencia + ': o rateio do tamanho deve totalizar 100%. Total atual: ' + formatPercentInput(totalPercentual) + '%.';
-            }
         }
-        if (itemAtivo && tamanhosAtivos === 0) {
-            return 'Informe ao menos um tamanho ativo para a referência ' + referencia + '.';
+        if (itemAtivo && tamanhosAtivos > 0) {
+            const totalRateioItem = Object.keys(rateioItem).reduce(function (total, cor) {
+                return roundCpPercent(total + Number(rateioItem[cor] || 0));
+            }, 0);
+            if (roundCpPercent(totalRateioItem) > 0 && roundCpPercent(totalRateioItem) !== 100) {
+                return 'Item ' + referencia + ': o rateio das cores do item deve totalizar 100%. Total atual: ' + formatPercentInput(totalRateioItem) + '%.';
+            }
         }
     }
     return '';

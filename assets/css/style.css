@@ -150,6 +150,10 @@ body {
     color: #fff !important;
 }
 
+.btn-save-main.cp-saving::before {
+    display: none;
+}
+
 .btn-confirm-item {
     background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%) !important;
     border-color: #2563eb !important;
@@ -1346,6 +1350,20 @@ body {
     min-height: 31px;
     padding-bottom: 0.25rem;
     padding-top: 0.25rem;
+}
+
+.cp-compras-form-wide .cp-compra-cor .cp-compra-campo-destaque,
+.cp-compras-form-wide .cp-compra-cor .cp-compra-campo-destaque + .input-group-text,
+.cp-compras-form-wide .cp-compra-cor .input-group:has(.cp-compra-campo-destaque) .input-group-text {
+    background: #fff3cd;
+    border-color: #f59e0b;
+    color: #5f3d00;
+    font-weight: 700;
+}
+
+.cp-compras-form-wide .cp-compra-cor .cp-compra-campo-destaque:focus {
+    border-color: #ff8500;
+    box-shadow: 0 0 0 0.18rem rgba(255, 133, 0, 0.18);
 }
 
 .cp-compras-form-wide .cp-compra-empty-nested {

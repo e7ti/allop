@@ -114,8 +114,11 @@ Empresas possuem validações de CNPJ, CEP, código IBGE, UF, DDD e telefones. A
 | `api/compras/cp_compras_pdf.php` | Gera o PDF completo do pedido em A4 paisagem. |
 
 O formulário organiza os dados em accordions hierárquicos: cada item contém
-seus tamanhos, e cada tamanho contém suas cores. O percentual é informado em
-cada cor, com totalizador e validação de 100% dentro do respectivo tamanho.
+seus tamanhos, e cada tamanho contém suas cores. O rateio é informado no
+item, por cor, e todos os tamanhos ativos do item devem ter a mesma quantidade
+e o mesmo conjunto de cores para permitir o rateio. A quantidade total fica no
+tamanho (`qtde_total`) e é distribuída nas cores do tamanho conforme o
+percentual cadastrado no item.
 
 Principais ações da API:
 
@@ -142,7 +145,9 @@ Regras atuais de compras:
 - CD, empresa, fornecedor e data do pedido são obrigatórios;
 - o frontend exige pelo menos um item confirmado;
 - uma referência não pode aparecer mais de uma vez no mesmo pedido;
-- os percentuais das cores de cada tamanho devem totalizar 100%;
+- os percentuais das cores do item devem totalizar 100%;
+- todos os tamanhos ativos de um item devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio;
+- a quantidade total do tamanho (`qtde_total`) é obrigatória e a soma das quantidades das cores deve bater com esse total;
 - itens, tamanhos e cores possuem status ativo/inativo;
 - alterar o status do item aplica o mesmo status em cascata para seus tamanhos e cores;
 - alterar o status do tamanho aplica o mesmo status em cascata para suas cores;
@@ -224,10 +229,11 @@ atenção conhecidos**.
 
 O modelo registrado no arquivo organiza as variações de um item na hierarquia
 `cp_compras_itens` → `cp_compras_itens_tamanhos` → `cp_compras_itens_cores`.
-Cada registro de `cp_compras_itens_rateios` relaciona um tamanho a uma de suas
-cores e armazena o percentual da quantidade destinado àquela combinação. Os
-percentuais devem totalizar 100% dentro de cada tamanho, e a quantidade da cor
-é calculada por `qtde_total do tamanho × percentual / 100`.
+Cada registro de `cp_compras_itens_rateios` relaciona um item a uma cor
+(`compras_itens_id` + `cor`) e armazena o percentual do rateio daquela cor no
+item. Os percentuais devem totalizar 100% por item. Cada tamanho do item
+mantém sua própria quantidade total em `qtde_total`, e a quantidade da cor é
+calculada por `qtde_total do tamanho × percentual da cor no item / 100`.
 
 A tabela `cp_compras` ganhou a coluna `status_id`, com chave estrangeira para
 a nova tabela `cp_compras_status` (`id`, `descricao_compras`,

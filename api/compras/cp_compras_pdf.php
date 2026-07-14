@@ -105,13 +105,13 @@ $detailStmt = db()->prepare(
             t.tamanho,
             t.entrega,
             t.entrega_anterior,
-            COALESCE(r.percentual, 0) AS percentual
+            COALESCE(r.Percentual, 0) AS percentual
        FROM cp_compras_itens_tamanhos t
        JOIN cp_compras_itens_cores c
          ON c.compras_itens_tamanho_id = t.id
        LEFT JOIN cp_compras_itens_rateios r
-         ON r.compras_itens_tamanho_id = t.id
-        AND r.compras_itens_cor_id = c.id
+         ON r.compras_itens_id = t.compras_itens_id
+        AND r.cor = c.cor
       WHERE t.compras_itens_id = :item_id
       ORDER BY t.tamanho, c.cor, c.id"
 );

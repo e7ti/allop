@@ -85,6 +85,15 @@ Onde houver apresentacao de status no sistema interno:
 
 deve ser usado o valor de cp_compras_status.descricao_compras.
 
+COMPRAS - RATEIO
+- O rateio de compras deve ser informado por item + cor.
+- A tabela cp_compras_itens_rateios relaciona compras_itens_id + cor e grava o percentual da cor no item.
+- Todos os tamanhos ativos do item devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio.
+- A quantidade total fica no tamanho, no campo cp_compras_itens_tamanhos.qtde_total.
+- As quantidades das cores de cada tamanho devem ser calculadas pelo percentual do rateio do item e devem somar a qtde_total do tamanho.
+- No accordion fechado do item deve haver botao para informar o rateio percentual das cores.
+- No accordion do tamanho deve ser permitida a quantidade total do tamanho.
+
 
 ESTRUTURA DO PROJETO
 - Projeto em PHP puro.
