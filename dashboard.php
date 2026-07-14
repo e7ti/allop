@@ -61,6 +61,33 @@ function dashboard_compra_stats(): array
     ];
 }
 
+function dashboard_status_labels(): array
+{
+    // Mesmos textos padrão semeados por cp_status_catalog_seed() em api/compras/cp_compras.php.
+    $labels = [
+        0 => 'Aberto',
+        1 => 'Aprovado Aguardando Foto Fornecedor',
+        2 => 'Aprovado',
+        3 => 'Recusado',
+    ];
+
+    try {
+        $stmt = db()->query(
+            "SELECT id, descricao_compras FROM cp_compras_status WHERE id IN (0, 1, 2, 3)"
+        );
+        foreach ($stmt->fetchAll() as $row) {
+            $descricao = trim((string) ($row['descricao_compras'] ?? ''));
+            if ($descricao !== '') {
+                $labels[(int) $row['id']] = $descricao;
+            }
+        }
+    } catch (Throwable $e) {
+        // Mantém os textos padrão quando a tabela ainda não existir.
+    }
+
+    return $labels;
+}
+
 function dashboard_percent(int $value, int $total): float
 {
     if ($total <= 0) {
@@ -163,6 +190,7 @@ function dashboard_publicado_badge($publicado): string
 }
 
 $stats = dashboard_compra_stats();
+$statusLabels = dashboard_status_labels();
 $ultimosPedidos = dashboard_ultimos_pedidos();
 $chartKnownTotal = $stats['abertos'] + $stats['aprovados'] + $stats['aprovados_sem_fotos'] + $stats['recusados'];
 $chartTotal = max(1, $chartKnownTotal);
@@ -187,32 +215,37 @@ $donutClass = $chartKnownTotal > 0 ? '' : ' dashboard-donut-empty';
 
 $cards = [
     [
-        'titulo' => 'Pedidos abertos',
+        'titulo' => $statusLabels[0],
         'valor' => $stats['abertos'],
+        'valor_pedidos' => $stats['valor_abertos'],
         'texto' => 'Aguardando andamento',
         'classe' => 'dashboard-status-open',
     ],
     [
-        'titulo' => 'Pedidos aprovados',
+        'titulo' => $statusLabels[2],
         'valor' => $stats['aprovados'],
+        'valor_pedidos' => $stats['valor_aprovados'],
         'texto' => 'Aprovados no fluxo',
         'classe' => 'dashboard-status-approved',
     ],
     [
-        'titulo' => 'Aguardando foto',
+        'titulo' => $statusLabels[1],
         'valor' => $stats['aprovados_sem_fotos'],
+        'valor_pedidos' => $stats['valor_aprovados_sem_fotos'],
         'texto' => 'Aprovado aguardando foto fornecedor',
         'classe' => 'dashboard-status-awaiting-photo',
     ],
     [
-        'titulo' => 'Pedidos recusados',
+        'titulo' => $statusLabels[3],
         'valor' => $stats['recusados'],
+        'valor_pedidos' => $stats['valor_recusados'],
         'texto' => 'Recusados no fluxo',
         'classe' => 'dashboard-status-rejected',
     ],
     [
         'titulo' => 'Total de pedidos',
         'valor' => $stats['total'],
+        'valor_pedidos' => $stats['valor_total'],
         'texto' => 'Pedidos cadastrados',
         'classe' => 'dashboard-status-total',
     ],
@@ -240,6 +273,7 @@ render_header('Dashboard');
                             <span class="tile-total"><?= h(number_format((int) $card['valor'], 0, ',', '.')) ?></span>
                             <span class="tile-caption"><?= h($card['texto']) ?></span>
                         </div>
+                        <div class="tile-value">R$ <?= h(number_format((float) $card['valor_pedidos'], 2, ',', '.')) ?></div>
                     </div>
                 </section>
             </div>

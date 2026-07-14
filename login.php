@@ -42,7 +42,10 @@ require_once __DIR__ . '/config/app.php';
                 </div>
                 <div class="mb-3">
                     <label class="form-label" for="senha">Senha</label>
-                    <input class="form-control" id="senha" name="senha" type="password" autocomplete="current-password" required>
+                    <div class="login-password-wrap">
+                        <input class="form-control" id="senha" name="senha" type="password" autocomplete="current-password" required>
+                        <button type="button" class="login-toggle-password" id="toggle-senha" aria-label="Mostrar senha" aria-pressed="false"></button>
+                    </div>
                 </div>
                 <button class="btn btn-orange btn-login w-100" type="submit">Entrar</button>
             </form>
@@ -51,6 +54,16 @@ require_once __DIR__ . '/config/app.php';
 </main>
 <script src="<?= app_url('assets/vendor/jquery/jquery.min.js') ?>"></script>
 <script>
+$('#toggle-senha').on('click', function () {
+    var $senha = $('#senha');
+    var showing = $senha.attr('type') === 'text';
+    $senha.attr('type', showing ? 'password' : 'text');
+    $(this)
+        .toggleClass('is-visible', !showing)
+        .attr('aria-pressed', String(!showing))
+        .attr('aria-label', showing ? 'Mostrar senha' : 'Ocultar senha');
+});
+
 $('#login-form').on('submit', function (event) {
     event.preventDefault();
     $.post('<?= app_url('api/seguranca/auth.php') ?>', $(this).serialize(), function (response) {
