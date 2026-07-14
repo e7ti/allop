@@ -87,6 +87,21 @@ CREATE TABLE IF NOT EXISTS `cp_compras_itens` (
 ) ENGINE=InnoDB AUTO_INCREMENT=214 DEFAULT CHARSET=latin1;
 
 -- Exportação de dados foi desmarcado.
+CREATE TABLE `cp_compras_itens_rateios` (
+	`id` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'id do registro',
+	`compras_itens_id` BIGINT(20) UNSIGNED NOT NULL DEFAULT '0',
+	`cor` VARCHAR(50) NOT NULL COMMENT 'Cor' COLLATE 'latin1_swedish_ci',
+	`Percentual` DOUBLE(8,2) NOT NULL DEFAULT '0.00',
+	PRIMARY KEY (`id`) USING BTREE,
+	UNIQUE INDEX `IDXitemCor` (`compras_itens_id`, `cor`) USING BTREE,
+	CONSTRAINT `FK_compras_itens_rateio_compras_itens` FOREIGN KEY (`compras_itens_id`) REFERENCES `cp_compras_itens` (`id`) ON UPDATE NO ACTION ON DELETE CASCADE
+)
+COLLATE='latin1_swedish_ci'
+ENGINE=InnoDB
+;
+
+
+-- Exportação de dados foi desmarcado.
 
 -- Copiando estrutura para tabela allop_devel.cp_compras_itens_cores
 CREATE TABLE IF NOT EXISTS `cp_compras_itens_cores` (
@@ -159,21 +174,6 @@ CREATE TABLE IF NOT EXISTS `cp_compras_itens_log` (
   KEY `IDXId` (`compras_itens_id`) USING BTREE,
   CONSTRAINT `FK_cp_compras_itens_log_cp_compras_itens` FOREIGN KEY (`compras_itens_id`) REFERENCES `cp_compras_itens` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=latin1;
-
--- Exportação de dados foi desmarcado.
-
--- Copiando estrutura para tabela allop_devel.cp_compras_itens_rateios
-CREATE TABLE IF NOT EXISTS `cp_compras_itens_rateios` (
-  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  `compras_itens_tamanho_id` bigint(20) unsigned NOT NULL,
-  `compras_itens_cor_id` bigint(20) unsigned NOT NULL,
-  `percentual` decimal(7,4) NOT NULL DEFAULT '0.0000',
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `IDXRateioTamanhoCor` (`compras_itens_tamanho_id`,`compras_itens_cor_id`),
-  KEY `IDXRateioCor` (`compras_itens_cor_id`),
-  CONSTRAINT `FK_cp_compras_itens_rateios_cp_compras_itens_tamanhos` FOREIGN KEY (`compras_itens_tamanho_id`) REFERENCES `cp_compras_itens_tamanhos` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
-  CONSTRAINT `FK_rateio_cor` FOREIGN KEY (`compras_itens_cor_id`) REFERENCES `cp_compras_itens_cores` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=1467 DEFAULT CHARSET=latin1 COMMENT='Rateio percentual das cores para cada tamanho';
 
 -- Exportação de dados foi desmarcado.
 
@@ -514,6 +514,97 @@ CREATE TABLE IF NOT EXISTS `seg_usuarios_permissoes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='Permissoes por usuario';
 
 -- Exportação de dados foi desmarcado.
+CREATE TABLE `empresas` (
+	`Codigo` INT(11) NOT NULL,
+	`EmpresaCD` INT(11) NOT NULL,
+	`Nome` VARCHAR(50) NOT NULL COLLATE 'utf8_general_ci',
+	`Fantasia` VARCHAR(50) NOT NULL COLLATE 'utf8_general_ci',
+	`CNPJ` VARCHAR(14) NOT NULL COLLATE 'utf8_general_ci',
+	`IE` VARCHAR(15) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`CEP` VARCHAR(8) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`TipoEndereco` VARCHAR(25) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`Endereco` VARCHAR(60) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`Numero` VARCHAR(10) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`Complemento` VARCHAR(40) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`Bairro` VARCHAR(50) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`Cidade` VARCHAR(60) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`UF` VARCHAR(2) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`FoneDDD` VARCHAR(2) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`FoneNro` VARCHAR(10) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`CelularDDD` VARCHAR(2) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`CelularNro` VARCHAR(10) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`Responsavel` VARCHAR(60) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`Observacoes` VARCHAR(250) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`CRT` VARCHAR(1) NOT NULL DEFAULT '3' COLLATE 'utf8_general_ci',
+	`Status` VARCHAR(8) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`Usuario` VARCHAR(60) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`Inclusao` DATE NULL DEFAULT NULL,
+	`Alteracao` DATE NULL DEFAULT NULL,
+	PRIMARY KEY (`Codigo`) USING BTREE,
+	UNIQUE INDEX `IDXNome` (`Nome`) USING BTREE,
+	UNIQUE INDEX `IDXFantasia` (`Fantasia`) USING BTREE,
+	UNIQUE INDEX `IDXCnpj` (`CNPJ`) USING BTREE,
+	INDEX `FK_empresas_situacao` (`Status`) USING BTREE,
+	INDEX `FK_empresas_empresas_cd` (`EmpresaCD`) USING BTREE,
+	CONSTRAINT `FK_empresas_empresas_cd` FOREIGN KEY (`EmpresaCD`) REFERENCES `empresas_cd` (`Codigo`) ON UPDATE NO ACTION ON DELETE RESTRICT,
+	CONSTRAINT `FK_empresas_situacao` FOREIGN KEY (`Status`) REFERENCES `situacao` (`StsNome`) ON UPDATE NO ACTION ON DELETE RESTRICT
+)
+COLLATE='utf8_general_ci'
+ENGINE=InnoDB
+;
+CREATE TABLE `empresas_cd` (
+	`Codigo` INT(11) NOT NULL,
+	`NomeCD` VARCHAR(50) NOT NULL COLLATE 'utf8_general_ci',
+	`Status` VARCHAR(8) NOT NULL COLLATE 'utf8_general_ci',
+	PRIMARY KEY (`Codigo`) USING BTREE,
+	UNIQUE INDEX `IDXNomeCD` (`NomeCD`) USING BTREE,
+	INDEX `FK_empresas_cd_situacao` (`Status`) USING BTREE,
+	CONSTRAINT `FK_empresas_cd_situacao` FOREIGN KEY (`Status`) REFERENCES `situacao` (`StsNome`) ON UPDATE NO ACTION ON DELETE NO ACTION
+)
+COLLATE='utf8_general_ci'
+ENGINE=InnoDB
+;
+CREATE TABLE `config_email` (
+	`Codigo` INT(11) NOT NULL AUTO_INCREMENT,
+	`cd_id` INT(11) NOT NULL,
+	`empresa_id` INT(11) NOT NULL,
+	`NomeConta` VARCHAR(40) NOT NULL DEFAULT '' COLLATE 'utf8_general_ci',
+	`Habilitado` TINYINT(4) NOT NULL DEFAULT '0' COMMENT '1-habilitado, 0-desabilitado',
+	`Servidor` VARCHAR(120) NOT NULL DEFAULT '' COMMENT 'Servidor de email' COLLATE 'utf8_general_ci',
+	`Porta` VARCHAR(10) NOT NULL DEFAULT '' COMMENT 'Porta' COLLATE 'utf8_general_ci',
+	`ModoAutenticado` VARCHAR(1) NOT NULL DEFAULT '' COMMENT 'Autenticacao S/N' COLLATE 'utf8_general_ci',
+	`ModoSSL` VARCHAR(1) NOT NULL DEFAULT '' COMMENT ' Modo SSL S/N' COLLATE 'utf8_general_ci',
+	`Email` VARCHAR(120) NOT NULL DEFAULT '' COMMENT 'Usuário' COLLATE 'utf8_general_ci',
+	`Senha` VARCHAR(120) NOT NULL DEFAULT '' COMMENT 'Senha' COLLATE 'utf8_general_ci',
+	`Status` VARCHAR(8) NOT NULL COMMENT 'Ativo/Inativo' COLLATE 'utf8_general_ci',
+	PRIMARY KEY (`Codigo`) USING BTREE,
+	UNIQUE INDEX `IDXNomeConta` (`NomeConta`) USING BTREE,
+	UNIQUE INDEX `IDXCdEmpresaCodigo` (`cd_id`, `empresa_id`, `Codigo`) USING BTREE,
+	INDEX `FK_config_email_empresas` (`empresa_id`) USING BTREE,
+	CONSTRAINT `FK_config_email_empresas` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`Codigo`) ON UPDATE NO ACTION ON DELETE RESTRICT,
+	CONSTRAINT `FK_config_email_empresas_cd` FOREIGN KEY (`cd_id`) REFERENCES `empresas_cd` (`Codigo`) ON UPDATE NO ACTION ON DELETE RESTRICT
+)
+COLLATE='utf8_general_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=2
+;
+
+CREATE TABLE `urls_allop` (
+	`id` INT(11) NOT NULL AUTO_INCREMENT,
+	`cd_id` INT(11) NOT NULL,
+	`empresa_id` INT(11) NOT NULL,
+	`modulo` VARCHAR(60) NOT NULL DEFAULT '' COLLATE 'latin1_swedish_ci',
+	`url` VARCHAR(255) NOT NULL DEFAULT '' COLLATE 'latin1_swedish_ci',
+	PRIMARY KEY (`id`) USING BTREE,
+	INDEX `FK_cp_compras_config_empresas` (`empresa_id`) USING BTREE,
+	INDEX `IDXCdEmpresa` (`cd_id`, `empresa_id`) USING BTREE,
+	CONSTRAINT `FK_cp_compras_config_empresas` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`Codigo`) ON UPDATE NO ACTION ON DELETE RESTRICT,
+	CONSTRAINT `FK_cp_compras_config_empresas_cd` FOREIGN KEY (`cd_id`) REFERENCES `empresas_cd` (`Codigo`) ON UPDATE NO ACTION ON DELETE RESTRICT
+)
+COLLATE='latin1_swedish_ci'
+ENGINE=InnoDB
+AUTO_INCREMENT=7
+;
 
 -- Copiando estrutura para trigger allop_devel.cp_compras_itens_after_update
 SET @OLDTMP_SQL_MODE=@@SQL_MODE, SQL_MODE='STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_AUTO_CREATE_USER,NO_ENGINE_SUBSTITUTION';
