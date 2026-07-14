@@ -86,13 +86,29 @@ Onde houver apresentacao de status no sistema interno:
 deve ser usado o valor de cp_compras_status.descricao_compras.
 
 COMPRAS - RATEIO
-- O rateio de compras deve ser informado por item + cor.
+- O rateio percentual de compras deve ser informado por item + cor.
 - A tabela cp_compras_itens_rateios relaciona compras_itens_id + cor e grava o percentual da cor no item.
-- Todos os tamanhos ativos do item devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio.
+- Se o item nao tiver percentuais de rateio, ao informar a quantidade do tamanho o sistema divide igualmente entre as cores ativas.
+- Se houver qualquer percentual informado no item, a soma dos percentuais deve fechar 100%.
+- Todos os tamanhos ativos do item devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio percentual.
 - A quantidade total fica no tamanho, no campo cp_compras_itens_tamanhos.qtde_total.
-- As quantidades das cores de cada tamanho devem ser calculadas pelo percentual do rateio do item e devem somar a qtde_total do tamanho.
+- As quantidades das cores de cada tamanho devem somar a qtde_total do tamanho.
+- A quantidade da cor pode ser ajustada manualmente, mas a soma das cores nao pode ultrapassar a quantidade total do tamanho.
+- Item, tamanho ou cor inativo nao deve validar quantidade/rateio; item e tamanho inativos devem zerar os totais de quantidade.
 - No accordion fechado do item deve haver botao para informar o rateio percentual das cores.
 - No accordion do tamanho deve ser permitida a quantidade total do tamanho.
+
+COMPRAS - INTERACOES DO FORMULARIO
+- Ao salvar pedido, o botao Salvar deve ficar desabilitado com indicador de processamento ate terminar a requisicao.
+- Pressionar Enter em inputs do formulario de compras nao deve salvar o pedido automaticamente.
+- Ao focar qualquer input do formulario de compras ou do modal de rateio, o conteudo deve ser selecionado automaticamente.
+- Excluir item, tamanho, cor ou foto deve solicitar confirmacao.
+
+COMPRAS - FOTOS
+- Fotos KidStok usam cp_compras_fotos_ks no banco allop_devel_fotos.
+- Fotos do fornecedor usam cp_compras_fotos no banco allop_devel_fotos.
+- O modulo de compras permite listar, inserir e excluir fotos KidStok e fotos do fornecedor quando o pedido esta editavel.
+- Quando o pedido estiver somente leitura por localizacao/status, fotos ficam apenas para visualizacao.
 
 
 ESTRUTURA DO PROJETO

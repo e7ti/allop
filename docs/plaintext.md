@@ -114,11 +114,13 @@ Empresas possuem validações de CNPJ, CEP, código IBGE, UF, DDD e telefones. A
 | `api/compras/cp_compras_pdf.php` | Gera o PDF completo do pedido em A4 paisagem. |
 
 O formulário organiza os dados em accordions hierárquicos: cada item contém
-seus tamanhos, e cada tamanho contém suas cores. O rateio é informado no
+seus tamanhos, e cada tamanho contém suas cores. O rateio pode ser informado no
 item, por cor, e todos os tamanhos ativos do item devem ter a mesma quantidade
-e o mesmo conjunto de cores para permitir o rateio. A quantidade total fica no
-tamanho (`qtde_total`) e é distribuída nas cores do tamanho conforme o
-percentual cadastrado no item.
+e o mesmo conjunto de cores para permitir o rateio percentual. A quantidade
+total fica no tamanho (`qtde_total`). Quando não houver percentual de rateio no
+item, a quantidade do tamanho é dividida igualmente entre suas cores ativas; se
+houver percentual informado, ele deve totalizar 100% e passa a orientar a
+distribuição das cores.
 
 Principais ações da API:
 
@@ -133,7 +135,7 @@ Principais ações da API:
 | `referencia` | Carrega uma referência e suas combinações de tamanho/cor de `pf_colecao`. |
 | `fotos_list` | Lista fotos da KidStok em `cp_compras_fotos_ks`. |
 | `fotos_fornecedor_list` | Lista fotos do fornecedor em `cp_compras_fotos`. |
-| `fotos_upload` / `fotos_delete` | Mantém fotos da KidStok e sincroniza o indicador do item. |
+| `fotos_upload` / `fotos_delete` | Mantém fotos da KidStok ou do fornecedor conforme a origem informada e sincroniza o indicador do item. |
 | `enviar_proposta` | Envia e-mail, publica o pedido e transfere a localização para `Fornecedor`. |
 | `aprovar` | Aprova somente pedido publicado, devolve a localização para `KidStok` e marca como `Aprovado` ou `Aprovado Aguardando Foto Fornecedor` conforme fotos do fornecedor. |
 | `recusar` | Marca como `Recusado`, registra motivo e devolve para `KidStok`. |
@@ -145,21 +147,26 @@ Regras atuais de compras:
 - CD, empresa, fornecedor e data do pedido são obrigatórios;
 - o frontend exige pelo menos um item confirmado;
 - uma referência não pode aparecer mais de uma vez no mesmo pedido;
-- os percentuais das cores do item devem totalizar 100%;
-- todos os tamanhos ativos de um item devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio;
-- a quantidade total do tamanho (`qtde_total`) é obrigatória e a soma das quantidades das cores deve bater com esse total;
+- os percentuais das cores do item podem ficar zerados quando não houver rateio percentual; nesse caso, a quantidade do tamanho é dividida igualmente entre as cores ativas;
+- quando qualquer percentual de rateio for informado no item, os percentuais das cores devem totalizar 100%;
+- todos os tamanhos ativos de um item devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio percentual;
+- a quantidade total do tamanho (`qtde_total`) é obrigatória nos tamanhos ativos e a soma das quantidades das cores deve bater com esse total;
+- a quantidade da cor pode ser ajustada manualmente, mas a soma das cores não pode ultrapassar a quantidade total do tamanho;
 - itens, tamanhos e cores possuem status ativo/inativo;
+- item, tamanho ou cor inativos não entram nas validações de quantidade/rateio; item ou tamanho inativo zera seus totais de quantidade e valor;
 - alterar o status do item aplica o mesmo status em cascata para seus tamanhos e cores;
 - alterar o status do tamanho aplica o mesmo status em cascata para suas cores;
-- tamanho inativo não exige cor ativa nem rateio de 100%, e tamanho ativo depende de pelo menos uma cor ativa;
 - o total é recalculado a partir de quantidade × preço proposto;
 - itens, tamanhos, cores e rateios existentes são atualizados ao editar; somente registros removidos da hierarquia são excluídos;
-- pedido localizado no `Fornecedor` fica somente para visualização e impressão; não pode ser editado, excluído, aprovado, recusado nem ter fotos KidStok alteradas;
+- a exclusão de item, tamanho, cor ou foto exige confirmação do usuário;
+- ao salvar, o botão **Salvar** fica bloqueado com indicador de processamento até o término da requisição;
+- ao focar inputs do formulário de compras ou do modal de rateio, o conteúdo é selecionado automaticamente;
+- pedido localizado no `Fornecedor` fica somente para visualização e impressão; não pode ser editado, excluído, aprovado, recusado nem ter fotos alteradas;
 - pedido não publicado não pode ser aprovado;
 - pedido aprovado sem fotos do fornecedor fica com status `Aprovado Aguardando Foto Fornecedor`;
 - o envio de proposta usa a configuração ativa de `config_email` para o CD/empresa;
 - os destinatários são usuários ativos de `pf_usuarios` vinculados ao fornecedor em `pf_usuario_fornecedor`;
-- fotos são armazenadas em Base64 no banco de fotos.
+- fotos são armazenadas em Base64 no banco de fotos; `cp_compras_fotos_ks` guarda fotos KidStok e `cp_compras_fotos` guarda fotos do fornecedor.
 
 ## 5. Autenticação, menu e permissões
 
@@ -231,9 +238,11 @@ O modelo registrado no arquivo organiza as variações de um item na hierarquia
 `cp_compras_itens` → `cp_compras_itens_tamanhos` → `cp_compras_itens_cores`.
 Cada registro de `cp_compras_itens_rateios` relaciona um item a uma cor
 (`compras_itens_id` + `cor`) e armazena o percentual do rateio daquela cor no
-item. Os percentuais devem totalizar 100% por item. Cada tamanho do item
-mantém sua própria quantidade total em `qtde_total`, e a quantidade da cor é
-calculada por `qtde_total do tamanho × percentual da cor no item / 100`.
+item. Quando houver rateio percentual, os percentuais devem totalizar 100% por
+item. Cada tamanho mantém sua própria quantidade total em `qtde_total`; a
+quantidade da cor é calculada por `qtde_total do tamanho × percentual da cor no
+item / 100`. Quando o item não tiver percentuais informados, a quantidade do
+tamanho é dividida igualmente entre as cores ativas do tamanho.
 
 A tabela `cp_compras` ganhou a coluna `status_id`, com chave estrangeira para
 a nova tabela `cp_compras_status` (`id`, `descricao_compras`,
@@ -297,8 +306,8 @@ A conexão `db_fotos()` aponta para **`allop_devel_fotos`**.
 
 | Tabela | Uso |
 | --- | --- |
-| `cp_compras_fotos` | Fotos recebidas do fornecedor; somente leitura no módulo atual. |
-| `cp_compras_fotos_ks` | Fotos mantidas pela KidStok; leitura, inclusão e exclusão. |
+| `cp_compras_fotos` | Fotos recebidas do fornecedor; leitura, inclusão e exclusão quando o pedido está editável. |
+| `cp_compras_fotos_ks` | Fotos mantidas pela KidStok; leitura, inclusão e exclusão quando o pedido está editável. |
 
 As fotos são relacionadas por pedido, referência do fornecedor, fornecedor e sequência. Não há chave estrangeira entre os dois bancos.
 
