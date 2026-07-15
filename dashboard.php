@@ -105,6 +105,7 @@ function dashboard_ultimos_pedidos(): array
                     c.id AS ID,
                     c.DataPedido,
                     c.ValorTotalPedido,
+                    c.status_id,
                     COALESCE(cst.descricao_compras, '') AS descricao_compras,
                     COALESCE(cst.descricao_compras, '') AS Sts,
                     c.Localizacao,
@@ -187,6 +188,15 @@ function dashboard_publicado_badge($publicado): string
     $label = $published ? 'Publicado' : 'Não Publicado';
 
     return '<span class="badge dashboard-grid-badge ' . h($class) . '">' . h($label) . '</span>';
+}
+
+function dashboard_pedido_editavel(array $pedido): bool
+{
+    if (strcasecmp((string) ($pedido['Localizacao'] ?? ''), 'Fornecedor') === 0) {
+        return false;
+    }
+
+    return (int) ($pedido['status_id'] ?? 0) === 0;
 }
 
 $stats = dashboard_compra_stats();
@@ -379,6 +389,11 @@ render_header('Dashboard');
                             <tr><td colspan="10" class="text-center text-muted">Nenhum pedido encontrado.</td></tr>
                         <?php endif; ?>
                         <?php foreach ($ultimosPedidos as $pedido): ?>
+                            <?php
+                            $pedidoEditavel = dashboard_pedido_editavel($pedido);
+                            $acaoClasse = $pedidoEditavel ? 'btn-edit' : 'btn-view';
+                            $acaoTitulo = $pedidoEditavel ? 'Editar pedido' : 'Visualizar pedido';
+                            ?>
                             <tr>
                                 <td data-label="Pedido"><?= h((string) ($pedido['ID'] ?? '')) ?></td>
                                 <td data-label="Data"><?= h(dashboard_date_br($pedido['DataPedido'] ?? '')) ?></td>
@@ -390,7 +405,7 @@ render_header('Dashboard');
                                 <td data-label="Publicado"><?= dashboard_publicado_badge($pedido['Publicado'] ?? 0) ?></td>
                                 <td data-label="Valor" class="text-end">R$ <?= h(number_format((float) ($pedido['ValorTotalPedido'] ?? 0), 2, ',', '.')) ?></td>
                                 <td data-label="Ações" class="text-end">
-                                    <a class="btn btn-sm btn-outline-secondary btn-edit btn-icon-only" title="Abrir pedido" aria-label="Abrir pedido" href="<?= app_url('mod/compras/cp_compras_form.php?id=' . (int) ($pedido['id'] ?? 0)) ?>"></a>
+                                    <a class="btn btn-sm btn-outline-secondary <?= h($acaoClasse) ?> btn-icon-only" title="<?= h($acaoTitulo) ?>" aria-label="<?= h($acaoTitulo) ?>" href="<?= app_url('mod/compras/cp_compras_form.php?id=' . (int) ($pedido['id'] ?? 0)) ?>"></a>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

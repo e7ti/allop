@@ -1021,7 +1021,7 @@ function cpCompraPodeAlterarFoto(origem) {
         return false;
     }
     if (cpCompraStatusAguardandoFoto(cpCompraStatusIdAtual, cpCompraStatusDescricaoAtual)) {
-        return true;
+        return !cpLocalizacaoEhFornecedor(cpCompraReadonlyLocalizacao);
     }
     return !cpCompraReadonly;
 }

@@ -677,6 +677,9 @@ function cp_require_foto_mutavel(int $id, string $table, string $operation): voi
     if (cp_status_final_bloqueado($pedido)) {
         api_response(false, ['message' => "Pedido aprovado ou recusado nÃ£o permite $operation fotos. Apenas visualizaÃ§Ã£o."], 403);
     }
+    if (cp_status_aprovado_aguardando_foto($pedido) && cp_localizacao_fornecedor((string) $pedido['Localizacao'])) {
+        api_response(false, ['message' => "Pedido com localizaÃ§Ã£o {$pedido['Localizacao']} nÃ£o permite $operation fotos no Pedido. Apenas visualizaÃ§Ã£o."], 403);
+    }
     if (cp_localizacao_fornecedor((string) $pedido['Localizacao']) && !cp_status_aprovado_aguardando_foto($pedido)) {
         api_response(false, ['message' => "Pedido com localizaÃ§Ã£o {$pedido['Localizacao']} nÃ£o permite $operation fotos. Apenas visualizaÃ§Ã£o."], 403);
     }
