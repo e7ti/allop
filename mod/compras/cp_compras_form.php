@@ -21,8 +21,22 @@ $id = (int) ($_GET['id'] ?? 0);
             <a class="btn btn-outline-secondary btn-print" href="../../api/compras/cp_compras_pdf.php?id=<?= $id ?>" target="_blank" rel="noopener">Imprimir PDF</a>
         <?php endif; ?>
         <button class="btn btn-outline-secondary btn-send-proposal" id="btn-cp-enviar-proposta" type="button">Enviar Proposta</button>
+        <button class="btn btn-outline-secondary btn-send-proposal d-none" id="btn-cp-enviar-fornecedor" type="button">Enviar Fornecedor</button>
         <button class="btn btn-outline-success btn-approve d-none" id="btn-cp-aprovar" type="button">Aprovar</button>
         <button class="btn btn-outline-danger btn-reject d-none" id="btn-cp-recusar" type="button">Recusar</button>
+    </div>
+
+    <div class="cp-pedido-status-hero mb-3">
+        <div>
+            <span class="cp-pedido-status-label">Status do Pedido</span>
+            <div id="cp-pedido-status-destaque" class="cp-pedido-status-badge">
+                <span class="badge dashboard-grid-badge badge-status-open">Aberto</span>
+            </div>
+        </div>
+        <div class="cp-pedido-status-meta">
+            <span id="cp-pedido-publicado-destaque" class="badge dashboard-grid-badge dashboard-publicado-nao">Não Publicado</span>
+            <span id="cp-pedido-localizacao-destaque" class="badge cp-localizacao-badge badge-localizacao-kidstok">KidStok</span>
+        </div>
     </div>
 
     <section class="card card-slim mb-3">

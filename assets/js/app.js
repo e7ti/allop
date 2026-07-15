@@ -1026,6 +1026,11 @@ function cpCompraPodeAlterarFoto(origem) {
     return !cpCompraReadonly;
 }
 
+function cpCompraPodeEnviarFornecedorAguardandoFoto(localizacao, statusId, statusDescricao) {
+    return !cpLocalizacaoEhFornecedor(localizacao) &&
+        cpCompraStatusAguardandoFoto(statusId, statusDescricao);
+}
+
 function initCpComprasLista() {
     $('#filtro-cp-compras').select2({
         width: '100%',
@@ -1170,6 +1175,10 @@ function initCpComprasForm() {
         enviarCpCompraProposta($form);
     });
 
+    $('#btn-cp-enviar-fornecedor').on('click', function () {
+        enviarCpCompraFornecedorAguardandoFoto($form);
+    });
+
     $('#btn-cp-aprovar').on('click', function () {
         executarCpCompraWorkflow($form, 'aprovar', 'Aprovar este pedido?');
     });
@@ -1253,6 +1262,7 @@ function initCpComprasForm() {
         $form.find('[name="Publicado_display"]').val(formatPublicadoCpCompra(0));
         $form.find('[name="Localizacao"]').val('KidStok');
         $form.find('[name="Localizacao_display"]').val('KidStok');
+        updateCpCompraStatusDestaque({ Sts: 'Aberto', descricao_compras: 'Aberto', Publicado: 0, Localizacao: 'KidStok' });
         toggleCpCompraMotivo($form);
         loadCpCompraDefaults($form);
         cpCompraItens = [];
@@ -1334,6 +1344,14 @@ function enviarCpCompraProposta($form) {
     });
 }
 
+function enviarCpCompraFornecedorAguardandoFoto($form) {
+    if (!cpCompraPodeEnviarFornecedorAguardandoFoto(cpCompraReadonlyLocalizacao, cpCompraStatusIdAtual, cpCompraStatusDescricaoAtual)) {
+        appAlert('Esta ação só está disponível para pedido em KidStok com status Aprovado Aguardando Foto Fornecedor.', 'warning');
+        return;
+    }
+    executarCpCompraWorkflow($form, 'enviar_proposta', 'Enviar pedido ao fornecedor?');
+}
+
 function mostrarPainelRecusa($form) {
     const $grupo = $('#cp-sts-motivo-group');
     $grupo.removeClass('d-none');
@@ -1367,7 +1385,9 @@ function executarCpCompraWorkflow($form, action, confirmMessage, extraData) {
         appAlert('Salve o pedido antes de executar esta ação.', 'warning');
         return;
     }
-    if (cpCompraReadonly) {
+    const permitirEnviarFornecedorAguardandoFoto = action === 'enviar_proposta' &&
+        cpCompraPodeEnviarFornecedorAguardandoFoto(cpCompraReadonlyLocalizacao, cpCompraStatusIdAtual, cpCompraStatusDescricaoAtual);
+    if (cpCompraReadonly && !permitirEnviarFornecedorAguardandoFoto) {
         appAlert('Pedido disponível apenas para visualização conforme status/localização atual.', 'warning');
         return;
     }
@@ -1379,7 +1399,7 @@ function executarCpCompraWorkflow($form, action, confirmMessage, extraData) {
         return;
     }
     const data = Object.assign({ id: id }, extraData || {});
-    const $workflowButtons = $('#btn-cp-enviar-proposta, #btn-cp-aprovar, #btn-cp-recusar, #btn-cp-confirmar-recusa, #btn-cp-cancelar-recusa');
+    const $workflowButtons = $('#btn-cp-enviar-proposta, #btn-cp-enviar-fornecedor, #btn-cp-aprovar, #btn-cp-recusar, #btn-cp-confirmar-recusa, #btn-cp-cancelar-recusa');
     $workflowButtons.prop('disabled', true);
     $.post(window.cpComprasFormConfig.api + '?action=' + action, data, function (response) {
         appOkAlert(response.message || 'Pedido atualizado.', 'Sucesso', function () {
@@ -1459,7 +1479,10 @@ function updateCpCompraWorkflowButtons(row) {
     const pedidoId = Number($('#cp-compras-form').data('id') || $('#cp-compras-form [name="id"]').val() || 0);
     const isClosed = status === 'Aprovado' || status === 'Aprovado sem fotos' || status === 'Aprovado aguardando foto' || status === 'Aprovado Aguardando Foto Fornecedor' || status === 'Recusado';
     const podeAprovarAguardandoFoto = (status === 'Aprovado aguardando foto' || status === 'Aprovado Aguardando Foto Fornecedor') && temFotosFornecedor;
+    const podeEnviarFornecedorAguardandoFoto = Boolean(pedidoId) &&
+        cpCompraPodeEnviarFornecedorAguardandoFoto(localizacao, row.status_id || cpCompraStatusIdAtual, status);
     $('#btn-cp-enviar-proposta').toggleClass('d-none', !pedidoId || localizacao !== 'KidStok' || isClosed);
+    $('#btn-cp-enviar-fornecedor').toggleClass('d-none', !podeEnviarFornecedorAguardandoFoto);
     $('#btn-cp-aprovar').toggleClass(
         'd-none',
         !pedidoId || !publicado || cpLocalizacaoEhFornecedor(localizacao) || (isClosed && !podeAprovarAguardandoFoto)
@@ -1470,7 +1493,18 @@ function updateCpCompraWorkflowButtons(row) {
     );
 }
 
+function updateCpCompraStatusDestaque(row) {
+    const status = row.descricao_compras || row.Sts || 'Aberto';
+    const localizacao = row.Localizacao || 'KidStok';
+    $('#cp-pedido-status-destaque').html(cpPedidoStatusBadge(status, localizacao));
+    $('#cp-pedido-publicado-destaque')
+        .replaceWith(cpPublicadoBadge(row.Publicado || 0).replace('class="badge dashboard-grid-badge', 'id="cp-pedido-publicado-destaque" class="badge dashboard-grid-badge'));
+    $('#cp-pedido-localizacao-destaque')
+        .replaceWith(cpLocalizacaoBadge(localizacao).replace('class="badge cp-localizacao-badge', 'id="cp-pedido-localizacao-destaque" class="badge cp-localizacao-badge'));
+}
+
 function fillCpCompraHeader($form, row) {
+    updateCpCompraStatusDestaque(row);
     Object.keys(row).forEach(function (name) {
         if (name === 'items') {
             return;
