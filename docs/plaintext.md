@@ -69,7 +69,7 @@ index.php
 | `includes/layout.php` | Renderiza header, menu, conteúdo, footer e inclui os assets locais. |
 | `includes/smtp_mailer.php` | Cliente SMTP implementado com socket, STARTTLS/SSL e autenticação opcional. |
 | `api/bootstrap.php` | Inicialização comum das APIs, leitura da requisição e resposta JSON. |
-| `assets/js/app.js` | CRUD genérico, Select2, validações, empresas, e-mail e todo o fluxo de compras. |
+| `assets/js/app.js` | CRUD genérico, Select2, validações, estado de salvamento dos formulários, empresas, e-mail e todo o fluxo de compras. |
 | `assets/css/style.css` | Tema, responsividade, cards, grids, formulários, botões e módulo de compras. |
 
 ## 4. Módulos implementados
@@ -105,6 +105,7 @@ As senhas novas são gravadas com `password_hash()`. O login aceita tanto hash q
 Empresas possuem validações de CNPJ, CEP, código IBGE, UF, DDD e telefones. A tela consulta o serviço ViaCEP diretamente no navegador para preencher endereço.
 
 O cadastro de Configurações de e-mail usa a tabela `config_email`, a mesma utilizada pelo envio de propostas de compra.
+Na API de Empresas, o campo `ibge` é tratado de forma compatível com o schema atual: se a coluna existir em `empresas`, o valor é lido e gravado; se não existir, o campo é retornado vazio e ignorado na persistência.
 
 ### 4.3 Compras
 
@@ -368,6 +369,7 @@ $aplicacao_descricao = "Descrição objetiva da aplicação.";
 - chamar `require_login()` antes de renderizar conteúdo interno;
 - usar `render_header()` e `render_footer()`;
 - colocar o botão Voltar junto ao título e Salvar no rodapé do formulário;
+- em formulários com envio Ajax, bloquear o botão **Salvar** durante a requisição, exibir indicador de processamento e liberar o botão somente após a conclusão;
 - reutilizar `card-slim`, `table-custom`, `grid-filter` e `filter-inline`;
 - usar Select2 nos filtros e relacionamentos pesquisáveis;
 - exibir ações de grid com as classes globais de ícone;
@@ -394,6 +396,7 @@ $aplicacao_descricao = "Descrição objetiva da aplicação.";
 - manter Poppins como fonte visual do sistema;
 - usar fundo de página `#f8f9fa`, cards brancos e laranja `#ff4500` como destaque;
 - usar campos compactos, borda `#dee2e6` e foco laranja;
+- manter espaçamento vertical compacto entre linhas de formulário; em cards de formulário, usar `--bs-gutter-y: 0.7rem` como referência e labels próximos dos campos;
 - preservar o comportamento mobile das tabelas em formato de cards;
 - evitar JavaScript inline extenso em novas telas.
 

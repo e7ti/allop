@@ -1057,8 +1057,16 @@ body {
 }
 
 .form-section .card-body {
-    min-height: 360px;
-    padding: 1.5rem;
+    min-height: 0;
+    padding: 1.15rem 1.5rem 1.25rem;
+}
+
+.form-section .card-body.row {
+    --bs-gutter-y: 0.7rem;
+}
+
+.form-section .form-label {
+    margin-bottom: 0.32rem;
 }
 
 .cp-compras-form-wide > .card-slim > .card-body {
