@@ -1584,6 +1584,9 @@ function cp_workflow_update(int $id, string $workflowAction): void
     }
 
     if ($workflowAction === 'recusar') {
+        if ((int) ($pedido['Publicado'] ?? 0) !== 1 || (int) ($pedido['Iteracao'] ?? 0) <= 0) {
+            api_response(false, ['message' => 'Pedido só pode ser recusado após publicação e interação com o fornecedor.'], 422);
+        }
         $motivo = cp_trim($_POST['motivo'] ?? $_GET['motivo'] ?? '');
         if ($motivo === '') {
             api_response(false, ['message' => 'Informe o motivo da recusa.'], 422);

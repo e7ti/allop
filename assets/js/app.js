@@ -1153,6 +1153,9 @@ function initCpComprasForm() {
             moveCpCompraFocusToNextField(this);
         }
     });
+    $form.on('click', '.cp-compra-item-header button, .cp-compra-tamanho-header button, .cp-compra-cor-header button', function (event) {
+        event.stopPropagation();
+    });
 
     $form.on('shown.bs.collapse hidden.bs.collapse', '.cp-compra-item-collapse', function (event) {
         cpCompraItensOpen[$(this).data('item-index')] = event.type === 'shown';
@@ -1399,6 +1402,7 @@ function updateCpCompraWorkflowButtons(row) {
     const localizacao = row.Localizacao || 'KidStok';
     const status = row.descricao_compras || row.Sts || 'Aberto';
     const publicado = Number(row.Publicado || 0) === 1;
+    const teveInteracaoFornecedor = Number(row.Iteracao || 0) > 0;
     const temFotosFornecedor = Number(row.TemFotosFornecedor || 0) === 1;
     const pedidoId = Number($('#cp-compras-form').data('id') || $('#cp-compras-form [name="id"]').val() || 0);
     const isClosed = status === 'Aprovado' || status === 'Aprovado sem fotos' || status === 'Aprovado aguardando foto' || status === 'Aprovado Aguardando Foto Fornecedor' || status === 'Recusado';
@@ -1410,7 +1414,7 @@ function updateCpCompraWorkflowButtons(row) {
     );
     $('#btn-cp-recusar').toggleClass(
         'd-none',
-        !pedidoId || cpLocalizacaoEhFornecedor(localizacao) || isClosed
+        !pedidoId || !publicado || !teveInteracaoFornecedor || cpLocalizacaoEhFornecedor(localizacao) || isClosed
     );
 }
 
@@ -1649,7 +1653,9 @@ function mapCpCompraTamanhoFromApi(row) {
                 markup_total: Number(cor.markup_total || 0),
                 percentual: Number(cor.percentual || 0),
                 Sts: cpCompraStatusValue(cor.Sts),
-                tem_log_preco_iteracao: Number(cor.tem_log_preco_iteracao || 0)
+                tem_log_preco_iteracao: Number(cor.tem_log_preco_iteracao || 0),
+                _qtde_manual: true,
+                _loaded_from_api: true
             });
         })
     });
@@ -2048,7 +2054,9 @@ function updateCpCompraNestedField($field) {
         tamanho[name] = normalizeCpCompraValue(name, $field.val());
         if (name === 'qtde_total') {
             (tamanho.cores || []).forEach(function (cor) {
-                delete cor._qtde_manual;
+                if (cor._loaded_from_api !== true) {
+                    delete cor._qtde_manual;
+                }
             });
         }
         if (name === 'Sts') {
@@ -3038,8 +3046,13 @@ function removeCpCompraItem(itemIndex) {
     if (!confirm('Excluir este item?')) {
         return;
     }
+    const openBefore = Object.assign({}, cpCompraItensOpen);
     cpCompraItens.splice(itemIndex, 1);
     cpCompraItensOpen = {};
+    cpCompraItens.forEach(function (_item, index) {
+        const previousIndex = index >= itemIndex ? index + 1 : index;
+        cpCompraItensOpen[index] = openBefore[previousIndex] === true;
+    });
     renderCpCompraItens();
     recalcCpCompraTotal();
 }
@@ -3050,6 +3063,7 @@ function removeCpCompraTamanho(itemIndex, tamanhoIndex) {
         return;
     }
     cpCompraItens[itemIndex]?.tamanhos?.splice(tamanhoIndex, 1);
+    cpCompraItensOpen[itemIndex] = true;
     renderCpCompraItens();
     recalcCpCompraTotal();
 }
@@ -3060,6 +3074,10 @@ function removeCpCompraCor(itemIndex, tamanhoIndex, corIndex) {
         return;
     }
     cpCompraItens[itemIndex]?.tamanhos?.[tamanhoIndex]?.cores?.splice(corIndex, 1);
+    cpCompraItensOpen[itemIndex] = true;
+    if (cpCompraItens[itemIndex]?.tamanhos?.[tamanhoIndex]) {
+        cpCompraItens[itemIndex].tamanhos[tamanhoIndex]._aberto = true;
+    }
     renderCpCompraItens();
     recalcCpCompraTotal();
 }
