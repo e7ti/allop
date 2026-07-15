@@ -98,10 +98,11 @@ Componentes visuais internos padronizados:
 | Menu dinâmico | `menu_items()`, `menu_icon()`, `.menu-main-link`, `.menu-svg` | Menu por perfil, com ícones SVG inline por grupo/aplicação. |
 | Cards | `.card-slim`, `.dashboard-tile`, `.dashboard-chart-card` | Agrupamento visual de formulários, dashboards e painéis. |
 | Grids/tabelas | `.table-custom`, `.grid-shell`, `.grid-filter`, `.filter-inline` | Listagens responsivas com filtros e ações. |
-| Botões com ícone | `.btn-new`, `.btn-save`, `.btn-edit`, `.btn-view`, `.btn-delete`, `.btn-print`, `.btn-photo`, `.btn-send-proposal`, `.btn-approve`, `.btn-reject`, `.btn-price-log` | Ações globais e ações específicas do Pedido. |
+| Botões com ícone | `.btn-new`, `.btn-save`, `.btn-edit`, `.btn-view`, `.btn-delete`, `.btn-print`, `.btn-photo`, `.btn-send-proposal`, `.btn-approve`, `.btn-reject`, `.btn-price-log` | Ações globais e ações específicas do Pedido, incluindo `Enviar Proposta` e `Enviar Fornecedor`. |
 | Popups/alertas | `appAlert()`, `appOkAlert()`, Bootstrap Modal/Alert | Mensagens de sucesso, aviso, erro e confirmação visual com OK quando necessário. |
 | Estado de salvamento | `setFormSaving()` | Desabilita botões Salvar e mostra indicador de processamento durante requisições. |
 | Badges de status | `.dashboard-grid-badge`, `.badge-status-*`, `.cp-status-badge`, `.cp-localizacao-badge` | Destaques de status, publicação, localização e ativo/inativo. |
+| Destaque do Pedido | `.cp-pedido-status-hero`, `.cp-pedido-status-badge`, `.cp-pedido-status-meta` | Bloco no topo do Pedido com status em destaque, publicação e localização. |
 | Dashboard de compras | `.dashboard-status-bars`, `.dashboard-donut`, `.dashboard-compra-tile` | Cards, gráfico por status, resumo financeiro e últimos pedidos. |
 | Accordion do Pedido | `.cp-compra-item`, `.cp-compra-tamanho`, `.cp-compra-cor` | Hierarquia item -> tamanho -> cor com resumos quando retraído. |
 | Rateio do Pedido | `#cp-rateio-modal`, `.cp-rateio-*` | Modal para informar percentuais por cor e quantidades por tamanho. |
@@ -203,6 +204,8 @@ Regras atuais de compras:
 - pedido localizado no `Fornecedor` fica somente para visualização e impressão; não pode ser editado, excluído, aprovado ou recusado;
 - pedido com status `Aprovado` ou `Recusado` fica somente para visualização; não permite editar, excluir, salvar, alterar itens/tamanhos/cores nem inserir/excluir fotos;
 - pedido com status `Aprovado Aguardando Foto Fornecedor` fica sem edição do pedido; se a localização for `KidStok`, permite apenas inserir/excluir fotos KidStok; se a localização for `Fornecedor`, permite apenas visualização;
+- quando o pedido está com status `Aprovado Aguardando Foto Fornecedor` e localização `KidStok`, o formulário exibe o botão **Enviar Fornecedor**, que executa o mesmo workflow de `enviar_proposta`;
+- o formulário do Pedido exibe um bloco de destaque no topo com status, publicação e localização, usando as mesmas cores dos badges dos grids/dashboard;
 - fotos do fornecedor (`cp_compras_fotos`) são somente leitura no Pedido; a KidStok não insere nem exclui fotos do fornecedor por esta tela;
 - pedido não publicado não pode ser aprovado;
 - pedido aprovado sem fotos do fornecedor fica com status `Aprovado Aguardando Foto Fornecedor`, é enviado ao fornecedor por e-mail e fica aguardando fotos;
