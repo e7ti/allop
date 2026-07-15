@@ -611,9 +611,36 @@ function cp_pedido_localizacao(int $id): ?string
     return $localizacao === false ? null : (string) $localizacao;
 }
 
+function cp_pedido_estado(int $id): ?array
+{
+    $stmt = db()->prepare(
+        "SELECT c.Localizacao, c.status_id, COALESCE(cst.descricao_compras, '') AS descricao_compras
+           FROM cp_compras c
+           LEFT JOIN cp_compras_status cst ON cst.id = c.status_id
+          WHERE c.id = :id"
+    );
+    $stmt->execute(['id' => $id]);
+    $row = $stmt->fetch();
+    return $row ?: null;
+}
+
 function cp_localizacao_fornecedor(?string $localizacao): bool
 {
     return strcasecmp(trim((string) $localizacao), 'Fornecedor') === 0;
+}
+
+function cp_status_aprovado_aguardando_foto(array $pedido): bool
+{
+    $descricao = strtolower(trim((string) ($pedido['descricao_compras'] ?? '')));
+    return (int) ($pedido['status_id'] ?? 0) === CP_STATUS_APROVADO_AGUARDANDO_FOTO
+        || $descricao === 'aprovado aguardando foto fornecedor'
+        || $descricao === 'aprovado aguardando foto'
+        || $descricao === 'aprovado sem fotos';
+}
+
+function cp_status_final_bloqueado(array $pedido): bool
+{
+    return in_array((int) ($pedido['status_id'] ?? 0), [CP_STATUS_APROVADO, CP_STATUS_RECUSADO], true);
 }
 
 function cp_require_kidstok(int $id, string $operation): void
@@ -624,6 +651,34 @@ function cp_require_kidstok(int $id, string $operation): void
     }
     if (cp_localizacao_fornecedor($localizacao)) {
         api_response(false, ['message' => "Pedido com localização $localizacao não permite $operation. Apenas visualização e impressão."], 403);
+    }
+}
+
+function cp_require_pedido_editavel(int $id, string $operation): void
+{
+    $pedido = cp_pedido_estado($id);
+    if (!$pedido) {
+        api_response(false, ['message' => 'Pedido nÃ£o encontrado.'], 404);
+    }
+    if (cp_localizacao_fornecedor((string) $pedido['Localizacao']) || cp_status_final_bloqueado($pedido) || cp_status_aprovado_aguardando_foto($pedido)) {
+        api_response(false, ['message' => "Pedido nÃ£o permite $operation. Apenas visualizaÃ§Ã£o."], 403);
+    }
+}
+
+function cp_require_foto_mutavel(int $id, string $table, string $operation): void
+{
+    $pedido = cp_pedido_estado($id);
+    if (!$pedido) {
+        api_response(false, ['message' => 'Pedido nÃ£o encontrado.'], 404);
+    }
+    if ($table === 'cp_compras_fotos') {
+        api_response(false, ['message' => 'Fotos do fornecedor podem ser apenas visualizadas no Pedido.'], 403);
+    }
+    if (cp_status_final_bloqueado($pedido)) {
+        api_response(false, ['message' => "Pedido aprovado ou recusado nÃ£o permite $operation fotos. Apenas visualizaÃ§Ã£o."], 403);
+    }
+    if (cp_localizacao_fornecedor((string) $pedido['Localizacao']) && !cp_status_aprovado_aguardando_foto($pedido)) {
+        api_response(false, ['message' => "Pedido com localizaÃ§Ã£o {$pedido['Localizacao']} nÃ£o permite $operation fotos. Apenas visualizaÃ§Ã£o."], 403);
     }
 }
 
@@ -832,7 +887,7 @@ function cp_next_foto_sequencia(int $pedidoId, string $referencia, string $forne
 function cp_upload_fotos_table(int $pedidoId, string $referencia, string $fornecedorId, string $table): void
 {
     cp_validate_foto_context($pedidoId, $referencia, $fornecedorId, $table);
-    cp_require_kidstok($pedidoId, $table === 'cp_compras_fotos' ? 'inserir fotos do fornecedor' : 'inserir fotos');
+    cp_require_foto_mutavel($pedidoId, $table, $table === 'cp_compras_fotos' ? 'inserir fotos do fornecedor' : 'inserir');
 
     $files = $_FILES['fotos'] ?? null;
     if (!$files || empty($files['name'])) {
@@ -921,7 +976,7 @@ function cp_upload_fotos_fornecedor(int $pedidoId, string $referencia, string $f
 function cp_delete_foto_table(int $pedidoId, string $referencia, string $fornecedorId, int $fotoId, string $table): void
 {
     cp_validate_foto_context($pedidoId, $referencia, $fornecedorId, $table);
-    cp_require_kidstok($pedidoId, $table === 'cp_compras_fotos' ? 'excluir fotos do fornecedor' : 'excluir fotos');
+    cp_require_foto_mutavel($pedidoId, $table, $table === 'cp_compras_fotos' ? 'excluir fotos do fornecedor' : 'excluir');
     if ($fotoId <= 0) {
         api_response(false, ['message' => 'Informe a foto para excluir.'], 422);
     }
@@ -1711,6 +1766,7 @@ try {
                     c.id AS ID,
                     c.DataPedido,
                     c.ValorTotalPedido,
+                    c.status_id,
                     COALESCE(cst.descricao_compras, '') AS descricao_compras,
                     COALESCE(cst.descricao_compras, '') AS Sts,
                     c.Localizacao,
@@ -1797,7 +1853,7 @@ try {
 
     if ($action === 'delete') {
         $id = (int) ($data['id'] ?? 0);
-        cp_require_kidstok($id, 'excluir');
+        cp_require_pedido_editavel($id, 'excluir');
         db()->beginTransaction();
         cp_delete_children($id);
         $stmt = db()->prepare("DELETE FROM cp_compras WHERE id = :id");
@@ -1843,7 +1899,7 @@ try {
         }
 
         if ($id > 0) {
-            cp_require_kidstok($id, 'editar');
+            cp_require_pedido_editavel($id, 'editar');
         } else {
             $payload['Sts'] = 'Aberto';
             $payload['Publicado'] = 0;

@@ -974,12 +974,56 @@ let cpCompraItens = [];
 let cpCompraItensOpen = {};
 let cpCompraReadonly = false;
 let cpCompraReadonlyLocalizacao = '';
+let cpCompraStatusIdAtual = 0;
+let cpCompraStatusDescricaoAtual = 'Aberto';
 let cpCompraFotoItemIndex = null;
 let cpCompraFotoOrigem = 'kidstok';
 let cpCompraRateioContext = null;
 
 function cpLocalizacaoEhFornecedor(localizacao) {
     return String(localizacao || '').trim().toLocaleLowerCase() === 'fornecedor';
+}
+
+function cpCompraStatusKey(value) {
+    return String(value || '').trim().toLocaleLowerCase();
+}
+
+function cpCompraStatusAguardandoFoto(statusId, statusDescricao) {
+    const key = cpCompraStatusKey(statusDescricao);
+    return Number(statusId || 0) === 1 ||
+        key === 'aprovado aguardando foto fornecedor' ||
+        key === 'aprovado aguardando foto' ||
+        key === 'aprovado sem fotos';
+}
+
+function cpCompraStatusFinalBloqueado(statusId, statusDescricao) {
+    const key = cpCompraStatusKey(statusDescricao);
+    return Number(statusId || 0) === 2 ||
+        Number(statusId || 0) === 3 ||
+        key === 'aprovado' ||
+        key === 'recusado';
+}
+
+function cpCompraPedidoSomenteVisualizacao(row) {
+    const statusId = Number(row.status_id || 0);
+    const statusDescricao = row.descricao_compras || row.Sts || '';
+    return cpLocalizacaoEhFornecedor(row.Localizacao) ||
+        cpCompraStatusFinalBloqueado(statusId, statusDescricao) ||
+        cpCompraStatusAguardandoFoto(statusId, statusDescricao);
+}
+
+function cpCompraPodeAlterarFoto(origem) {
+    origem = origem === 'fornecedor' ? 'fornecedor' : 'kidstok';
+    if (origem === 'fornecedor') {
+        return false;
+    }
+    if (cpCompraStatusFinalBloqueado(cpCompraStatusIdAtual, cpCompraStatusDescricaoAtual)) {
+        return false;
+    }
+    if (cpCompraStatusAguardandoFoto(cpCompraStatusIdAtual, cpCompraStatusDescricaoAtual)) {
+        return true;
+    }
+    return !cpCompraReadonly;
 }
 
 function initCpComprasLista() {
@@ -1024,7 +1068,9 @@ function loadCpComprasGrid() {
             const rows = response.data || [];
             const html = rows.map(function (row) {
                 const localizacao = row.Localizacao || 'KidStok';
-                const canEdit = localizacao === 'KidStok';
+                const canEdit = localizacao === 'KidStok' &&
+                    !cpCompraStatusFinalBloqueado(row.status_id, row.descricao_compras || row.Sts) &&
+                    !cpCompraStatusAguardandoFoto(row.status_id, row.descricao_compras || row.Sts);
                 const actions = canEdit
                     ? '<a class="btn btn-sm btn-outline-secondary btn-edit btn-icon-only me-1" title="Editar" aria-label="Editar" href="' + cfg.form + '?id=' + row.id + '"></a>' +
                         '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" onclick="deleteCpCompra(' + row.id + ')"></button>'
@@ -1069,6 +1115,8 @@ function initCpComprasForm() {
     const id = Number($form.data('id'));
     cpCompraReadonly = false;
     cpCompraReadonlyLocalizacao = '';
+    cpCompraStatusIdAtual = 0;
+    cpCompraStatusDescricaoAtual = 'Aberto';
 
     $form.find('.js-cp-compra-select').each(function () {
         const $select = $(this);
@@ -1182,7 +1230,9 @@ function initCpComprasForm() {
                 const row = response.data || {};
                 fillCpCompraHeader($form, row);
                 cpCompraReadonlyLocalizacao = row.Localizacao || 'KidStok';
-                cpCompraReadonly = cpLocalizacaoEhFornecedor(cpCompraReadonlyLocalizacao);
+                cpCompraStatusIdAtual = Number(row.status_id || 0);
+                cpCompraStatusDescricaoAtual = row.descricao_compras || row.Sts || 'Aberto';
+                cpCompraReadonly = cpCompraPedidoSomenteVisualizacao(row);
                 cpCompraItens = (row.items || []).map(mapCpCompraItemFromApi);
                 cpCompraItensOpen = {};
                 applyCpCompraReadonly($form);
@@ -1197,6 +1247,8 @@ function initCpComprasForm() {
         $form.find('[name="DataPedido"]').val(new Date().toISOString().slice(0, 10));
         $form.find('[name="Sts"]').val('Aberto');
         $form.find('[name="Sts_display"]').val('Aberto');
+        cpCompraStatusIdAtual = 0;
+        cpCompraStatusDescricaoAtual = 'Aberto';
         $form.find('[name="Publicado"]').val('0');
         $form.find('[name="Publicado_display"]').val(formatPublicadoCpCompra(0));
         $form.find('[name="Localizacao"]').val('KidStok');
@@ -1213,7 +1265,7 @@ function initCpComprasForm() {
     $form.on('submit', function (event) {
         event.preventDefault();
         if (cpCompraReadonly) {
-            appAlert('Pedido com localização ' + cpCompraReadonlyLocalizacao + ' permite apenas visualização e impressão.', 'warning');
+            appAlert('Pedido disponível apenas para visualização conforme status/localização atual.', 'warning');
             return;
         }
         salvarCpCompraForm($form, function (response) {
@@ -1274,7 +1326,7 @@ function setCpCompraSaving($form, saving) {
 
 function enviarCpCompraProposta($form) {
     if (cpCompraReadonly) {
-        appAlert('Pedido com localização ' + cpCompraReadonlyLocalizacao + ' permite apenas visualização e impressão.', 'warning');
+        appAlert('Pedido disponível apenas para visualização conforme status/localização atual.', 'warning');
         return;
     }
     salvarCpCompraForm($form, function () {
@@ -1316,7 +1368,7 @@ function executarCpCompraWorkflow($form, action, confirmMessage, extraData) {
         return;
     }
     if (cpCompraReadonly) {
-        appAlert('Pedido com localização ' + cpCompraReadonlyLocalizacao + ' permite apenas visualização e impressão.', 'warning');
+        appAlert('Pedido disponível apenas para visualização conforme status/localização atual.', 'warning');
         return;
     }
     if (action === 'aprovar' && Number($form.find('[name="Publicado"]').val() || 0) !== 1) {
@@ -1395,7 +1447,7 @@ function applyCpCompraReadonly($form) {
     $form.find('[name="ID"], [name="ValorTotalPedido"]').prop('disabled', false).prop('readonly', true);
     $form.find('.js-cp-compra-select').prop('disabled', true).trigger('change.select2');
     $('#btn-add-cp-item').prop('disabled', true);
-    appAlert('Pedido com localização ' + cpCompraReadonlyLocalizacao + ' está disponível apenas para visualização e impressão.', 'warning');
+    appAlert('Pedido disponível apenas para visualização conforme status/localização atual.', 'warning');
 }
 
 function updateCpCompraWorkflowButtons(row) {
@@ -2221,8 +2273,9 @@ function photoButtonHtml(itemIndex, item) {
     const hasKidStokPhoto = Number(item.Foto || 0) === 1;
     const hasFornecedorPhoto = Number(item.FotoFornecedor || 0) === 1;
     const isConfirmed = Boolean(item.item_confirmado);
-    const kidStokLabel = isConfirmed ? (hasKidStokPhoto ? 'Ver Fotos' : 'Inserir Fotos') : 'Confirmar item';
-    const fornecedorLabel = isConfirmed ? (hasFornecedorPhoto ? 'Ver Fotos' : 'Inserir Fotos') : 'Confirmar item';
+    const podeAlterarKidStok = cpCompraPodeAlterarFoto('kidstok');
+    const kidStokLabel = isConfirmed ? (hasKidStokPhoto || !podeAlterarKidStok ? 'Ver Fotos' : 'Inserir Fotos') : 'Confirmar item';
+    const fornecedorLabel = isConfirmed ? 'Ver Fotos' : 'Confirmar item';
     const kidStokBadge = fotoBadgeHtml(hasKidStokPhoto);
     const fornecedorBadge = fotoBadgeHtml(hasFornecedorPhoto);
     const disabledAttr = isConfirmed ? '' : ' disabled';
@@ -2351,8 +2404,9 @@ function openCpCompraFotos(itemIndex, origem) {
     cpCompraFotoOrigem = origem === 'fornecedor' ? 'fornecedor' : 'kidstok';
     $('#cp-foto-referencia').text(referencia);
     $('#cp-fotos-modal .modal-title').text(cpCompraFotoOrigem === 'fornecedor' ? 'Fotos Fornecedor' : 'Fotos KidStok');
-    $('#cp-foto-input').val('').prop('disabled', cpCompraReadonly);
-    $('#cp-foto-upload-block').toggleClass('d-none', cpCompraReadonly);
+    const podeAlterarFoto = cpCompraPodeAlterarFoto(cpCompraFotoOrigem);
+    $('#cp-foto-input').val('').prop('disabled', !podeAlterarFoto);
+    $('#cp-foto-upload-block').toggleClass('d-none', !podeAlterarFoto);
     $('#cp-fotos-list').html('<div class="text-center text-muted py-4">Carregando fotos...</div>');
 
     const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-fotos-modal'));
@@ -2385,7 +2439,8 @@ function loadCpCompraFotos() {
 
 function uploadCpCompraFotos() {
     const context = cpCompraFotoContext();
-    if (!context || cpCompraReadonly) {
+    if (!context || !cpCompraPodeAlterarFoto(context.origem)) {
+        $('#cp-foto-input').val('');
         return;
     }
 
@@ -2427,7 +2482,7 @@ function uploadCpCompraFotos() {
 
 function deleteCpCompraFoto(fotoId) {
     const context = cpCompraFotoContext();
-    if (!context || cpCompraReadonly) {
+    if (!context || !cpCompraPodeAlterarFoto(context.origem)) {
         return;
     }
     if (!confirm('Excluir esta foto?')) {
@@ -2478,8 +2533,9 @@ function renderCpCompraFotos(fotos) {
     }
 
     $list.html(fotos.map(function (foto) {
-        const deleteButton = cpCompraReadonly ? '' :
-            '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only cp-foto-delete" title="Excluir" aria-label="Excluir" type="button" onclick="deleteCpCompraFoto(' + Number(foto.id || 0) + ')"></button>';
+        const deleteButton = cpCompraPodeAlterarFoto(cpCompraFotoOrigem)
+            ? '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only cp-foto-delete" title="Excluir" aria-label="Excluir" type="button" onclick="deleteCpCompraFoto(' + Number(foto.id || 0) + ')"></button>'
+            : '';
         return '<figure class="cp-foto-card">' +
             '<img src="' + escapeAttr(foto.src || '') + '" alt="Foto ' + escapeAttr(foto.Sequencia || '') + '" title="Ampliar foto" onclick="openCpCompraFotoPreview(this)">' +
             '<figcaption><span>Foto ' + escapeHtml(foto.Sequencia || '') + '</span>' + deleteButton + '</figcaption>' +
@@ -2507,7 +2563,7 @@ function updateCpCompraFotoFlag(itemIndex, value) {
     const $button = $('.cp-compra-item[data-item-index="' + itemIndex + '"] .cp-foto-kidstok');
     if ($button.length) {
         $button.toggleClass('btn-photo-sim', Boolean(value)).toggleClass('btn-photo-nao', !Boolean(value));
-        $button.html((value ? 'Ver Fotos' : 'Inserir Fotos') + fotoBadgeHtml(Boolean(value)));
+        $button.html((value || !cpCompraPodeAlterarFoto('kidstok') ? 'Ver Fotos' : 'Inserir Fotos') + fotoBadgeHtml(Boolean(value)));
     }
 }
 
@@ -2519,7 +2575,7 @@ function updateCpCompraFotoFornecedorFlag(itemIndex, value) {
     const $button = $('.cp-compra-item[data-item-index="' + itemIndex + '"] .cp-foto-fornecedor');
     if ($button.length) {
         $button.toggleClass('btn-photo-sim', Boolean(value)).toggleClass('btn-photo-nao', !Boolean(value));
-        $button.html((value ? 'Ver Fotos' : 'Inserir Fotos') + fotoBadgeHtml(Boolean(value)));
+        $button.html('Ver Fotos' + fotoBadgeHtml(Boolean(value)));
     }
     updateCpCompraWorkflowButtons({
         Localizacao: $('#cp-compras-form [name="Localizacao"]').val() || 'KidStok',
