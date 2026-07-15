@@ -282,26 +282,6 @@ db()->exec("CREATE TABLE IF NOT EXISTS `empresas` (
     KEY `FK_empresas_empresas_cd` (`EmpresaCD`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
 
-// Garante a existencia da tabela de configuracoes de e-mail
-db()->exec("CREATE TABLE IF NOT EXISTS `configuracoes_email` (
-    `Codigo` int(11) NOT NULL AUTO_INCREMENT,
-    `cd_id` int(11) NOT NULL,
-    `empresa_id` int(11) NOT NULL,
-    `NomeConta` varchar(40) NOT NULL DEFAULT '',
-    `Habilitado` tinyint(4) NOT NULL DEFAULT '0' COMMENT '1-habilitado, 0-desabilitado',
-    `Servidor` varchar(120) NOT NULL DEFAULT '' COMMENT 'Servidor de email',
-    `Porta` varchar(10) NOT NULL DEFAULT '' COMMENT 'Porta',
-    `ModoAutenticado` varchar(1) NOT NULL DEFAULT '' COMMENT 'Autenticacao S/N',
-    `ModoSSL` varchar(1) NOT NULL DEFAULT '' COMMENT ' Modo SSL S/N',
-    `Email` varchar(120) NOT NULL DEFAULT '' COMMENT 'Usuario',
-    `Senha` varchar(120) NOT NULL DEFAULT '' COMMENT 'Senha',
-    `Status` varchar(8) NOT NULL,
-    PRIMARY KEY (`Codigo`),
-    UNIQUE KEY `IDXNomeConta` (`NomeConta`),
-    UNIQUE KEY `IDXCdEmpresaCodigo` (`cd_id`,`empresa_id`,`Codigo`),
-    KEY `FK_config_email_empresas` (`empresa_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;");
-
 // Garante a existencia da tabela de e-mail usada no envio de propostas de compras
 db()->exec("CREATE TABLE IF NOT EXISTS `config_email` (
     `Codigo` int(11) NOT NULL AUTO_INCREMENT,

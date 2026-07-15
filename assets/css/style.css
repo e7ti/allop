@@ -150,6 +150,7 @@ body {
     color: #fff !important;
 }
 
+.btn.app-saving::before,
 .btn-save-main.cp-saving::before {
     display: none;
 }

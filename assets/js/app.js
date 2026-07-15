@@ -160,6 +160,28 @@ function apiPost(url, data) {
     });
 }
 
+function setFormSaving($form, saving, buttonSelector) {
+    const $button = buttonSelector ? $(buttonSelector) : $form.find('.btn-save[type="submit"], .btn-save-main[type="submit"]').first();
+    $form.data('saving', saving === true);
+
+    if (!$button.length) {
+        return;
+    }
+
+    if ($button.data('original-html') === undefined) {
+        $button.data('original-html', $button.html());
+    }
+
+    $button.prop('disabled', saving === true);
+    $button.toggleClass('app-saving cp-saving', saving === true);
+
+    if (saving === true) {
+        $button.html('<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Salvando...');
+    } else {
+        $button.html($button.data('original-html'));
+    }
+}
+
 function crudUrl(entity, action) {
     return '../../api/seguranca/crud.php?entity=' + encodeURIComponent(entity) + '&action=' + encodeURIComponent(action);
 }
@@ -236,12 +258,17 @@ function loadForm($form, id) {
 }
 
 function saveForm($form) {
+    if ($form.data('saving') === true) {
+        return;
+    }
+
     const data = $form.serializeArray();
     $form.find('input[type="checkbox"]').each(function () {
         if (!this.checked) {
             data.push({ name: this.name, value: 0 });
         }
     });
+    setFormSaving($form, true);
     apiPost(crudUrl($form.data('entity'), 'save'), $.param(data)).done(function (response) {
         appAlert(response.message || 'Registro salvo.', 'success');
         if (response.id && Number($form.data('id')) === 0) {
@@ -250,6 +277,8 @@ function saveForm($form) {
         }
     }).fail(function (xhr) {
         appAlert(xhr.responseJSON?.message || 'Não foi possível salvar.', 'danger');
+    }).always(function () {
+        setFormSaving($form, false);
     });
 }
 
@@ -433,6 +462,11 @@ function columnLabel(column) {
 }
 
 function savePerfilAplicacoes() {
+    const $button = $('#btn-salvar-perfil-apps');
+    if ($button.data('saving') === true) {
+        return;
+    }
+
     const perfilId = $('#perfil_id').val();
     const permissions = [];
 
@@ -445,16 +479,20 @@ function savePerfilAplicacoes() {
         permissions.push(item);
     });
 
-    $('#btn-salvar-perfil-apps').prop('disabled', true);
+    const $state = $('<div></div>');
+    $button.data('saving', true);
+    setFormSaving($state, true, $button);
+
     $.post(window.perfilAplicacoesConfig.api + '?action=save', {
         perfil_id: perfilId,
         permissions: JSON.stringify(permissions)
     }, function (response) {
         appAlert(response.message || 'Permissões salvas.', 'success');
-        $('#btn-salvar-perfil-apps').prop('disabled', false);
     }, 'json').fail(function (xhr) {
         appAlert(xhr.responseJSON?.message || 'Não foi possível salvar as permissões.', 'danger');
-        $('#btn-salvar-perfil-apps').prop('disabled', false);
+    }).always(function () {
+        $button.data('saving', false);
+        setFormSaving($state, false, $button);
     });
 }
 
@@ -570,6 +608,10 @@ function initConfiguracoesEmailForm() {
 
     $form.on('submit', function (event) {
         event.preventDefault();
+        if ($form.data('saving') === true) {
+            return;
+        }
+        setFormSaving($form, true);
         $.post(window.configuracoesEmailFormConfig.api + '?action=save', $form.serialize(), function (response) {
             appAlert(response.message || 'Registro salvo.', 'success');
             if (response.id && Number($form.data('id')) === 0) {
@@ -578,6 +620,8 @@ function initConfiguracoesEmailForm() {
             }
         }, 'json').fail(function (xhr) {
             appAlert(xhr.responseJSON?.message || 'Não foi possível salvar.', 'danger');
+        }).always(function () {
+            setFormSaving($form, false);
         });
     });
 }
@@ -671,6 +715,10 @@ function initEmpresasCdForm() {
 
     $form.on('submit', function (event) {
         event.preventDefault();
+        if ($form.data('saving') === true) {
+            return;
+        }
+        setFormSaving($form, true);
         $.post(window.empresasCdFormConfig.api + '?action=save', $form.serialize(), function (response) {
             appAlert(response.message || 'Registro salvo.', 'success');
             if (response.id && Number($form.data('id')) === 0) {
@@ -680,6 +728,8 @@ function initEmpresasCdForm() {
             }
         }, 'json').fail(function (xhr) {
             appAlert(xhr.responseJSON?.message || 'Não foi possível salvar.', 'danger');
+        }).always(function () {
+            setFormSaving($form, false);
         });
     });
 }
@@ -797,12 +847,16 @@ function initEmpresasForm() {
 
     $form.on('submit', function (event) {
         event.preventDefault();
+        if ($form.data('saving') === true) {
+            return;
+        }
         const message = validarEmpresaForm($form);
         if (message) {
             appAlert(message, 'danger');
             return;
         }
 
+        setFormSaving($form, true);
         $.post(window.empresasFormConfig.api + '?action=save', $form.serialize(), function (response) {
             appAlert(response.message || 'Registro salvo.', 'success');
             if (response.id && Number($form.data('id')) === 0) {
@@ -812,6 +866,8 @@ function initEmpresasForm() {
             }
         }, 'json').fail(function (xhr) {
             appAlert(xhr.responseJSON?.message || 'Não foi possível salvar.', 'danger');
+        }).always(function () {
+            setFormSaving($form, false);
         });
     });
 }
@@ -1210,21 +1266,7 @@ function selectCpCompraInputContent(input) {
 }
 
 function setCpCompraSaving($form, saving) {
-    const $button = $form.find('.btn-save-main[type="submit"]');
-    $form.data('saving', saving === true);
-    if (!$button.length) {
-        return;
-    }
-    if ($button.data('original-html') === undefined) {
-        $button.data('original-html', $button.html());
-    }
-    $button.prop('disabled', saving === true);
-    $button.toggleClass('cp-saving', saving === true);
-    if (saving === true) {
-        $button.html('<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Salvando...');
-    } else {
-        $button.html($button.data('original-html'));
-    }
+    setFormSaving($form, saving, $form.find('.btn-save-main[type="submit"]'));
 }
 
 function enviarCpCompraProposta($form) {

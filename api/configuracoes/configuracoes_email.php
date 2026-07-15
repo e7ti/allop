@@ -69,7 +69,7 @@ try {
                     Email,
                     Senha,
                     Status
-               FROM configuracoes_email
+               FROM config_email
                $where
               ORDER BY Codigo DESC
               LIMIT 200"
@@ -95,7 +95,7 @@ try {
                     ce.Email,
                     ce.Senha,
                     ce.Status
-               FROM configuracoes_email ce
+               FROM config_email ce
                LEFT JOIN empresas_cd cd ON cd.Codigo = ce.cd_id
                LEFT JOIN empresas e ON e.Codigo = ce.empresa_id
               WHERE ce.Codigo = :id"
@@ -106,7 +106,7 @@ try {
 
     if ($action === 'delete') {
         $id = (int) ($data['id'] ?? 0);
-        $stmt = db()->prepare("DELETE FROM configuracoes_email WHERE Codigo = :id");
+        $stmt = db()->prepare("DELETE FROM config_email WHERE Codigo = :id");
         $stmt->execute(['id' => $id]);
         api_response(true, ['message' => 'Registro excluído.']);
     }
@@ -122,14 +122,14 @@ try {
         if ($id > 0) {
             $sets = implode(', ', array_map(fn ($column) => "$column = :$column", array_keys($payload)));
             $payload['id'] = $id;
-            $stmt = db()->prepare("UPDATE configuracoes_email SET $sets WHERE Codigo = :id");
+            $stmt = db()->prepare("UPDATE config_email SET $sets WHERE Codigo = :id");
             $stmt->execute($payload);
             api_response(true, ['message' => 'Registro atualizado.', 'id' => $id]);
         }
 
         $columnsSql = implode(', ', array_keys($payload));
         $binds = implode(', ', array_map(fn ($column) => ":$column", array_keys($payload)));
-        $stmt = db()->prepare("INSERT INTO configuracoes_email ($columnsSql) VALUES ($binds)");
+        $stmt = db()->prepare("INSERT INTO config_email ($columnsSql) VALUES ($binds)");
         $stmt->execute($payload);
         api_response(true, ['message' => 'Registro inserido.', 'id' => (int) db()->lastInsertId()]);
     }

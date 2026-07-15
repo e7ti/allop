@@ -48,6 +48,27 @@ function next_empresa_codigo(): int
     return (int) db()->query("SELECT COALESCE(MAX(Codigo), 0) + 1 FROM empresas")->fetchColumn();
 }
 
+function empresa_has_ibge_column(): bool
+{
+    static $hasColumn = null;
+
+    if ($hasColumn !== null) {
+        return $hasColumn;
+    }
+
+    $stmt = db()->prepare(
+        "SELECT COUNT(*)
+           FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = 'empresas'
+            AND COLUMN_NAME = 'ibge'"
+    );
+    $stmt->execute();
+    $hasColumn = (int) $stmt->fetchColumn() > 0;
+
+    return $hasColumn;
+}
+
 function validate_empresa_payload(array $payload): void
 {
     $required = [
@@ -127,6 +148,7 @@ try {
         $term = trim((string) ($data['q'] ?? ''));
         $where = '';
         $params = [];
+        $ibgeSelect = empresa_has_ibge_column() ? 'e.ibge' : "'' AS ibge";
 
         if ($term !== '') {
             $termDigits = only_digits_empresa($term);
@@ -147,7 +169,7 @@ try {
                     e.CNPJ,
                     e.Cidade,
                     e.UF,
-                    e.ibge,
+                    $ibgeSelect,
                     e.Status,
                     cd.NomeCD AS EmpresaCD_text
                FROM empresas e
@@ -186,6 +208,10 @@ try {
         $codigo = (int) ($data['Codigo'] ?? 0);
         $payload = empresa_payload($data);
         validate_empresa_payload($payload);
+        $hasIbgeColumn = empresa_has_ibge_column();
+        if (!$hasIbgeColumn) {
+            unset($payload['ibge']);
+        }
 
         $user = current_user();
         $payload['Usuario'] = (string) ($user['login'] ?? $user['nome'] ?? '');
@@ -193,6 +219,7 @@ try {
         if ($id > 0) {
             $payload['Alteracao'] = date('Y-m-d');
             $payload['id'] = $id;
+            $ibgeUpdate = $hasIbgeColumn ? "ibge = :ibge,\n                        " : '';
             $stmt = db()->prepare(
                 "UPDATE empresas
                     SET EmpresaCD = :EmpresaCD,
@@ -208,7 +235,7 @@ try {
                         Bairro = :Bairro,
                         Cidade = :Cidade,
                         UF = :UF,
-                        ibge = :ibge,
+                        $ibgeUpdate
                         FoneDDD = :FoneDDD,
                         FoneNro = :FoneNro,
                         CelularDDD = :CelularDDD,
@@ -228,14 +255,16 @@ try {
         $payload['Codigo'] = $codigo > 0 ? $codigo : next_empresa_codigo();
         $payload['Inclusao'] = date('Y-m-d');
         $payload['Alteracao'] = null;
+        $ibgeColumn = $hasIbgeColumn ? ' ibge,' : '';
+        $ibgeValue = $hasIbgeColumn ? ' :ibge,' : '';
         $stmt = db()->prepare(
             "INSERT INTO empresas
                 (Codigo, EmpresaCD, Nome, Fantasia, CNPJ, IE, CEP, TipoEndereco, Endereco, Numero,
-                 Complemento, Bairro, Cidade, UF, ibge, FoneDDD, FoneNro, CelularDDD, CelularNro,
+                 Complemento, Bairro, Cidade, UF,$ibgeColumn FoneDDD, FoneNro, CelularDDD, CelularNro,
                  Responsavel, Observacoes, CRT, Status, Usuario, Inclusao, Alteracao)
              VALUES
                 (:Codigo, :EmpresaCD, :Nome, :Fantasia, :CNPJ, :IE, :CEP, :TipoEndereco, :Endereco, :Numero,
-                 :Complemento, :Bairro, :Cidade, :UF, :ibge, :FoneDDD, :FoneNro, :CelularDDD, :CelularNro,
+                 :Complemento, :Bairro, :Cidade, :UF,$ibgeValue :FoneDDD, :FoneNro, :CelularDDD, :CelularNro,
                  :Responsavel, :Observacoes, :CRT, :Status, :Usuario, :Inclusao, :Alteracao)"
         );
         $stmt->execute($payload);
