@@ -72,6 +72,42 @@ index.php
 | `assets/js/app.js` | CRUD genérico, Select2, validações, estado de salvamento dos formulários, empresas, e-mail e todo o fluxo de compras. |
 | `assets/css/style.css` | Tema, responsividade, cards, grids, formulários, botões e módulo de compras. |
 
+### 3.1 Componentes, Bibliotecas e Recursos Utilizados
+
+| Componente | Local | Uso no projeto |
+| --- | --- | --- |
+| PHP puro | arquivos `.php` | Renderização server-side das telas, APIs JSON, sessão, regras de negócio e geração de PDF. |
+| PDO MySQL | `config/database.php` | Acesso ao banco principal (`db()`) e ao banco de fotos (`db_fotos()`) com prepared statements. |
+| Bootstrap 5.3.6 | `assets/vendor/bootstrap/` | Grid responsivo, navbar, dropdowns, botões, cards, tabelas, modais, accordions, collapse, alertas e utilitários visuais. |
+| jQuery 3.7.1 | `assets/vendor/jquery/jquery.min.js` | Base das chamadas Ajax, manipulação de DOM e integração com Select2. |
+| Select2 4.1.0-rc.0 | `assets/vendor/select2/` | Campos de pesquisa remota e relacionamentos pesquisáveis em listas e formulários. |
+| CSS global próprio | `assets/css/style.css` | Tema visual, responsividade, ícones por classe, badges, grids, dashboard, formulários e componentes específicos de compras. |
+| JavaScript global próprio | `assets/js/app.js` | CRUD genérico, grids, validações, Select2, popups, estado de salvamento, fluxo do Pedido, rateio, fotos e workflow. |
+| Dompdf 3.1 | `composer.json`, `vendor/`, `api/compras/cp_compras_pdf.php` | Geração do PDF do pedido de compra em A4 paisagem. |
+| Cliente SMTP próprio | `includes/smtp_mailer.php` | Envio de e-mails por socket SMTP com SSL/STARTTLS e autenticação opcional. |
+| ViaCEP | chamado pelo navegador em `assets/js/app.js` | Consulta de CEP no cadastro de Empresas. |
+| Google Fonts / Poppins | `assets/css/style.css` | Fonte visual principal do sistema. É dependência externa carregada por `@import`. |
+| Imagens institucionais | `assets/img/` | Logos Allop e KidStok no layout. |
+| Composer autoload | `vendor/autoload.php` | Carregamento das classes do Dompdf e dependências. |
+
+Componentes visuais internos padronizados:
+
+| Componente interno | Classes/arquivos principais | Uso |
+| --- | --- | --- |
+| Layout base | `includes/layout.php`, `.app-shell`, `.app-content`, `.page-heading` | Estrutura comum de header, menu, conteúdo e footer. |
+| Menu dinâmico | `menu_items()`, `menu_icon()`, `.menu-main-link`, `.menu-svg` | Menu por perfil, com ícones SVG inline por grupo/aplicação. |
+| Cards | `.card-slim`, `.dashboard-tile`, `.dashboard-chart-card` | Agrupamento visual de formulários, dashboards e painéis. |
+| Grids/tabelas | `.table-custom`, `.grid-shell`, `.grid-filter`, `.filter-inline` | Listagens responsivas com filtros e ações. |
+| Botões com ícone | `.btn-new`, `.btn-save`, `.btn-edit`, `.btn-view`, `.btn-delete`, `.btn-print`, `.btn-photo`, `.btn-send-proposal`, `.btn-approve`, `.btn-reject`, `.btn-price-log` | Ações globais e ações específicas do Pedido. |
+| Popups/alertas | `appAlert()`, `appOkAlert()`, Bootstrap Modal/Alert | Mensagens de sucesso, aviso, erro e confirmação visual com OK quando necessário. |
+| Estado de salvamento | `setFormSaving()` | Desabilita botões Salvar e mostra indicador de processamento durante requisições. |
+| Badges de status | `.dashboard-grid-badge`, `.badge-status-*`, `.cp-status-badge`, `.cp-localizacao-badge` | Destaques de status, publicação, localização e ativo/inativo. |
+| Dashboard de compras | `.dashboard-status-bars`, `.dashboard-donut`, `.dashboard-compra-tile` | Cards, gráfico por status, resumo financeiro e últimos pedidos. |
+| Accordion do Pedido | `.cp-compra-item`, `.cp-compra-tamanho`, `.cp-compra-cor` | Hierarquia item -> tamanho -> cor com resumos quando retraído. |
+| Rateio do Pedido | `#cp-rateio-modal`, `.cp-rateio-*` | Modal para informar percentuais por cor e quantidades por tamanho. |
+| Fotos do Pedido | `#cp-fotos-modal`, `.cp-fotos-grid`, `.cp-foto-card` | Visualização, inclusão e exclusão de fotos conforme status/localização. |
+| Log de preços/quantidade | `#cp-cor-log-modal`, `.cp-preco-alterado-*`, `.cp-log-preco-atualizado` | Comparativo do último log da cor e destaque de preço/quantidade alterados. |
+
 ## 4. Módulos implementados
 
 ### 4.1 Segurança
@@ -138,9 +174,9 @@ Principais ações da API:
 | `referencia` | Carrega uma referência e suas combinações de tamanho/cor de `pf_colecao`. |
 | `fotos_list` | Lista fotos da KidStok em `cp_compras_fotos_ks`. |
 | `fotos_fornecedor_list` | Lista fotos do fornecedor em `cp_compras_fotos`. |
-| `fotos_upload` / `fotos_delete` | Mantém fotos da KidStok ou do fornecedor conforme a origem informada e sincroniza o indicador do item. |
+| `fotos_upload` / `fotos_delete` | Mantém fotos da KidStok conforme status/localização do pedido e sincroniza o indicador do item. Fotos do fornecedor são somente visualizadas no Pedido. |
 | `enviar_proposta` | Envia e-mail, publica o pedido e transfere a localização para `Fornecedor`. |
-| `aprovar` | Aprova somente pedido publicado, devolve a localização para `KidStok` e marca como `Aprovado` ou `Aprovado Aguardando Foto Fornecedor` conforme fotos do fornecedor. |
+| `aprovar` | Aprova somente pedido publicado. Com fotos do fornecedor, marca como `Aprovado` e mantém em `KidStok`; sem fotos, marca como `Aprovado Aguardando Foto Fornecedor`, envia e-mail ao fornecedor, transfere a localização para `Fornecedor` e incrementa a iteração. |
 | `recusar` | Marca como `Recusado`, registra motivo e devolve para `KidStok`. |
 
 O botão **Imprimir PDF** é exibido em pedidos já gravados. O relatório contém dados do cabeçalho, auditoria, itens, tamanhos, cores, preços, markups e um resumo do rateio das cores de cada tamanho. A geração usa Dompdf instalado localmente pelo Composer.
@@ -164,12 +200,16 @@ Regras atuais de compras:
 - a exclusão de item, tamanho, cor ou foto exige confirmação do usuário;
 - ao salvar, o botão **Salvar** fica bloqueado com indicador de processamento até o término da requisição;
 - ao focar inputs do formulário de compras ou do modal de rateio, o conteúdo é selecionado automaticamente;
-- pedido localizado no `Fornecedor` fica somente para visualização e impressão; não pode ser editado, excluído, aprovado, recusado nem ter fotos alteradas;
+- pedido localizado no `Fornecedor` fica somente para visualização e impressão; não pode ser editado, excluído, aprovado ou recusado;
+- pedido com status `Aprovado` ou `Recusado` fica somente para visualização; não permite editar, excluir, salvar, alterar itens/tamanhos/cores nem inserir/excluir fotos;
+- pedido com status `Aprovado Aguardando Foto Fornecedor` fica sem edição do pedido; se a localização for `KidStok`, permite apenas inserir/excluir fotos KidStok; se a localização for `Fornecedor`, permite apenas visualização;
+- fotos do fornecedor (`cp_compras_fotos`) são somente leitura no Pedido; a KidStok não insere nem exclui fotos do fornecedor por esta tela;
 - pedido não publicado não pode ser aprovado;
-- pedido aprovado sem fotos do fornecedor fica com status `Aprovado Aguardando Foto Fornecedor`;
+- pedido aprovado sem fotos do fornecedor fica com status `Aprovado Aguardando Foto Fornecedor`, é enviado ao fornecedor por e-mail e fica aguardando fotos;
 - o envio de proposta usa a configuração ativa de `config_email` para o CD/empresa;
 - os destinatários são usuários ativos de `pf_usuarios` vinculados ao fornecedor em `pf_usuario_fornecedor`;
-- fotos são armazenadas em Base64 no banco de fotos; `cp_compras_fotos_ks` guarda fotos KidStok e `cp_compras_fotos` guarda fotos do fornecedor.
+- fotos são armazenadas em Base64 no banco de fotos; `cp_compras_fotos_ks` guarda fotos KidStok e `cp_compras_fotos` guarda fotos do fornecedor;
+- no dashboard e na lista de pedidos, pedidos aprovados, recusados, aguardando foto ou localizados no `Fornecedor` devem usar ação de visualizar (`btn-view`), não ação de editar (`btn-edit`).
 
 ### 4.4 Dashboard
 
@@ -179,6 +219,7 @@ O `dashboard.php` exibe cinco cards de indicadores de pedidos de compra (status 
 - cada card também exibe o valor total (R$) somado dos pedidos daquele status, calculado na mesma consulta agregada dos contadores;
 - o fundo de cada card usa a cor do respectivo status (laranja para Aberto, verde para Aprovado, azul-claro para Aguardando Foto, vermelho para Recusado); título, valor numérico e valor em R$ ficam em branco para contraste sobre o fundo colorido, e o rótulo `PEDIDOS` (`page-kicker`) fica em preto;
 - o card "Total de pedidos" não está vinculado a um status específico e mantém o azul padrão do sistema.
+- na grid de últimos pedidos, a ação usa ícone de edição apenas para pedidos abertos e editáveis; pedidos aprovados, recusados, aguardando foto ou localizados no `Fornecedor` usam ícone de visualização.
 
 ## 5. Autenticação, menu e permissões
 
@@ -315,10 +356,10 @@ A conexão `db_fotos()` aponta para **`allop_devel_fotos`**.
 
 | Tabela | Uso |
 | --- | --- |
-| `cp_compras_fotos` | Fotos recebidas do fornecedor; leitura, inclusão e exclusão quando o pedido está editável. |
-| `cp_compras_fotos_ks` | Fotos mantidas pela KidStok; leitura, inclusão e exclusão quando o pedido está editável. |
+| `cp_compras_fotos` | Fotos recebidas do fornecedor; no Pedido são somente visualizadas pela KidStok. |
+| `cp_compras_fotos_ks` | Fotos mantidas pela KidStok; leitura, inclusão e exclusão quando o Pedido permite alteração de fotos KidStok. |
 
-As fotos são relacionadas por pedido, referência do fornecedor, fornecedor e sequência. Não há chave estrangeira entre os dois bancos.
+As fotos são relacionadas por pedido, referência do fornecedor, fornecedor e sequência. Não há chave estrangeira entre os dois bancos. No Pedido, a permissão para alterar fotos KidStok depende de status e localização: pedido `Aprovado` ou `Recusado` é somente visualização; pedido `Aprovado Aguardando Foto Fornecedor` só permite fotos KidStok quando a localização está em `KidStok`; pedido localizado no `Fornecedor` é somente visualização.
 
 ## 7. Seed de aplicações
 
