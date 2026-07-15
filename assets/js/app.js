@@ -1566,6 +1566,7 @@ function emptyCpCompraTamanho() {
         Itens: 0,
         Sts: 1,
         tem_log_preco_iteracao: 0,
+        tem_log_qtde_iteracao: 0,
         _aberto: false,
         cores: []
     };
@@ -1588,6 +1589,7 @@ function emptyCpCompraCor() {
         percentual: 0,
         Sts: 1,
         tem_log_preco_iteracao: 0,
+        tem_log_qtde_iteracao: 0,
         _aberto: false
     };
 }
@@ -1601,6 +1603,17 @@ function cpCompraStatusBadge(value) {
     return '<span class="badge cp-status-badge ' + (active ? 'cp-status-badge-active' : 'cp-status-badge-inactive') + '">' +
         (active ? 'Ativo' : 'Inativo') +
         '</span>';
+}
+
+function renderCpCompraAlteracaoBadges(temLogPreco, temLogQtde) {
+    let html = '';
+    if (temLogPreco) {
+        html += '<span class="badge cp-preco-alterado-badge">Preço alterado</span>';
+    }
+    if (temLogQtde) {
+        html += '<span class="badge cp-preco-alterado-badge">Qtde alterada</span>';
+    }
+    return html;
 }
 
 function mapCpCompraItemFromApi(row) {
@@ -1637,6 +1650,7 @@ function mapCpCompraTamanhoFromApi(row) {
         Itens: Number(row.Itens || 0),
         Sts: cpCompraStatusValue(row.Sts),
         tem_log_preco_iteracao: Number(row.tem_log_preco_iteracao || 0),
+        tem_log_qtde_iteracao: Number(row.tem_log_qtde_iteracao || 0),
         cores: (row.cores || []).map(function (cor) {
             return Object.assign(emptyCpCompraCor(), {
                 id: Number(cor.id || cor.ID || 0),
@@ -1654,6 +1668,7 @@ function mapCpCompraTamanhoFromApi(row) {
                 percentual: Number(cor.percentual || 0),
                 Sts: cpCompraStatusValue(cor.Sts),
                 tem_log_preco_iteracao: Number(cor.tem_log_preco_iteracao || 0),
+                tem_log_qtde_iteracao: Number(cor.tem_log_qtde_iteracao || 0),
                 _qtde_manual: true,
                 _loaded_from_api: true
             });
@@ -1742,9 +1757,11 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
             const totalCores = Number((tamanho.cores || []).length);
             const temLogPreco = Number(tamanho.tem_log_preco_iteracao || 0) === 1 ||
                 (tamanho.cores || []).some(function (cor) { return Number(cor.tem_log_preco_iteracao || 0) === 1; });
+            const temLogQtde = Number(tamanho.tem_log_qtde_iteracao || 0) === 1 ||
+                (tamanho.cores || []).some(function (cor) { return Number(cor.tem_log_qtde_iteracao || 0) === 1; });
             return '<section class="accordion-item cp-compra-tamanho" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '">' +
-                '<div class="accordion-header cp-compra-tamanho-header' + (temLogPreco ? ' cp-preco-alterado-header' : '') + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
-                '<div class="cp-compra-tamanho-title"><strong>Tamanho ' + escapeHtml(tamanho.tamanho || (tamanhoIndex + 1)) + '</strong>' + (temLogPreco ? '<span class="badge cp-preco-alterado-badge">Preço alterado</span>' : '') + '</div>' +
+                '<div class="accordion-header cp-compra-tamanho-header' + ((temLogPreco || temLogQtde) ? ' cp-preco-alterado-header' : '') + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
+                '<div class="cp-compra-tamanho-title"><strong>Tamanho ' + escapeHtml(tamanho.tamanho || (tamanhoIndex + 1)) + '</strong>' + renderCpCompraAlteracaoBadges(temLogPreco, temLogQtde) + '</div>' +
                 '<div class="cp-compra-tamanho-summary">' +
                 '<div class="cp-compra-summary-metric"><small>Entrega</small><span class="cp-tamanho-summary-entrega">' + escapeHtml(entregaResumo) + '</span></div>' +
                 '<div class="cp-compra-summary-metric"><small>Quantidade</small><span class="cp-tamanho-summary-qtde">' + escapeHtml(tamanho.qtde_total || 0) + '</span></div>' +
@@ -1780,11 +1797,12 @@ function renderCpCompraCores(itemIndex, tamanhoIndex, cores) {
         const collapseId = 'cp-cor-collapse-' + itemIndex + '-' + tamanhoIndex + '-' + corIndex;
         const aberto = cor._aberto !== false;
         const temLogPreco = Number(cor.tem_log_preco_iteracao || 0) === 1;
+        const temLogQtde = Number(cor.tem_log_qtde_iteracao || 0) === 1;
         return '<section class="accordion-item cp-compra-cor" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '" data-color-index="' + corIndex + '">' +
-            '<div class="accordion-header cp-compra-cor-header' + (temLogPreco ? ' cp-preco-alterado-header' : '') + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
+            '<div class="accordion-header cp-compra-cor-header' + ((temLogPreco || temLogQtde) ? ' cp-preco-alterado-header' : '') + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
             '<div class="cp-compra-cor-title"><strong>Cor ' + escapeHtml(cor.cor || (corIndex + 1)) + '</strong>' +
             '<small class="d-block text-muted">Rateio: <span class="cp-cor-summary-percentual">' + escapeHtml(formatPercentInput(cor.percentual || 0)) + '%</span></small>' +
-            (temLogPreco ? '<span class="badge cp-preco-alterado-badge">Preço alterado</span>' : '') + '</div>' +
+            renderCpCompraAlteracaoBadges(temLogPreco, temLogQtde) + '</div>' +
             '<div class="cp-compra-cor-summary">' +
             '<div class="cp-compra-summary-metric"><small>Quantidade</small><span class="cp-cor-summary-qtde">' + escapeHtml(cor.Qtde || 0) + '</span></div>' +
             '<div class="cp-compra-summary-metric"><small>Status</small>' + cpCompraStatusBadge(cor.Sts) + '</div>' +

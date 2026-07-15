@@ -1244,6 +1244,7 @@ body {
     display: inline-flex;
     font-size: 0.68rem;
     font-weight: 700;
+    margin-right: 0.28rem;
     margin-top: 0.28rem;
     padding: 0.24rem 0.45rem;
 }

@@ -463,9 +463,9 @@ function cp_load_pedido(int $id): ?array
                 COALESCE(r.Percentual, 0) AS percentual,
                 EXISTS (
                     SELECT 1
-                      FROM cp_compras_itens_cores_log l
+                     FROM cp_compras_itens_cores_log l
                      WHERE l.compras_itens_cores_id = c.id
-                       AND l.Iteracao = :iteracao
+                       AND l.Iteracao = :iteracao_preco
                        AND (
                             l.preco_fornecedor <> c.preco_fornecedor
                          OR l.preco_proposta <> c.preco_proposta
@@ -474,7 +474,15 @@ function cp_load_pedido(int $id): ?array
                          OR l.valor_total_produto <> c.valor_total_produto
                        )
                      LIMIT 1
-                ) AS tem_log_preco_iteracao
+                ) AS tem_log_preco_iteracao,
+                EXISTS (
+                    SELECT 1
+                     FROM cp_compras_itens_cores_log l
+                     WHERE l.compras_itens_cores_id = c.id
+                       AND l.Iteracao = :iteracao_qtde
+                       AND NOT (l.Qtde <=> c.Qtde)
+                     LIMIT 1
+                ) AS tem_log_qtde_iteracao
            FROM cp_compras_itens_cores c
            LEFT JOIN cp_compras_itens_rateios r
              ON r.compras_itens_id = :item_id
@@ -490,12 +498,18 @@ function cp_load_pedido(int $id): ?array
             $corStmt->execute([
                 'tamanho_id' => $tamanho['id'],
                 'item_id' => $item['id'],
-                'iteracao' => (int) ($pedido['Iteracao'] ?? 0),
+                'iteracao_preco' => (int) ($pedido['Iteracao'] ?? 0),
+                'iteracao_qtde' => (int) ($pedido['Iteracao'] ?? 0),
             ]);
             $tamanho['cores'] = $corStmt->fetchAll();
             $tamanho['tem_log_preco_iteracao'] = array_reduce(
                 $tamanho['cores'],
                 static fn(bool $carry, array $cor): bool => $carry || (int) ($cor['tem_log_preco_iteracao'] ?? 0) === 1,
+                false
+            ) ? 1 : 0;
+            $tamanho['tem_log_qtde_iteracao'] = array_reduce(
+                $tamanho['cores'],
+                static fn(bool $carry, array $cor): bool => $carry || (int) ($cor['tem_log_qtde_iteracao'] ?? 0) === 1,
                 false
             ) ? 1 : 0;
         }
@@ -1412,7 +1426,7 @@ function cp_portal_fornecedor_url(int $cdId, int $empresaId): string
     return $url;
 }
 
-function cp_send_proposta_email(int $id): int
+function cp_send_proposta_email(int $id, bool $aprovadoAguardandoFoto = false): int
 {
     $stmt = db()->prepare(
         "SELECT c.id,
@@ -1479,8 +1493,12 @@ function cp_send_proposta_email(int $id): int
     $fornecedorNome = cp_fix_text_encoding($pedido['fornecedor_nome']);
     $portalUrl = cp_portal_fornecedor_url((int) $pedido['cd_id'], (int) $pedido['empresa_id']);
     $subject = 'Portal Fornecedor Kidstok - Pedido #' . $pedido['ID'] . ' ' . $fornecedorNome;
-    $body = "Novo Pedido no Portal do Fornecedor\n"
-        . "A Kidstok enviou uma proposta comercial e aguarda a sua resposta.\n\n"
+    $tituloEmail = $aprovadoAguardandoFoto ? 'Pedido aprovado aguardando fotos' : 'Novo Pedido no Portal do Fornecedor';
+    $mensagemEmail = $aprovadoAguardandoFoto
+        ? 'A Kidstok aprovou o pedido e aguarda o envio das fotos do fornecedor.'
+        : 'A Kidstok enviou uma proposta comercial e aguarda a sua resposta.';
+    $body = $tituloEmail . "\n"
+        . $mensagemEmail . "\n\n"
         . "Detalhes do Pedido:\n"
         . "Fornecedor: " . $fornecedorNome . "\n"
         . "Data Pedido: " . $dataPedidoText . "\n"
@@ -1492,8 +1510,8 @@ function cp_send_proposta_email(int $id): int
         . '<body style="margin:0;padding:0;background:#f6f7f9;font-family:Arial,Helvetica,sans-serif;color:#222;">'
         . '<div style="max-width:640px;margin:0 auto;padding:28px 18px;">'
         . '<div style="background:#ffffff;border:1px solid #e4e7ec;border-radius:8px;padding:28px;">'
-        . '<h2 style="margin:0 0 12px;font-size:22px;color:#222;">Novo Pedido no Portal do Fornecedor</h2>'
-        . '<p style="margin:0 0 22px;font-size:15px;line-height:1.5;color:#444;">A Kidstok enviou uma proposta comercial e aguarda a sua resposta.</p>'
+        . '<h2 style="margin:0 0 12px;font-size:22px;color:#222;">' . cp_html($tituloEmail) . '</h2>'
+        . '<p style="margin:0 0 22px;font-size:15px;line-height:1.5;color:#444;">' . cp_html($mensagemEmail) . '</p>'
         . '<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;margin:0 0 24px;font-size:14px;">'
         . '<tr><td style="padding:8px 0;color:#667085;width:140px;">Fornecedor</td><td style="padding:8px 0;font-weight:bold;">' . cp_html($fornecedorNome) . '</td></tr>'
         . '<tr><td style="padding:8px 0;color:#667085;">Data Pedido</td><td style="padding:8px 0;">' . cp_html($dataPedidoText) . '</td></tr>'
@@ -1513,7 +1531,7 @@ function cp_workflow_update(int $id, string $workflowAction): void
     }
 
     $stmt = db()->prepare(
-        "SELECT c.id, c.id AS ID, c.Localizacao, c.Publicado, c.status_id
+        "SELECT c.id, c.id AS ID, c.Localizacao, c.Publicado, c.status_id, c.Iteracao
            FROM cp_compras c
           WHERE c.id = :id"
     );
@@ -1560,6 +1578,33 @@ function cp_workflow_update(int $id, string $workflowAction): void
         $temFotosFornecedor = cp_pedido_tem_fotos_fornecedor($id);
         if ((int) ($pedido['status_id'] ?? 0) === CP_STATUS_APROVADO_AGUARDANDO_FOTO && !$temFotosFornecedor) {
             api_response(false, ['message' => 'Insira fotos do fornecedor antes de aprovar este pedido.'], 422);
+        }
+        if (!$temFotosFornecedor) {
+            $recipientCount = cp_send_proposta_email($id, true);
+            $stmt = db()->prepare(
+                "UPDATE cp_compras
+                    SET status_id = :status_id,
+                        Localizacao = 'Fornecedor',
+                        Publicado = 1,
+                        Iteracao = COALESCE(Iteracao, 0) + 1,
+                        DataAprovacao = :data_aprovacao,
+                        UsuarioAprovacao = :usuario_aprovacao,
+                        Alteracao = :alteracao,
+                        Usuario = :usuario
+                  WHERE id = :id"
+            );
+            $stmt->execute([
+                'status_id' => CP_STATUS_APROVADO_AGUARDANDO_FOTO,
+                'data_aprovacao' => date('Y-m-d'),
+                'alteracao' => date('Y-m-d'),
+                'usuario_aprovacao' => $usuario,
+                'usuario' => $usuario,
+                'id' => $id,
+            ]);
+            api_response(true, [
+                'message' => 'Pedido aprovado aguardando foto fornecedor e enviado ao fornecedor por e-mail.',
+                'destinatarios' => $recipientCount,
+            ]);
         }
         $statusIdAprovacao = $temFotosFornecedor ? CP_STATUS_APROVADO : CP_STATUS_APROVADO_AGUARDANDO_FOTO;
         $stmt = db()->prepare(
