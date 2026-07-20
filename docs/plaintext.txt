@@ -1,7 +1,10 @@
 ALLOP - PADROES DO SISTEMA
+PROJETO CORRETO PARA MANUTENCAO, CORRECOES E NOVOS DESENVOLVIMENTOS: D:\E7TI\PHP\allop
+ATENCAO: nao usar D:\E7TI\PHP\appf para demandas do Allop.
+
 Data: 01/06/2026
 Atualizacao visual: 19/06/2026
-Atualizacao bancos: 19/06/2026
+Atualizacao bancos: 20/07/2026
 
 OBJETIVO
 Este arquivo serve como referencia para novas implementacoes no sistema Allop.
@@ -93,6 +96,7 @@ COMPRAS - RATEIO
 - Todos os tamanhos ativos do item devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio percentual.
 - A quantidade total fica no tamanho, no campo cp_compras_itens_tamanhos.qtde_total.
 - As quantidades das cores de cada tamanho devem somar a qtde_total do tamanho.
+- A data de entrega do tamanho e opcional. Se nao for informada no campo do tamanho, gravar NULL em cp_compras_itens_tamanhos.entrega e cp_compras_itens_tamanhos.entrega_anterior, sem assumir a data do item nem a data do pedido.
 - A quantidade da cor pode ser ajustada manualmente, mas a soma das cores nao pode ultrapassar a quantidade total do tamanho.
 - Item, tamanho ou cor inativo nao deve validar quantidade/rateio; item e tamanho inativos devem zerar os totais de quantidade.
 - No accordion fechado do item deve haver botao para informar o rateio percentual das cores.

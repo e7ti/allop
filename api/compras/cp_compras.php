@@ -1031,6 +1031,19 @@ function cp_required_date(?string $primary, ?string ...$fallbacks): string
     return date('Y-m-d');
 }
 
+function cp_optional_date(?string $primary, ?string ...$fallbacks): ?string
+{
+    $values = array_merge([$primary], $fallbacks);
+    foreach ($values as $value) {
+        $date = cp_trim($value ?? '');
+        if ($date !== '' && $date !== '0000-00-00') {
+            return substr($date, 0, 10);
+        }
+    }
+
+    return null;
+}
+
 function cp_id($value): int
 {
     return max(0, (int) ($value ?? 0));
@@ -1378,11 +1391,13 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
             $tamanhoSts = $itemAtivo && $tamanhoSolicitadoAtivo && $itensAtivos > 0 ? 1 : 0;
             $nomeTamanho = cp_trim($tamanho['tamanho'] ?? '');
             $tamanhoId = cp_id($tamanho['id'] ?? 0) ?: cp_find_tamanho_id($itemId, $nomeTamanho);
+            $tamanhoEntrega = cp_optional_date($tamanho['entrega'] ?? '');
+            $tamanhoEntregaAnterior = $tamanhoEntrega === null ? null : cp_optional_date($tamanho['entrega_anterior'] ?? '', $tamanho['entrega'] ?? '');
             $tamanhoPayload = [
                 'compras_itens_id' => $itemId,
                 'tamanho' => $nomeTamanho,
-                'entrega' => cp_required_date($tamanho['entrega'] ?? '', $itemEntrega, $dataPedido),
-                'entrega_anterior' => cp_required_date($tamanho['entrega_anterior'] ?? '', $itemEntregaAnterior, $tamanho['entrega'] ?? '', $itemEntrega, $dataPedido),
+                'entrega' => $tamanhoEntrega,
+                'entrega_anterior' => $tamanhoEntregaAnterior,
                 'markup_franquia' => cp_decimal($tamanho['markup_franquia'] ?? 0),
                 'markup_loja' => cp_decimal($tamanho['markup_loja'] ?? 0),
                 'qtde_total' => $tamanhoSts === 1 ? cp_decimal($tamanho['qtde_total'] ?? 0) : 0,

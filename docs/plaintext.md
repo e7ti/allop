@@ -1,7 +1,11 @@
 # ALLOP — Arquitetura e padrões do sistema
+# PROJETO ALLOP
+
+**Projeto correto para manutenção, correções e novos desenvolvimentos:** `D:\E7TI\PHP\allop`
+**Atenção:** não usar `D:\E7TI\PHP\appf` para demandas do Allop.
 
 **Documento-base:** 01/06/2026
-**Última revisão do código:** 10/07/2026
+**Última revisão do código:** 20/07/2026
 **Última revisão do `banco.sql`:** 15/07/2026
 **Escopo revisado:** aplicação PHP, APIs, banco principal, banco de fotos, seed, assets e módulos existentes.
 
@@ -191,6 +195,7 @@ Regras atuais de compras:
 - quando qualquer percentual de rateio for informado no item, os percentuais das cores devem totalizar 100%;
 - todos os tamanhos ativos de um item devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio percentual;
 - a quantidade total do tamanho (`qtde_total`) é obrigatória nos tamanhos ativos e a soma das quantidades das cores deve bater com esse total;
+- a data de entrega do tamanho é opcional; quando não informada no campo do tamanho, deve ser gravada como `NULL` em `cp_compras_itens_tamanhos.entrega` e `cp_compras_itens_tamanhos.entrega_anterior`, sem assumir a data do item nem a data do pedido;
 - a quantidade da cor pode ser ajustada manualmente, mas a soma das cores não pode ultrapassar a quantidade total do tamanho;
 - itens, tamanhos e cores possuem status ativo/inativo;
 - item, tamanho ou cor inativos não entram nas validações de quantidade/rateio; item ou tamanho inativo zera seus totais de quantidade e valor;
@@ -297,7 +302,10 @@ item. Quando houver rateio percentual, os percentuais devem totalizar 100% por
 item. Cada tamanho mantém sua própria quantidade total em `qtde_total`; a
 quantidade da cor é calculada por `qtde_total do tamanho × percentual da cor no
 item / 100`. Quando o item não tiver percentuais informados, a quantidade do
-tamanho é dividida igualmente entre as cores ativas do tamanho.
+tamanho é dividida igualmente entre as cores ativas do tamanho. A entrega do
+tamanho é independente da entrega do item: se o campo do tamanho ficar vazio,
+`cp_compras_itens_tamanhos.entrega` e `entrega_anterior` devem permanecer
+`NULL`.
 
 A tabela `cp_compras` ganhou a coluna `status_id`, com chave estrangeira para
 a nova tabela `cp_compras_status` (`id`, `descricao_compras`,

@@ -2158,9 +2158,7 @@ function updateCpCompraNestedField($field) {
         tamanho[name] = normalizeCpCompraValue(name, $field.val());
         if (name === 'qtde_total') {
             (tamanho.cores || []).forEach(function (cor) {
-                if (cor._loaded_from_api !== true) {
-                    delete cor._qtde_manual;
-                }
+                delete cor._qtde_manual;
             });
         }
         if (name === 'Sts') {
@@ -2675,8 +2673,6 @@ function addCpCompraTamanho(itemIndex) {
         return;
     }
     const tamanho = emptyCpCompraTamanho();
-    tamanho.entrega = cpCompraItens[itemIndex].entrega || '';
-    tamanho.entrega_anterior = cpCompraItens[itemIndex].entrega_anterior || cpCompraItens[itemIndex].entrega || '';
     cpCompraItensOpen[itemIndex] = true;
     cpCompraItens[itemIndex].tamanhos.push(tamanho);
     renderCpCompraItens();
@@ -3126,8 +3122,8 @@ function confirmCpCompraItem(itemIndex) {
     item.item_confirmado = true;
     item.tamanhos = (item._pendingTamanhos && item._pendingTamanhos.length) ? item._pendingTamanhos : item.tamanhos;
     (item.tamanhos || []).forEach(function (tamanho) {
-        tamanho.entrega = tamanho.entrega || item.entrega || '';
-        tamanho.entrega_anterior = tamanho.entrega_anterior || item.entrega_anterior || tamanho.entrega || item.entrega || '';
+        tamanho.entrega = tamanho.entrega || '';
+        tamanho.entrega_anterior = tamanho.entrega_anterior || tamanho.entrega || '';
     });
     const rateioStatus = cpCompraItemRateioStatus(item);
     if (!rateioStatus.ok) {
