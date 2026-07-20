@@ -269,7 +269,10 @@ render_header('Dashboard');
             <span class="page-kicker">Compras</span>
             <h2 class="dashboard-section-title mb-0">Pedidos de Compra</h2>
         </div>
-        <a class="btn btn-orange btn-new" href="<?= app_url('mod/compras/cp_compras_lista.php') ?>">Ver pedidos</a>
+        <div class="d-flex gap-2">
+            <a class="btn btn-orange btn-sync" title="Sincronizar dashboard" href="<?= app_url('dashboard.php') ?>">Sincronizar</a>
+            <a class="btn btn-orange btn-new" href="<?= app_url('mod/compras/cp_compras_lista.php') ?>">Ver pedidos</a>
+        </div>
     </div>
 
     <div class="row g-3 mb-3">

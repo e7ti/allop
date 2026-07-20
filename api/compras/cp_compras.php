@@ -1748,10 +1748,14 @@ try {
     }
 
     if ($action === 'list') {
+        $pedidoId = (int) ($data['pedido_id'] ?? 0);
         $term = trim((string) ($data['q'] ?? ''));
         $where = '';
         $params = [];
-        if ($term !== '') {
+        if ($pedidoId > 0) {
+            $where = 'WHERE c.id = :pedido_id';
+            $params = ['pedido_id' => $pedidoId];
+        } elseif ($term !== '') {
             $where = "WHERE CAST(c.id AS CHAR) LIKE :q_id
                          OR cst.descricao_compras LIKE :q_sts
                          OR c.Localizacao LIKE :q_localizacao
@@ -1774,7 +1778,7 @@ try {
         $fornecedorLabel = cp_table_exists('produtos_fornecedor')
             ? cp_fornecedor_label_expression('f')
             : 'c.Fornecedor_id';
-        if ($term !== '' && cp_table_exists('produtos_fornecedor')) {
+        if ($pedidoId <= 0 && $term !== '' && cp_table_exists('produtos_fornecedor')) {
             $where .= " OR $fornecedorLabel LIKE :q_fornecedor";
             $params['q_fornecedor'] = '%' . $term . '%';
         }

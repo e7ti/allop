@@ -74,6 +74,8 @@ $(function () {
         initCpComprasLista();
     }
 
+    initGridSyncButton();
+
     if (window.cpComprasFormConfig) {
         initCpComprasForm();
     }
@@ -186,12 +188,87 @@ function crudUrl(entity, action) {
     return '../../api/seguranca/crud.php?entity=' + encodeURIComponent(entity) + '&action=' + encodeURIComponent(action);
 }
 
+function initGridSyncButton() {
+    const reloaders = currentGridReloaders();
+    const $actions = $('.grid-shell > .card-header > .d-flex.gap-2').first();
+
+    if (!reloaders.length || !$actions.length || $('#btn-sincronizar-grid').length) {
+        return;
+    }
+
+    const $button = $('<button class="btn btn-orange btn-sync" id="btn-sincronizar-grid" type="button">Sincronizar</button>');
+    $actions.prepend($button);
+    $button.on('click', syncCurrentGrids);
+}
+
+function currentGridReloaders() {
+    const reloaders = [];
+
+    if (window.gridConfig) {
+        reloaders.push(loadGrid);
+    }
+    if (window.perfilAplicacoesListaConfig) {
+        reloaders.push(loadPerfilAplicacoesLista);
+    }
+    if (window.configuracoesEmailListaConfig) {
+        reloaders.push(loadConfiguracoesEmailGrid);
+    }
+    if (window.empresasCdListaConfig) {
+        reloaders.push(loadEmpresasCdGrid);
+    }
+    if (window.empresasListaConfig) {
+        reloaders.push(loadEmpresasGrid);
+    }
+    if (window.cpComprasListaConfig) {
+        reloaders.push(loadCpComprasGrid);
+    }
+
+    return reloaders;
+}
+
+function syncCurrentGrids() {
+    const $button = $('#btn-sincronizar-grid');
+
+    if (!$button.length || $button.data('syncing') === true) {
+        return;
+    }
+
+    const reloads = currentGridReloaders().map(function (reloader) {
+        return reloader();
+    }).filter(Boolean);
+
+    if ($button.data('original-html') === undefined) {
+        $button.data('original-html', $button.html());
+    }
+
+    $button.data('syncing', true)
+        .prop('disabled', true)
+        .addClass('app-saving')
+        .html('<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Sincronizando...');
+
+    if (!reloads.length) {
+        finishGridSyncButton($button);
+        return;
+    }
+
+    $.when.apply($, reloads).always(function () {
+        finishGridSyncButton($button);
+    });
+}
+
+function finishGridSyncButton($button) {
+    $button.data('syncing', false)
+        .prop('disabled', false)
+        .removeClass('app-saving')
+        .html($button.data('original-html'));
+}
+
 function loadGrid() {
     const cfg = window.gridConfig;
     const $filtro = $('#filtro');
     const selected = $filtro.length ? ($filtro.select2('data')[0] || null) : null;
     const q = selected && selected.id ? selected.text : '';
-    apiPost(crudUrl(cfg.entity, 'list'), { q: q }).done(function (response) {
+    return apiPost(crudUrl(cfg.entity, 'list'), { q: q }).done(function (response) {
         const rows = response.data || [];
         const html = rows.map(row => {
             const cells = cfg.columns.map((column, index) => '<td data-label="' + cfg.labels[index] + '">' + formatValue(row[column], column) + '</td>').join('');
@@ -304,7 +381,7 @@ function loadPerfilAplicacoesLista() {
         data.perfil_id = selected.id;
     }
 
-    $.getJSON(window.perfilAplicacoesListaConfig.api, data)
+    return $.getJSON(window.perfilAplicacoesListaConfig.api, data)
         .done(function (response) {
             const rows = response.data || [];
             const html = rows.map(function (row) {
@@ -529,7 +606,7 @@ function initConfiguracoesEmailLista() {
 function loadConfiguracoesEmailGrid() {
     const cfg = window.configuracoesEmailListaConfig;
     const selected = $('#filtro-email').select2('data')[0] || null;
-    $.getJSON(cfg.api, { action: 'list', q: selected && selected.id ? selected.text : '' })
+    return $.getJSON(cfg.api, { action: 'list', q: selected && selected.id ? selected.text : '' })
         .done(function (response) {
             const rows = response.data || [];
             const html = rows.map(function (row) {
@@ -659,7 +736,7 @@ function initEmpresasCdLista() {
 function loadEmpresasCdGrid() {
     const cfg = window.empresasCdListaConfig;
     const selected = $('#filtro-empresas-cd').select2('data')[0] || null;
-    $.getJSON(cfg.api, { action: 'list', q: selected && selected.id ? selected.text : '' })
+    return $.getJSON(cfg.api, { action: 'list', q: selected && selected.id ? selected.text : '' })
         .done(function (response) {
             const rows = response.data || [];
             const html = rows.map(function (row) {
@@ -759,7 +836,7 @@ function initEmpresasLista() {
 function loadEmpresasGrid() {
     const cfg = window.empresasListaConfig;
     const selected = $('#filtro-empresas').select2('data')[0] || null;
-    $.getJSON(cfg.api, { action: 'list', q: selected && selected.id ? selected.text : '' })
+    return $.getJSON(cfg.api, { action: 'list', q: selected && selected.id ? selected.text : '' })
         .done(function (response) {
             const rows = response.data || [];
             const html = rows.map(function (row) {
@@ -1068,7 +1145,11 @@ function cpCompraListaOptionText(row) {
 function loadCpComprasGrid() {
     const cfg = window.cpComprasListaConfig;
     const selected = $('#filtro-cp-compras').select2('data')[0] || null;
-    $.getJSON(cfg.api, { action: 'list', q: selected && selected.id ? selected.text : '' })
+    return $.getJSON(cfg.api, {
+        action: 'list',
+        pedido_id: selected && selected.id ? selected.id : '',
+        q: ''
+    })
         .done(function (response) {
             const rows = response.data || [];
             const html = rows.map(function (row) {
