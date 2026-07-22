@@ -1265,6 +1265,20 @@ body {
     flex: 0 0 auto;
 }
 
+.cp-compras-form-wide .cp-tamanho-status-action {
+    min-width: 112px;
+}
+
+.cp-compras-form-wide .cp-tamanho-status-action .form-label {
+    display: none;
+}
+
+.cp-compras-form-wide .cp-tamanho-status-action .form-select {
+    font-size: 0.78rem;
+    padding-bottom: 0.28rem;
+    padding-top: 0.28rem;
+}
+
 .cp-compras-form-wide .cp-compra-cor-header {
     background: #fff1cc;
     color: #5c4a1f;

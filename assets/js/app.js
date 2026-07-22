@@ -1937,26 +1937,25 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
                 '<div class="cp-compra-summary-metric"><small>Total</small><span class="fw-bold text-success cp-tamanho-summary-total">R$ ' + escapeHtml(formatMoneyBr(tamanho.valor_total || 0)) + '</span></div>' +
                 '</div>' +
                 '<div class="d-flex gap-2 align-items-center cp-compra-tamanho-actions" onclick="event.stopPropagation();">' +
-                cpCompraStatusBadge(tamanho.Sts) +
-                (cpCompraReadonly ? '' :
+                cpCompraTamanhoStatus(itemIndex, tamanhoIndex, tamanho.Sts, 'cp-tamanho-status-action') +
+                ((cpCompraReadonly || tamanhoInativo) ? '' :
                     '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir tamanho" aria-label="Excluir tamanho" onclick="removeCpCompraTamanho(' + itemIndex + ', ' + tamanhoIndex + ')"></button>') +
                 '</div></div>' +
                 '<div id="' + collapseId + '" class="accordion-collapse collapse cp-compra-tamanho-collapse' + (aberto ? ' show' : '') + '" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '">' +
                 '<div class="accordion-body">' +
                 '<div class="row g-3 mb-3">' +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'tamanho', 'Tamanho', tamanho.tamanho, 'col-12 col-md-2', 'text', true) +
-                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'entrega', 'Entrega', tamanho.entrega, 'col-12 col-md-2', 'date') +
-                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'qtde_total', 'Quantidade do tamanho', tamanho.qtde_total, 'col-12 col-md-2', 'number') +
+                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'entrega', 'Entrega', tamanho.entrega, 'col-12 col-md-2', 'date', tamanhoInativo) +
+                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'qtde_total', 'Quantidade do tamanho', tamanho.qtde_total, 'col-12 col-md-2', 'number', tamanhoInativo) +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'valor_total', 'Total do tamanho', tamanho.valor_total, 'col-12 col-md-2', 'money', true) +
-                cpCompraTamanhoStatus(itemIndex, tamanhoIndex, tamanho.Sts, 'col-12 col-md-2') +
                 '<div class="col-12 col-md-2"><label class="form-label">Total do rateio</label><input class="form-control ' + rateioClass + ' fw-bold cp-tamanho-rateio-total" value="' + escapeAttr(formatPercentInput(rateio)) + '%" readonly></div>' +
                 '</div>' +
-                renderCpCompraCores(itemIndex, tamanhoIndex, tamanho.cores || []) +
+                renderCpCompraCores(itemIndex, tamanhoIndex, tamanho.cores || [], tamanhoInativo) +
                 '</div></div></section>';
         }).join('') + '</div>';
 }
 
-function renderCpCompraCores(itemIndex, tamanhoIndex, cores) {
+function renderCpCompraCores(itemIndex, tamanhoIndex, cores, tamanhoInativo) {
     if (!cores.length) {
         return '<div class="cp-compra-empty-nested">Nenhuma cor informada para este tamanho.</div>';
     }
@@ -1981,15 +1980,15 @@ function renderCpCompraCores(itemIndex, tamanhoIndex, cores) {
             '</div>' +
             '<div class="d-flex gap-2 align-items-center cp-compra-cor-actions" onclick="event.stopPropagation();">' +
             '<button class="btn btn-sm btn-outline-secondary btn-price-log" type="button" title="Visualizar última alteração de preços" onclick="openCpCompraCorLog(' + itemIndex + ', ' + tamanhoIndex + ', ' + corIndex + ')">Preços</button>' +
-            (cpCompraReadonly ? '' : '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir cor" aria-label="Excluir cor" onclick="removeCpCompraCor(' + itemIndex + ', ' + tamanhoIndex + ', ' + corIndex + ')"></button>') +
+            ((cpCompraReadonly || tamanhoInativo) ? '' : '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir cor" aria-label="Excluir cor" onclick="removeCpCompraCor(' + itemIndex + ', ' + tamanhoIndex + ', ' + corIndex + ')"></button>') +
             '</div></div>' +
             '<div id="' + collapseId + '" class="accordion-collapse collapse cp-compra-cor-collapse' + (aberto ? ' show' : '') + '" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '" data-color-index="' + corIndex + '">' +
             '<div class="accordion-body"><div class="row g-2">' +
             cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'sku', 'SKU', cor.sku, 'col-12 col-md-3', 'text', true) +
             cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'cor', 'Cor', cor.cor, 'col-12 col-md-3', 'text', true) +
-            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'Qtde', 'Quantidade', cor.Qtde, 'col-12 col-md-2', 'number') +
-            cpCompraCorStatus(itemIndex, tamanhoIndex, corIndex, cor.Sts, 'col-12 col-md-2') +
-            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_proposta', 'Preço proposto', cor.preco_proposta, 'col-12 col-md-3', 'money') +
+            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'Qtde', 'Quantidade', cor.Qtde, 'col-12 col-md-2', 'number', tamanhoInativo) +
+            cpCompraCorStatus(itemIndex, tamanhoIndex, corIndex, cor.Sts, 'col-12 col-md-2', tamanhoInativo) +
+            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_proposta', 'Preço proposto', cor.preco_proposta, 'col-12 col-md-3', 'money', tamanhoInativo) +
             cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_fornecedor', 'Preço fornecedor', cor.preco_fornecedor, 'col-12 col-md-3', 'money', true) +
             cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_franqueado', 'Preço franqueado', cor.preco_franqueado, 'col-12 col-md-3', 'money', true) +
             cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_loja', 'Preço loja', cor.preco_loja, 'col-12 col-md-3', 'money', true) +
@@ -2028,8 +2027,8 @@ function cpCompraTamanhoStatus(itemIndex, tamanhoIndex, value, colClass) {
         '<option value="0"' + (String(value) === '0' ? ' selected' : '') + '>Inativo</option></select></div>';
 }
 
-function cpCompraCorStatus(itemIndex, tamanhoIndex, corIndex, value, colClass) {
-    const disabled = cpCompraReadonly ? ' disabled' : '';
+function cpCompraCorStatus(itemIndex, tamanhoIndex, corIndex, value, colClass, readonly) {
+    const disabled = (readonly || cpCompraReadonly) ? ' disabled' : '';
     return '<div class="' + colClass + '"><label class="form-label">Status</label><select class="form-select cp-compra-cor-field" ' +
         cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, 'Sts') + disabled + '>' +
         '<option value="1"' + (String(value) !== '0' ? ' selected' : '') + '>Ativo</option>' +
@@ -2198,9 +2197,6 @@ function updateCpCompraItemStatus($field) {
         }
         (tamanho.cores || []).forEach(function (cor) {
             cor.Sts = status;
-            if (status === 0) {
-                cor.percentual = 0;
-            }
         });
     });
     recalcCpCompraItem(item);
@@ -2233,6 +2229,9 @@ function updateCpCompraNestedField($field) {
     const item = cpCompraItens[itemIndex];
     const tamanho = item?.tamanhos?.[tamanhoIndex];
     if (!tamanho) {
+        return;
+    }
+    if (String(tamanho.Sts) === '0' && !(corIndexRaw === undefined && name === 'Sts')) {
         return;
     }
     if (corIndexRaw === undefined) {
@@ -2307,7 +2306,8 @@ function cascadeCpCompraTamanhoStatus(tamanho, status) {
     (tamanho.cores || []).forEach(function (cor) {
         cor.Sts = statusValue;
         if (statusValue === 0) {
-            cor.percentual = 0;
+            cor.Qtde = 0;
+            delete cor._qtde_manual;
         }
     });
 }
@@ -2787,16 +2787,35 @@ function cpCompraItemCoresAtivas(item) {
     return Object.keys(map).sort();
 }
 
+function cpCompraTamanhoTemQuantidadeInformada(tamanho) {
+    const qtdeTotal = Math.max(0, parseInt(Number(tamanho.qtde_total || 0), 10) || 0);
+    if (qtdeTotal > 0) {
+        return true;
+    }
+    return (tamanho.cores || []).some(function (cor) {
+        return String(cor.Sts) !== '0' && Math.max(0, parseInt(Number(cor.Qtde || 0), 10) || 0) > 0;
+    });
+}
+
 function cpCompraItemRateioStatus(item) {
+    if (String(item.Sts) === '0') {
+        return { ok: false, message: 'Item inativo não entra no rateio.' };
+    }
     const tamanhosAtivos = (item.tamanhos || []).filter(function (tamanho) {
         return String(tamanho.Sts) !== '0';
     });
     if (!tamanhosAtivos.length) {
         return { ok: false, message: 'Informe ao menos um tamanho ativo para ratear o item.' };
     }
+    const tamanhosRateio = tamanhosAtivos.filter(function (tamanho) {
+        return !cpCompraTamanhoTemQuantidadeInformada(tamanho);
+    });
+    if (!tamanhosRateio.length) {
+        return { ok: false, message: 'Não há tamanhos ativos sem quantidade informada para receber o rateio.' };
+    }
     let referencia = null;
-    for (let index = 0; index < tamanhosAtivos.length; index++) {
-        const tamanho = tamanhosAtivos[index];
+    for (let index = 0; index < tamanhosRateio.length; index++) {
+        const tamanho = tamanhosRateio[index];
         const cores = (tamanho.cores || [])
             .filter(function (cor) { return String(cor.Sts) !== '0' && String(cor.cor || '').trim() !== ''; })
             .map(function (cor) { return String(cor.cor || '').trim(); })
@@ -2815,10 +2834,15 @@ function cpCompraItemRateioStatus(item) {
 
 function cpCompraItemPercentualTotal(item) {
     const rateios = {};
-    (item.tamanhos || []).some(function (tamanho) {
-        if (String(tamanho.Sts) === '0') {
-            return false;
-        }
+    const tamanhosAtivos = (item.tamanhos || []).filter(function (tamanho) {
+        return String(tamanho.Sts) !== '0';
+    });
+    const tamanhosReferencia = tamanhosAtivos.filter(function (tamanho) {
+        return !cpCompraTamanhoTemQuantidadeInformada(tamanho);
+    }).concat(tamanhosAtivos.filter(function (tamanho) {
+        return cpCompraTamanhoTemQuantidadeInformada(tamanho);
+    }));
+    tamanhosReferencia.some(function (tamanho) {
         (tamanho.cores || []).forEach(function (cor) {
             const nome = String(cor.cor || '').trim();
             if (nome && String(cor.Sts) !== '0' && rateios[nome] === undefined) {
@@ -2834,11 +2858,19 @@ function cpCompraItemPercentualTotal(item) {
 
 function cpCompraItemPercentualCor(item, corNome) {
     corNome = String(corNome || '').trim();
-    for (let tamanhoIndex = 0; tamanhoIndex < (item.tamanhos || []).length; tamanhoIndex++) {
-        const tamanho = item.tamanhos[tamanhoIndex];
+    const tamanhosAtivos = (item.tamanhos || []).filter(function (tamanho) {
+        return String(tamanho.Sts) !== '0';
+    });
+    const tamanhosReferencia = tamanhosAtivos.filter(function (tamanho) {
+        return !cpCompraTamanhoTemQuantidadeInformada(tamanho);
+    }).concat(tamanhosAtivos.filter(function (tamanho) {
+        return cpCompraTamanhoTemQuantidadeInformada(tamanho);
+    }));
+    for (let tamanhoIndex = 0; tamanhoIndex < tamanhosReferencia.length; tamanhoIndex++) {
+        const tamanho = tamanhosReferencia[tamanhoIndex];
         for (let corIndex = 0; corIndex < (tamanho.cores || []).length; corIndex++) {
             const cor = tamanho.cores[corIndex];
-            if (String(cor.cor || '').trim() === corNome) {
+            if (String(cor.Sts) !== '0' && String(cor.cor || '').trim() === corNome) {
                 return Number(cor.percentual || 0);
             }
         }
@@ -2847,7 +2879,21 @@ function cpCompraItemPercentualCor(item, corNome) {
 }
 
 function applyCpCompraItemRateio(item, rateios) {
+    if (String(item.Sts) === '0') {
+        return;
+    }
     (item.tamanhos || []).forEach(function (tamanho) {
+        if (String(tamanho.Sts) === '0') {
+            return;
+        }
+        if (cpCompraTamanhoTemQuantidadeInformada(tamanho)) {
+            (tamanho.cores || []).forEach(function (cor) {
+                if (String(cor.Sts) !== '0' && Math.max(0, parseInt(Number(cor.Qtde || 0), 10) || 0) > 0) {
+                    cor._qtde_manual = true;
+                }
+            });
+            return;
+        }
         (tamanho.cores || []).forEach(function (cor) {
             const nome = String(cor.cor || '').trim();
             cor.percentual = String(cor.Sts) === '0' ? 0 : Number(rateios[nome] || 0);
@@ -3167,11 +3213,6 @@ function aplicarCpCompraRateio() {
         return;
     }
 
-    (tamanho.cores || []).forEach(function (cor) {
-        if (String(cor.Sts) === '0') {
-            cor.percentual = 0;
-        }
-    });
     rateios.forEach(function (row) {
         if (tamanho.cores[row.corIndex]) {
             tamanho.cores[row.corIndex].Qtde = row.qtde;
@@ -3519,7 +3560,7 @@ function validarCpCompraForm($form) {
         }
         let tamanhosAtivos = 0;
         const tamanhosUsados = {};
-        let coresReferencia = null;
+        let coresRateioReferencia = null;
         const rateioItem = {};
         for (let tamanhoIndex = 0; tamanhoIndex < item.tamanhos.length; tamanhoIndex++) {
             const tamanho = item.tamanhos[tamanhoIndex];
@@ -3548,7 +3589,9 @@ function validarCpCompraForm($form) {
             }
             const coresUsadas = {};
             const coresTamanho = [];
+            const percentuaisTamanho = {};
             let totalQtdeCores = 0;
+            let totalPercentualTamanho = 0;
             for (let corIndex = 0; corIndex < coresAtivas.length; corIndex++) {
                 const nomeCor = String(coresAtivas[corIndex].cor || '').trim();
                 if (!nomeCor) {
@@ -3560,21 +3603,32 @@ function validarCpCompraForm($form) {
                 coresUsadas[nomeCor] = true;
                 coresTamanho.push(nomeCor);
                 const percentual = Number(coresAtivas[corIndex].percentual || 0);
+                percentuaisTamanho[nomeCor] = percentual;
+                totalPercentualTamanho = roundCpPercent(totalPercentualTamanho + percentual);
                 if (percentual < 0 || percentual > 100) {
                     return 'Item ' + referencia + ', cor ' + nomeCor + ': o percentual do rateio deve estar entre 0% e 100%.';
-                }
-                if (rateioItem[nomeCor] === undefined) {
-                    rateioItem[nomeCor] = percentual;
-                } else if (roundCpPercent(rateioItem[nomeCor]) !== roundCpPercent(percentual)) {
-                    return 'Item ' + referencia + ', cor ' + nomeCor + ': o percentual do rateio deve ser igual em todos os tamanhos do item.';
                 }
                 totalQtdeCores += Math.max(0, parseInt(Number(coresAtivas[corIndex].Qtde || 0), 10) || 0);
             }
             coresTamanho.sort();
-            if (coresReferencia === null) {
-                coresReferencia = coresTamanho;
-            } else if (coresReferencia.length !== coresTamanho.length || coresReferencia.join('|') !== coresTamanho.join('|')) {
-                return 'Item ' + referencia + ': todos os tamanhos ativos devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio. Verifique o tamanho ' + nomeTamanho + '.';
+            if (roundCpPercent(totalPercentualTamanho) > 0) {
+                if (roundCpPercent(totalPercentualTamanho) !== 100) {
+                    return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ': o rateio das cores deve totalizar 100%. Total atual: ' + formatPercentInput(totalPercentualTamanho) + '%.';
+                }
+                if (coresRateioReferencia === null) {
+                    coresRateioReferencia = coresTamanho;
+                } else if (coresRateioReferencia.length !== coresTamanho.length || coresRateioReferencia.join('|') !== coresTamanho.join('|')) {
+                    return 'Item ' + referencia + ': os tamanhos que participam do rateio devem ter o mesmo conjunto de cores. Verifique o tamanho ' + nomeTamanho + '.';
+                }
+                for (let corRateioIndex = 0; corRateioIndex < coresTamanho.length; corRateioIndex++) {
+                    const nomeCorRateio = coresTamanho[corRateioIndex];
+                    const percentualRateio = Number(percentuaisTamanho[nomeCorRateio] || 0);
+                    if (rateioItem[nomeCorRateio] === undefined) {
+                        rateioItem[nomeCorRateio] = percentualRateio;
+                    } else if (roundCpPercent(rateioItem[nomeCorRateio]) !== roundCpPercent(percentualRateio)) {
+                        return 'Item ' + referencia + ', cor ' + nomeCorRateio + ': o percentual do rateio deve ser igual nos tamanhos que participam do rateio.';
+                    }
+                }
             }
             if (totalQtdeCores !== qtdeTotalTamanho) {
                 return 'Item ' + referencia + ', tamanho ' + nomeTamanho + ': a soma das quantidades das cores deve bater com a quantidade total. Total informado: ' + qtdeTotalTamanho + '. Soma das cores: ' + totalQtdeCores + '.';

@@ -264,7 +264,7 @@ function cp_validate_item_percentuais(array $items): void
 
         $tamanhosAtivos = 0;
         $tamanhosUsados = [];
-        $coresReferencia = null;
+        $coresRateioReferencia = null;
         $rateioItem = [];
         foreach ($tamanhos as $tamanho) {
             $tamanhoAtivo = (int) ($tamanho['Sts'] ?? 1) !== 0;
@@ -296,7 +296,9 @@ function cp_validate_item_percentuais(array $items): void
 
             $coresUsadas = [];
             $coresTamanho = [];
+            $percentuaisTamanho = [];
             $totalQtdeCores = 0;
+            $totalPercentualTamanho = 0.0;
             foreach ($coresAtivas as $cor) {
                 $nomeCor = cp_trim($cor['cor'] ?? '');
                 if ($nomeCor === '') {
@@ -309,21 +311,31 @@ function cp_validate_item_percentuais(array $items): void
                 $coresTamanho[] = $nomeCor;
 
                 $percentual = cp_decimal($cor['percentual'] ?? 0);
+                $percentuaisTamanho[$nomeCor] = $percentual;
+                $totalPercentualTamanho += $percentual;
                 if ($percentual < 0 || $percentual > 100) {
                     api_response(false, ['message' => "Item $referencia, cor $nomeCor: o percentual do rateio deve estar entre 0% e 100%."], 422);
-                }
-                if (!isset($rateioItem[$nomeCor])) {
-                    $rateioItem[$nomeCor] = $percentual;
-                } elseif (round($rateioItem[$nomeCor], 4) !== round($percentual, 4)) {
-                    api_response(false, ['message' => "Item $referencia, cor $nomeCor: o percentual do rateio deve ser igual em todos os tamanhos do item."], 422);
                 }
                 $totalQtdeCores += max(0, (int) ($cor['Qtde'] ?? 0));
             }
             sort($coresTamanho, SORT_STRING);
-            if ($coresReferencia === null) {
-                $coresReferencia = $coresTamanho;
-            } elseif ($coresReferencia !== $coresTamanho) {
-                api_response(false, ['message' => "Item $referencia: todos os tamanhos ativos devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio. Verifique o tamanho $nomeTamanho."], 422);
+            if (round($totalPercentualTamanho, 4) > 0) {
+                if (round($totalPercentualTamanho, 4) !== 100.0000) {
+                    api_response(false, ['message' => "Item $referencia, tamanho $nomeTamanho: o rateio das cores deve totalizar 100%. Total atual: " . number_format($totalPercentualTamanho, 2, ',', '.') . "%."], 422);
+                }
+                if ($coresRateioReferencia === null) {
+                    $coresRateioReferencia = $coresTamanho;
+                } elseif ($coresRateioReferencia !== $coresTamanho) {
+                    api_response(false, ['message' => "Item $referencia: os tamanhos que participam do rateio devem ter o mesmo conjunto de cores. Verifique o tamanho $nomeTamanho."], 422);
+                }
+                foreach ($coresTamanho as $nomeCorRateio) {
+                    $percentualRateio = $percentuaisTamanho[$nomeCorRateio] ?? 0;
+                    if (!isset($rateioItem[$nomeCorRateio])) {
+                        $rateioItem[$nomeCorRateio] = $percentualRateio;
+                    } elseif (round($rateioItem[$nomeCorRateio], 4) !== round($percentualRateio, 4)) {
+                        api_response(false, ['message' => "Item $referencia, cor $nomeCorRateio: o percentual do rateio deve ser igual nos tamanhos que participam do rateio."], 422);
+                    }
+                }
             }
             if ($totalQtdeCores !== $qtdeTotalTamanho) {
                 api_response(false, ['message' => "Item $referencia, tamanho $nomeTamanho: a soma das quantidades das cores deve bater com a quantidade total. Total informado: $qtdeTotalTamanho. Soma das cores: $totalQtdeCores."], 422);
@@ -658,10 +670,10 @@ function cp_require_pedido_editavel(int $id, string $operation): void
 {
     $pedido = cp_pedido_estado($id);
     if (!$pedido) {
-        api_response(false, ['message' => 'Pedido nÃ£o encontrado.'], 404);
+        api_response(false, ['message' => 'Pedido não encontrado.'], 404);
     }
     if (cp_localizacao_fornecedor((string) $pedido['Localizacao']) || cp_status_final_bloqueado($pedido) || cp_status_aprovado_aguardando_foto($pedido)) {
-        api_response(false, ['message' => "Pedido nÃ£o permite $operation. Apenas visualizaÃ§Ã£o."], 403);
+        api_response(false, ['message' => "Pedido não permite $operation. Apenas visualização."], 403);
     }
 }
 
@@ -669,19 +681,19 @@ function cp_require_foto_mutavel(int $id, string $table, string $operation): voi
 {
     $pedido = cp_pedido_estado($id);
     if (!$pedido) {
-        api_response(false, ['message' => 'Pedido nÃ£o encontrado.'], 404);
+        api_response(false, ['message' => 'Pedido não encontrado.'], 404);
     }
     if ($table === 'cp_compras_fotos') {
         api_response(false, ['message' => 'Fotos do fornecedor podem ser apenas visualizadas no Pedido.'], 403);
     }
     if (cp_status_final_bloqueado($pedido)) {
-        api_response(false, ['message' => "Pedido aprovado ou recusado nÃ£o permite $operation fotos. Apenas visualizaÃ§Ã£o."], 403);
+        api_response(false, ['message' => "Pedido aprovado ou recusado não permite $operation fotos. Apenas visualização."], 403);
     }
     if (cp_status_aprovado_aguardando_foto($pedido) && cp_localizacao_fornecedor((string) $pedido['Localizacao'])) {
-        api_response(false, ['message' => "Pedido com localizaÃ§Ã£o {$pedido['Localizacao']} nÃ£o permite $operation fotos no Pedido. Apenas visualizaÃ§Ã£o."], 403);
+        api_response(false, ['message' => "Pedido com localização {$pedido['Localizacao']} não permite $operation fotos no Pedido. Apenas visualização."], 403);
     }
     if (cp_localizacao_fornecedor((string) $pedido['Localizacao']) && !cp_status_aprovado_aguardando_foto($pedido)) {
-        api_response(false, ['message' => "Pedido com localizaÃ§Ã£o {$pedido['Localizacao']} nÃ£o permite $operation fotos. Apenas visualizaÃ§Ã£o."], 403);
+        api_response(false, ['message' => "Pedido com localização {$pedido['Localizacao']} não permite $operation fotos. Apenas visualização."], 403);
     }
 }
 
@@ -1384,6 +1396,10 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
         $rateiosItem = [];
         foreach ($tamanhos as $tamanho) {
             $cores = is_array($tamanho['cores'] ?? null) ? $tamanho['cores'] : [];
+            $totalPercentualTamanho = 0.0;
+            foreach ($cores as $corRateio) {
+                $totalPercentualTamanho += cp_decimal($corRateio['percentual'] ?? 0);
+            }
             $tamanhoSolicitadoAtivo = (int) ($tamanho['Sts'] ?? 1) !== 0;
             $itensAtivos = (!$itemAtivo || !$tamanhoSolicitadoAtivo) ? 0 : count(array_filter($cores, static function (array $cor): bool {
                 return (int) ($cor['Sts'] ?? 1) !== 0;
@@ -1449,7 +1465,7 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
                     $corId = (int) db()->lastInsertId();
                 }
                 $keptCorIds[] = $corId;
-                if ($corSts === 1 && $nomeCor !== '' && !isset($rateiosItem[$nomeCor])) {
+                if ($nomeCor !== '' && round($totalPercentualTamanho, 4) > 0 && !isset($rateiosItem[$nomeCor])) {
                     $rateiosItem[$nomeCor] = cp_decimal($cor['percentual'] ?? 0);
                 }
             }
