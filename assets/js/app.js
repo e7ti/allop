@@ -153,6 +153,49 @@ function appOkAlert(message, title, onClose) {
     bootstrap.Modal.getOrCreateInstance($modal[0]).show();
 }
 
+function appConfirm(message, onConfirm, title) {
+    if (typeof bootstrap === 'undefined' || !bootstrap.Modal) {
+        if (typeof onConfirm === 'function') {
+            onConfirm();
+        }
+        return;
+    }
+
+    let $modal = $('#app-confirm-modal');
+    if (!$modal.length) {
+        $('body').append(
+            '<div class="modal fade" id="app-confirm-modal" tabindex="-1" aria-hidden="true">' +
+            '<div class="modal-dialog modal-dialog-centered">' +
+            '<div class="modal-content">' +
+            '<div class="modal-header">' +
+            '<h5 class="modal-title"></h5>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>' +
+            '</div>' +
+            '<div class="modal-body"></div>' +
+            '<div class="modal-footer">' +
+            '<button type="button" class="btn btn-outline-secondary btn-reject" data-bs-dismiss="modal">Não</button>' +
+            '<button type="button" class="btn btn-orange btn-approve" id="app-confirm-yes">Sim</button>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>'
+        );
+        $modal = $('#app-confirm-modal');
+    }
+
+    $modal.find('.modal-title').text(title || 'Confirmação');
+    $modal.find('.modal-body').text(message);
+    $modal.find('#app-confirm-yes')
+        .off('click.appConfirm')
+        .on('click.appConfirm', function () {
+            bootstrap.Modal.getOrCreateInstance($modal[0]).hide();
+            if (typeof onConfirm === 'function') {
+                onConfirm();
+            }
+        });
+    bootstrap.Modal.getOrCreateInstance($modal[0]).show();
+}
+
 function apiPost(url, data) {
     return $.ajax({
         url: url,
@@ -298,14 +341,13 @@ function formatValue(value, column) {
 }
 
 function deleteRow(id) {
-    if (!confirm('Excluir este registro?')) {
-        return;
-    }
-    apiPost(crudUrl(window.gridConfig.entity, 'delete'), { id: id }).done(function (response) {
-        appAlert(response.message || 'Registro excluído.', 'success');
-        loadGrid();
-    }).fail(function (xhr) {
-        appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
+    appConfirm('Excluir este registro?', function () {
+        apiPost(crudUrl(window.gridConfig.entity, 'delete'), { id: id }).done(function (response) {
+            appAlert(response.message || 'Registro excluído.', 'success');
+            loadGrid();
+        }).fail(function (xhr) {
+            appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
+        });
     });
 }
 
@@ -420,15 +462,13 @@ function initPerfilAplicacoesLista() {
 }
 
 function deletePerfilAplicacoes(perfilId) {
-    if (!confirm('Excluir as permissões deste perfil?')) {
-        return;
-    }
-
-    $.post(window.perfilAplicacoesListaConfig.api + '?action=delete_profile', { perfil_id: perfilId }, function (response) {
-        appAlert(response.message || 'Permissões excluídas.', 'success');
-        loadPerfilAplicacoesLista();
-    }, 'json').fail(function (xhr) {
-        appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
+    appConfirm('Excluir as permissões deste perfil?', function () {
+        $.post(window.perfilAplicacoesListaConfig.api + '?action=delete_profile', { perfil_id: perfilId }, function (response) {
+            appAlert(response.message || 'Permissões excluídas.', 'success');
+            loadPerfilAplicacoesLista();
+        }, 'json').fail(function (xhr) {
+            appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
+        });
     });
 }
 
@@ -631,15 +671,13 @@ function loadConfiguracoesEmailGrid() {
 }
 
 function deleteConfiguracoesEmail(id) {
-    if (!confirm('Excluir este registro?')) {
-        return;
-    }
-
-    $.post(window.configuracoesEmailListaConfig.api + '?action=delete', { id: id }, function (response) {
-        appAlert(response.message || 'Registro excluído.', 'success');
-        loadConfiguracoesEmailGrid();
-    }, 'json').fail(function (xhr) {
-        appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
+    appConfirm('Excluir este registro?', function () {
+        $.post(window.configuracoesEmailListaConfig.api + '?action=delete', { id: id }, function (response) {
+            appAlert(response.message || 'Registro excluído.', 'success');
+            loadConfiguracoesEmailGrid();
+        }, 'json').fail(function (xhr) {
+            appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
+        });
     });
 }
 
@@ -758,15 +796,13 @@ function loadEmpresasCdGrid() {
 }
 
 function deleteEmpresasCd(id) {
-    if (!confirm('Excluir este registro?')) {
-        return;
-    }
-
-    $.post(window.empresasCdListaConfig.api + '?action=delete', { id: id }, function (response) {
-        appAlert(response.message || 'Registro excluído.', 'success');
-        loadEmpresasCdGrid();
-    }, 'json').fail(function (xhr) {
-        appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
+    appConfirm('Excluir este registro?', function () {
+        $.post(window.empresasCdListaConfig.api + '?action=delete', { id: id }, function (response) {
+            appAlert(response.message || 'Registro excluído.', 'success');
+            loadEmpresasCdGrid();
+        }, 'json').fail(function (xhr) {
+            appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
+        });
     });
 }
 
@@ -861,15 +897,13 @@ function loadEmpresasGrid() {
 }
 
 function deleteEmpresa(id) {
-    if (!confirm('Excluir este registro?')) {
-        return;
-    }
-
-    $.post(window.empresasListaConfig.api + '?action=delete', { id: id }, function (response) {
-        appAlert(response.message || 'Registro excluído.', 'success');
-        loadEmpresasGrid();
-    }, 'json').fail(function (xhr) {
-        appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
+    appConfirm('Excluir este registro?', function () {
+        $.post(window.empresasListaConfig.api + '?action=delete', { id: id }, function (response) {
+            appAlert(response.message || 'Registro excluído.', 'success');
+            loadEmpresasGrid();
+        }, 'json').fail(function (xhr) {
+            appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
+        });
     });
 }
 
@@ -1184,15 +1218,13 @@ function loadCpComprasGrid() {
 }
 
 function deleteCpCompra(id) {
-    if (!confirm('Excluir este pedido?')) {
-        return;
-    }
-
-    $.post(window.cpComprasListaConfig.api + '?action=delete', { id: id }, function (response) {
-        appAlert(response.message || 'Pedido excluído.', 'success');
-        loadCpComprasGrid();
-    }, 'json').fail(function (xhr) {
-        appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
+    appConfirm('Excluir este pedido?', function () {
+        $.post(window.cpComprasListaConfig.api + '?action=delete', { id: id }, function (response) {
+            appAlert(response.message || 'Pedido excluído.', 'success');
+            loadCpComprasGrid();
+        }, 'json').fail(function (xhr) {
+            appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
+        });
     });
 }
 
@@ -1371,12 +1403,17 @@ function salvarCpCompraForm($form, done) {
         return;
     }
     syncCpCompraItensFromDom();
+    normalizeCpCompraZeroQuantities();
+    cpCompraItens.forEach(function (item, itemIndex) {
+        recalcCpCompraItem(item);
+        updateCpCompraNestedDisplays(itemIndex);
+    });
+    $form.find('[name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
     const message = validarCpCompraForm($form);
     if (message) {
         appAlert(message, 'danger');
         return;
     }
-    recalcCpCompraTotal();
     setCpCompraSaving($form, true);
     const data = $form.serializeArray();
     data.push({ name: 'items_json', value: JSON.stringify(cpCompraItens) });
@@ -1476,23 +1513,27 @@ function executarCpCompraWorkflow($form, action, confirmMessage, extraData) {
         appAlert('Pedido não publicado não pode ser aprovado.', 'warning');
         return;
     }
-    if (confirmMessage && !confirm(confirmMessage)) {
+    const executar = function () {
+        const data = Object.assign({ id: id }, extraData || {});
+        const $workflowButtons = $('#btn-cp-enviar-proposta, #btn-cp-enviar-fornecedor, #btn-cp-aprovar, #btn-cp-recusar, #btn-cp-confirmar-recusa, #btn-cp-cancelar-recusa');
+        $workflowButtons.prop('disabled', true);
+        $.post(window.cpComprasFormConfig.api + '?action=' + action, data, function (response) {
+            appOkAlert(response.message || 'Pedido atualizado.', 'Sucesso', function () {
+                window.location.href = 'cp_compras_lista.php';
+            });
+        }, 'json').fail(function (xhr) {
+            $workflowButtons.prop('disabled', false);
+            if (action === 'recusar' && !$('#cp-sts-motivo-group').hasClass('d-none')) {
+                $('#btn-cp-recusar').prop('disabled', true);
+            }
+            appAlert(xhr.responseJSON?.message || 'Não foi possível atualizar o pedido.', 'danger');
+        });
+    };
+    if (confirmMessage) {
+        appConfirm(confirmMessage, executar);
         return;
     }
-    const data = Object.assign({ id: id }, extraData || {});
-    const $workflowButtons = $('#btn-cp-enviar-proposta, #btn-cp-enviar-fornecedor, #btn-cp-aprovar, #btn-cp-recusar, #btn-cp-confirmar-recusa, #btn-cp-cancelar-recusa');
-    $workflowButtons.prop('disabled', true);
-    $.post(window.cpComprasFormConfig.api + '?action=' + action, data, function (response) {
-        appOkAlert(response.message || 'Pedido atualizado.', 'Sucesso', function () {
-            window.location.href = 'cp_compras_lista.php';
-        });
-    }, 'json').fail(function (xhr) {
-        $workflowButtons.prop('disabled', false);
-        if (action === 'recusar' && !$('#cp-sts-motivo-group').hasClass('d-none')) {
-            $('#btn-cp-recusar').prop('disabled', true);
-        }
-        appAlert(xhr.responseJSON?.message || 'Não foi possível atualizar o pedido.', 'danger');
-    });
+    executar();
 }
 
 function loadCpCompraDefaults($form) {
@@ -1872,7 +1913,7 @@ function renderCpCompraItens() {
             '</div>' +
             '<div class="text-end d-none d-md-block">' +
             '<small class="text-muted d-block extra-small text-uppercase">Rateio</small>' +
-            '<span class="' + (roundCpPercent(cpCompraItemPercentualTotal(item)) === 100 ? 'text-success' : 'text-danger') + '">' + escapeHtml(formatPercentInput(cpCompraItemPercentualTotal(item))) + '%</span>' +
+            '<span class="' + (cpCompraItemTemRateioManual(item) ? 'text-success' : 'text-muted') + '">' + escapeHtml(cpCompraItemRateioModo(item)) + '</span>' +
             '</div>' +
             '<div class="text-end d-none d-md-block">' +
             '<small class="text-muted d-block extra-small text-uppercase">Total do Item</small>' +
@@ -1913,11 +1954,13 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
     if (!tamanhos.length) {
         return '<div class="cp-compra-empty-nested">Nenhum tamanho informado.</div>';
     }
+    const item = cpCompraItens[itemIndex] || { tamanhos: tamanhos };
     return '<div class="accordion cp-compra-tamanhos-accordion" id="cp-tamanhos-' + itemIndex + '">' +
         tamanhos.map(function (tamanho, tamanhoIndex) {
             const collapseId = 'cp-tamanho-collapse-' + itemIndex + '-' + tamanhoIndex;
             const aberto = tamanho._aberto !== false;
             const rateio = cpCompraTamanhoPercentualTotal(tamanho);
+            const rateioModo = cpCompraItemRateioModo(item);
             const tamanhoInativo = String(tamanho.Sts) === '0';
             const rateioClass = tamanhoInativo ? 'text-muted' : (roundCpPercent(rateio) === 100 ? 'text-success' : 'text-danger');
             const entregaResumo = tamanho.entrega ? formatDateBr(tamanho.entrega) : 'Não definida';
@@ -1933,7 +1976,7 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
                 '<div class="cp-compra-summary-metric"><small>Entrega</small><span class="cp-tamanho-summary-entrega">' + escapeHtml(entregaResumo) + '</span></div>' +
                 '<div class="cp-compra-summary-metric"><small>Quantidade</small><span class="cp-tamanho-summary-qtde">' + escapeHtml(tamanho.qtde_total || 0) + '</span></div>' +
                 '<div class="cp-compra-summary-metric"><small>Cores</small><span class="cp-tamanho-summary-cores">' + totalCores + '</span></div>' +
-                '<div class="cp-compra-summary-metric"><small>Rateio</small><span class="cp-tamanho-summary-rateio ' + rateioClass + '">' + escapeHtml(formatPercentInput(rateio)) + '%</span></div>' +
+                '<div class="cp-compra-summary-metric"><small>Rateio</small><span class="cp-tamanho-summary-rateio ' + rateioClass + '">' + escapeHtml(rateioModo) + '</span></div>' +
                 '<div class="cp-compra-summary-metric"><small>Total</small><span class="fw-bold text-success cp-tamanho-summary-total">R$ ' + escapeHtml(formatMoneyBr(tamanho.valor_total || 0)) + '</span></div>' +
                 '</div>' +
                 '<div class="d-flex gap-2 align-items-center cp-compra-tamanho-actions" onclick="event.stopPropagation();">' +
@@ -1948,11 +1991,27 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'entrega', 'Entrega', tamanho.entrega, 'col-12 col-md-2', 'date', tamanhoInativo) +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'qtde_total', 'Quantidade do tamanho', tamanho.qtde_total, 'col-12 col-md-2', 'number', tamanhoInativo) +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'valor_total', 'Total do tamanho', tamanho.valor_total, 'col-12 col-md-2', 'money', true) +
-                '<div class="col-12 col-md-2"><label class="form-label">Total do rateio</label><input class="form-control ' + rateioClass + ' fw-bold cp-tamanho-rateio-total" value="' + escapeAttr(formatPercentInput(rateio)) + '%" readonly></div>' +
+                '<div class="col-12 col-md-2"><label class="form-label">Rateio</label><input class="form-control ' + rateioClass + ' fw-bold cp-tamanho-rateio-total" value="' + escapeAttr(rateioModo) + '" readonly></div>' +
+                cpCompraPrecoPropostoMedioHtml(itemIndex, tamanhoIndex, tamanhoInativo) +
                 '</div>' +
                 renderCpCompraCores(itemIndex, tamanhoIndex, tamanho.cores || [], tamanhoInativo) +
                 '</div></div></section>';
         }).join('') + '</div>';
+}
+
+function cpCompraPrecoPropostoMedioHtml(itemIndex, tamanhoIndex, readonly) {
+    const disabled = (readonly || cpCompraReadonly) ? ' disabled' : '';
+    const readonlyAttr = (readonly || cpCompraReadonly) ? ' readonly' : '';
+    return '<div class="col-12 col-md-3">' +
+        '<label class="form-label">Preço proposto médio</label>' +
+        '<div class="input-group cp-money-input-group">' +
+        '<span class="input-group-text">R$</span>' +
+        '<input class="form-control cp-money-field text-end cp-preco-proposto-medio" type="text" inputmode="numeric" value="0,00"' + readonlyAttr +
+        ' data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '">' +
+        '<button class="btn btn-outline-primary btn-aplicar-preco-proposto" type="button"' + disabled +
+        ' onclick="aplicarCpCompraPrecoPropostoMedio(' + itemIndex + ', ' + tamanhoIndex + ')">Aplicar</button>' +
+        '</div>' +
+        '</div>';
 }
 
 function renderCpCompraCores(itemIndex, tamanhoIndex, cores, tamanhoInativo) {
@@ -2176,6 +2235,10 @@ function initCpCompraNestedFields() {
             if ($(this).hasClass('cp-compra-cor-field')) {
                 updateCpCompraNestedField($(this));
             }
+        })
+        .off('click.cpMoneySelect')
+        .on('click.cpMoneySelect', function () {
+            this.select();
         });
 }
 
@@ -2325,6 +2388,18 @@ function cpCompraTamanhoPercentualTotal(tamanho) {
     return (tamanho.cores || []).reduce(function (total, cor) {
         return String(cor.Sts) === '0' ? total : total + Number(cor.percentual || 0);
     }, 0);
+}
+
+function cpCompraItemTemRateioManual(item) {
+    return (item.tamanhos || []).some(function (tamanho) {
+        return (tamanho.cores || []).some(function (cor) {
+            return roundCpPercent(cor.percentual || 0) > 0;
+        });
+    });
+}
+
+function cpCompraItemRateioModo(item) {
+    return cpCompraItemTemRateioManual(item) ? 'Manual' : 'Automático';
 }
 
 function roundCpPercent(value) {
@@ -2598,26 +2673,24 @@ function deleteCpCompraFoto(fotoId) {
     if (!context || !cpCompraPodeAlterarFoto(context.origem)) {
         return;
     }
-    if (!confirm('Excluir esta foto?')) {
-        return;
-    }
-
-    $.post(window.cpComprasFormConfig.api + '?action=fotos_delete', {
-        pedido_id: context.pedidoId,
-        referencia: context.referencia,
-        fornecedor_id: context.fornecedorId,
-        origem: context.origem,
-        foto_id: fotoId
-    }, function (response) {
-        appAlert(response.message || 'Foto excluída.', 'success');
-        if (context.origem === 'kidstok') {
-            updateCpCompraFotoFlag(context.itemIndex, Number(response.count || 0) > 0 ? 1 : 0);
-        } else {
-            updateCpCompraFotoFornecedorFlag(context.itemIndex, Number(response.count || 0) > 0 ? 1 : 0);
-        }
-        loadCpCompraFotos();
-    }, 'json').fail(function (xhr) {
-        appAlert(xhr.responseJSON?.message || 'Não foi possível excluir a foto.', 'danger');
+    appConfirm('Excluir esta foto?', function () {
+        $.post(window.cpComprasFormConfig.api + '?action=fotos_delete', {
+            pedido_id: context.pedidoId,
+            referencia: context.referencia,
+            fornecedor_id: context.fornecedorId,
+            origem: context.origem,
+            foto_id: fotoId
+        }, function (response) {
+            appAlert(response.message || 'Foto excluída.', 'success');
+            if (context.origem === 'kidstok') {
+                updateCpCompraFotoFlag(context.itemIndex, Number(response.count || 0) > 0 ? 1 : 0);
+            } else {
+                updateCpCompraFotoFornecedorFlag(context.itemIndex, Number(response.count || 0) > 0 ? 1 : 0);
+            }
+            loadCpCompraFotos();
+        }, 'json').fail(function (xhr) {
+            appAlert(xhr.responseJSON?.message || 'Não foi possível excluir a foto.', 'danger');
+        });
     });
 }
 
@@ -3267,45 +3340,67 @@ function focusCpCompraQuantidadeTamanho(itemIndex) {
     }, 80);
 }
 
-function removeCpCompraItem(itemIndex) {
+function aplicarCpCompraPrecoPropostoMedio(itemIndex, tamanhoIndex) {
     syncCpCompraItensFromDom();
-    if (!confirm('Excluir este item?')) {
+    const item = cpCompraItens[itemIndex] || null;
+    const tamanho = item?.tamanhos?.[tamanhoIndex] || null;
+    if (!item || !tamanho || cpCompraReadonly || String(tamanho.Sts) === '0') {
         return;
     }
-    const openBefore = Object.assign({}, cpCompraItensOpen);
-    cpCompraItens.splice(itemIndex, 1);
-    cpCompraItensOpen = {};
-    cpCompraItens.forEach(function (_item, index) {
-        const previousIndex = index >= itemIndex ? index + 1 : index;
-        cpCompraItensOpen[index] = openBefore[previousIndex] === true;
+    const $field = $('.cp-preco-proposto-medio[data-item-index="' + itemIndex + '"][data-size-index="' + tamanhoIndex + '"]');
+    const preco = roundCpMoney(parseMoneyInput($field.val()));
+    if (preco <= 0) {
+        appAlert('Informe o preço proposto médio antes de aplicar.', 'warning');
+        $field.trigger('focus');
+        return;
+    }
+
+    (tamanho.cores || []).forEach(function (cor) {
+        cor.preco_proposta = preco;
     });
-    renderCpCompraItens();
-    recalcCpCompraTotal();
+    cpCompraItensOpen[itemIndex] = true;
+    tamanho._aberto = true;
+    recalcCpCompraItem(item);
+    updateCpCompraNestedDisplays(itemIndex);
+    $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
+}
+
+function removeCpCompraItem(itemIndex) {
+    syncCpCompraItensFromDom();
+    appConfirm('Excluir este item?', function () {
+        const openBefore = Object.assign({}, cpCompraItensOpen);
+        cpCompraItens.splice(itemIndex, 1);
+        cpCompraItensOpen = {};
+        cpCompraItens.forEach(function (_item, index) {
+            const previousIndex = index >= itemIndex ? index + 1 : index;
+            cpCompraItensOpen[index] = openBefore[previousIndex] === true;
+        });
+        renderCpCompraItens();
+        recalcCpCompraTotal();
+    });
 }
 
 function removeCpCompraTamanho(itemIndex, tamanhoIndex) {
     syncCpCompraItensFromDom();
-    if (!confirm('Excluir este tamanho?')) {
-        return;
-    }
-    cpCompraItens[itemIndex]?.tamanhos?.splice(tamanhoIndex, 1);
-    cpCompraItensOpen[itemIndex] = true;
-    renderCpCompraItens();
-    recalcCpCompraTotal();
+    appConfirm('Excluir este tamanho?', function () {
+        cpCompraItens[itemIndex]?.tamanhos?.splice(tamanhoIndex, 1);
+        cpCompraItensOpen[itemIndex] = true;
+        renderCpCompraItens();
+        recalcCpCompraTotal();
+    });
 }
 
 function removeCpCompraCor(itemIndex, tamanhoIndex, corIndex) {
     syncCpCompraItensFromDom();
-    if (!confirm('Excluir esta cor?')) {
-        return;
-    }
-    cpCompraItens[itemIndex]?.tamanhos?.[tamanhoIndex]?.cores?.splice(corIndex, 1);
-    cpCompraItensOpen[itemIndex] = true;
-    if (cpCompraItens[itemIndex]?.tamanhos?.[tamanhoIndex]) {
-        cpCompraItens[itemIndex].tamanhos[tamanhoIndex]._aberto = true;
-    }
-    renderCpCompraItens();
-    recalcCpCompraTotal();
+    appConfirm('Excluir esta cor?', function () {
+        cpCompraItens[itemIndex]?.tamanhos?.[tamanhoIndex]?.cores?.splice(corIndex, 1);
+        cpCompraItensOpen[itemIndex] = true;
+        if (cpCompraItens[itemIndex]?.tamanhos?.[tamanhoIndex]) {
+            cpCompraItens[itemIndex].tamanhos[tamanhoIndex]._aberto = true;
+        }
+        renderCpCompraItens();
+        recalcCpCompraTotal();
+    });
 }
 
 function syncCpCompraItensFromDom() {
@@ -3448,10 +3543,11 @@ function updateCpCompraNestedDisplays(itemIndex) {
     (item.tamanhos || []).forEach(function (tamanho, tamanhoIndex) {
         const $tamanho = $('.cp-compra-tamanho[data-item-index="' + itemIndex + '"][data-size-index="' + tamanhoIndex + '"]');
         const rateio = cpCompraTamanhoPercentualTotal(tamanho);
+        const rateioModo = cpCompraItemRateioModo(item);
         const tamanhoInativo = String(tamanho.Sts) === '0';
         const rateioValido = !tamanhoInativo && roundCpPercent(rateio) === 100;
         $tamanho.find('.cp-tamanho-rateio-total')
-            .val(formatPercentInput(rateio) + '%')
+            .val(rateioModo)
             .toggleClass('text-muted', tamanhoInativo)
             .toggleClass('text-success', rateioValido)
             .toggleClass('text-danger', !tamanhoInativo && !rateioValido);
@@ -3459,7 +3555,7 @@ function updateCpCompraNestedDisplays(itemIndex) {
         $tamanho.find('.cp-tamanho-summary-qtde').text(tamanho.qtde_total || 0);
         $tamanho.find('.cp-tamanho-summary-entrega').text(tamanho.entrega ? formatDateBr(tamanho.entrega) : 'Não definida');
         $tamanho.find('.cp-tamanho-summary-rateio')
-            .text(formatPercentInput(rateio) + '%')
+            .text(rateioModo)
             .toggleClass('text-muted', tamanhoInativo)
             .toggleClass('text-success', rateioValido)
             .toggleClass('text-danger', !tamanhoInativo && !rateioValido);
@@ -3468,6 +3564,7 @@ function updateCpCompraNestedDisplays(itemIndex) {
         (tamanho.cores || []).forEach(function (cor, corIndex) {
             const $cor = $('.cp-compra-cor[data-item-index="' + itemIndex + '"][data-size-index="' + tamanhoIndex + '"][data-color-index="' + corIndex + '"]');
             $cor.find('.cp-compra-cor-field[data-field="Qtde"]').val(parseInt(cor.Qtde || 0, 10));
+            $cor.find('.cp-compra-cor-field[data-field="preco_proposta"]').val(formatMoneyInput(cor.preco_proposta || 0));
             $cor.find('.cp-compra-cor-field[data-field="preco_franqueado"]').val(formatMoneyInput(cor.preco_franqueado || 0));
             $cor.find('.cp-compra-cor-field[data-field="preco_loja"]').val(formatMoneyInput(cor.preco_loja || 0));
             $cor.find('.cp-compra-cor-field[data-field="valor_total_produto"]').val(formatMoneyInput(cor.valor_total_produto || 0));
@@ -3514,6 +3611,54 @@ function formatMoneyInput(value) {
     return parseMoneyInput(value).toLocaleString('pt-BR', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
+    });
+}
+
+function normalizeCpCompraZeroQuantities() {
+    cpCompraItens.forEach(function (item) {
+        const itemAtivo = String(item.Sts) !== '0';
+        let tamanhosAtivos = 0;
+
+        (item.tamanhos || []).forEach(function (tamanho) {
+            const qtdeTotalTamanho = Math.max(0, parseInt(Number(tamanho.qtde_total || 0), 10) || 0);
+            const tamanhoAtivo = itemAtivo && String(tamanho.Sts) !== '0' && qtdeTotalTamanho > 0;
+            let coresAtivas = 0;
+
+            (tamanho.cores || []).forEach(function (cor) {
+                const corAtiva = tamanhoAtivo && String(cor.Sts) !== '0';
+                const qtde = Math.max(0, parseInt(Number(cor.Qtde || 0), 10) || 0);
+                if (!corAtiva || qtde <= 0) {
+                    cor.Sts = 0;
+                    cor.Qtde = 0;
+                    cor.valor_total_produto = 0;
+                    delete cor._qtde_manual;
+                    return;
+                }
+
+                cor.Sts = 1;
+                cor.Qtde = qtde;
+                coresAtivas += 1;
+            });
+
+            if (!tamanhoAtivo || coresAtivas === 0) {
+                tamanho.Sts = 0;
+                tamanho.qtde_total = 0;
+                tamanho.valor_total = 0;
+                tamanho.Itens = 0;
+            } else {
+                tamanho.Sts = 1;
+                tamanho.Itens = coresAtivas;
+                tamanhosAtivos += 1;
+            }
+        });
+
+        if (!itemAtivo || tamanhosAtivos === 0) {
+            item.Sts = 0;
+            item.total_qtde = 0;
+            item.total_produto = 0;
+        } else {
+            item.Sts = 1;
+        }
     });
 }
 

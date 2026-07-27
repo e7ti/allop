@@ -234,6 +234,64 @@ function cp_items_from_request(array $data): array
     return $items;
 }
 
+function cp_normalize_zero_quantities(array $items): array
+{
+    foreach ($items as &$item) {
+        $itemAtivo = (int) ($item['Sts'] ?? 1) !== 0;
+        $tamanhos = is_array($item['tamanhos'] ?? null) ? $item['tamanhos'] : [];
+        $tamanhosAtivos = 0;
+
+        foreach ($tamanhos as &$tamanho) {
+            $qtdeTotalTamanho = cp_decimal($tamanho['qtde_total'] ?? 0);
+            $tamanhoAtivo = $itemAtivo && (int) ($tamanho['Sts'] ?? 1) !== 0 && $qtdeTotalTamanho > 0;
+            $cores = is_array($tamanho['cores'] ?? null) ? $tamanho['cores'] : [];
+            $coresAtivas = 0;
+
+            foreach ($cores as &$cor) {
+                $corAtiva = $tamanhoAtivo && (int) ($cor['Sts'] ?? 1) !== 0;
+                if (!$corAtiva || cp_decimal($cor['Qtde'] ?? 0) <= 0) {
+                    $cor['Sts'] = 0;
+                    $cor['Qtde'] = 0;
+                    $cor['percentual'] = 0;
+                    $cor['valor_total_produto'] = 0;
+                    continue;
+                }
+
+                $cor['Sts'] = 1;
+                $coresAtivas += 1;
+            }
+            unset($cor);
+
+            if (!$tamanhoAtivo || $coresAtivas === 0) {
+                $tamanho['Sts'] = 0;
+                $tamanho['qtde_total'] = 0;
+                $tamanho['valor_total'] = 0;
+                $tamanho['Itens'] = 0;
+            } else {
+                $tamanho['Sts'] = 1;
+                $tamanho['Itens'] = $coresAtivas;
+                $tamanhosAtivos += 1;
+            }
+
+            $tamanho['cores'] = $cores;
+        }
+        unset($tamanho);
+
+        if (!$itemAtivo || $tamanhosAtivos === 0) {
+            $item['Sts'] = 0;
+            $item['total_qtde'] = 0;
+            $item['total_produto'] = 0;
+        } else {
+            $item['Sts'] = 1;
+        }
+
+        $item['tamanhos'] = $tamanhos;
+    }
+    unset($item);
+
+    return $items;
+}
+
 function cp_validate_unique_item_references(array $items): void
 {
     $used = [];
@@ -1908,6 +1966,7 @@ try {
         $id = (int) ($data['id'] ?? 0);
         $payload = cp_header_payload($data);
         $items = cp_items_from_request($data);
+        $items = cp_normalize_zero_quantities($items);
         cp_validate_item_percentuais($items);
         cp_validate_header($payload);
 

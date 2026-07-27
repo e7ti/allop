@@ -197,6 +197,7 @@ Regras atuais de compras:
 - a quantidade total do tamanho (`qtde_total`) é obrigatória nos tamanhos ativos e a soma das quantidades das cores deve bater com esse total;
 - a data de entrega do tamanho é opcional; quando não informada no campo do tamanho, deve ser gravada como `NULL` em `cp_compras_itens_tamanhos.entrega` e `cp_compras_itens_tamanhos.entrega_anterior`, sem assumir a data do item nem a data do pedido;
 - a quantidade da cor pode ser ajustada manualmente, mas a soma das cores não pode ultrapassar a quantidade total do tamanho;
+- na gravação do pedido, cores com quantidade zerada são inativadas automaticamente; se todas as cores do tamanho ficarem zeradas/inativas, o tamanho também é inativado; se todos os tamanhos do item ficarem zerados/inativos, o item também é inativado;
 - itens, tamanhos e cores possuem status ativo/inativo;
 - item, tamanho ou cor inativos não entram nas validações de quantidade/rateio; item ou tamanho inativo zera seus totais de quantidade e valor;
 - alterar o status do item aplica o mesmo status em cascata para seus tamanhos e cores;
