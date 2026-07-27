@@ -2018,42 +2018,42 @@ function renderCpCompraCores(itemIndex, tamanhoIndex, cores, tamanhoInativo) {
     if (!cores.length) {
         return '<div class="cp-compra-empty-nested">Nenhuma cor informada para este tamanho.</div>';
     }
-    return '<div class="accordion cp-compra-cores-accordion">' + cores.map(function (cor, corIndex) {
-        const collapseId = 'cp-cor-collapse-' + itemIndex + '-' + tamanhoIndex + '-' + corIndex;
-        const aberto = cor._aberto !== false;
+    return '<div class="table-responsive cp-compra-cores-grid">' +
+        '<table class="table table-sm table-striped align-middle mb-0 cp-compra-cores-table">' +
+        '<thead><tr>' +
+        '<th>SKU</th>' +
+        '<th>Cor</th>' +
+        '<th class="text-end" style="width: 120px;">Quantidade</th>' +
+        '<th class="text-end" style="width: 170px;">Valor proposto</th>' +
+        '<th class="text-end">Fornecedor</th>' +
+        '<th class="text-end">Franqueado</th>' +
+        '<th class="text-end">Loja</th>' +
+        '<th class="text-end">Total</th>' +
+        '<th style="width: 112px;">Status</th>' +
+        '<th class="text-end" style="width: 132px;">Ações</th>' +
+        '</tr></thead><tbody>' +
+        cores.map(function (cor, corIndex) {
         const temLogPreco = Number(cor.tem_log_preco_iteracao || 0) === 1;
         const temLogQtde = Number(cor.tem_log_qtde_iteracao || 0) === 1;
-        return '<section class="accordion-item cp-compra-cor" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '" data-color-index="' + corIndex + '">' +
-            '<div class="accordion-header cp-compra-cor-header' + ((temLogPreco || temLogQtde) ? ' cp-preco-alterado-header' : '') + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
-            '<div class="cp-compra-cor-title"><strong>Cor ' + escapeHtml(cor.cor || (corIndex + 1)) + '</strong>' +
+        const readonlyCor = tamanhoInativo || cpCompraReadonly;
+        const rowClass = (temLogPreco || temLogQtde) ? ' class="cp-compra-cor cp-preco-alterado-header"' : ' class="cp-compra-cor"';
+        return '<tr' + rowClass + ' data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '" data-color-index="' + corIndex + '">' +
+            '<td data-label="SKU"><span class="fw-semibold">' + escapeHtml(cor.sku || '-') + '</span></td>' +
+            '<td data-label="Cor"><span class="fw-semibold">' + escapeHtml(cor.cor || 'Cor ' + (corIndex + 1)) + '</span>' +
             '<small class="d-block text-muted">Rateio: <span class="cp-cor-summary-percentual">' + escapeHtml(formatPercentInput(cor.percentual || 0)) + '%</span></small>' +
-            renderCpCompraAlteracaoBadges(temLogPreco, temLogQtde) + '</div>' +
-            '<div class="cp-compra-cor-summary">' +
-            '<div class="cp-compra-summary-metric"><small>Quantidade</small><span class="cp-cor-summary-qtde">' + escapeHtml(cor.Qtde || 0) + '</span></div>' +
-            '<div class="cp-compra-summary-metric"><small>Status</small>' + cpCompraStatusBadge(cor.Sts) + '</div>' +
-            '<div class="cp-compra-summary-metric"><small>Preço proposto</small><span class="cp-cor-summary-preco-proposta">R$ ' + escapeHtml(formatMoneyBr(cor.preco_proposta || 0)) + '</span></div>' +
-            '<div class="cp-compra-summary-metric"><small>Preço fornecedor</small><span class="cp-cor-summary-preco-fornecedor">R$ ' + escapeHtml(formatMoneyBr(cor.preco_fornecedor || 0)) + '</span></div>' +
-            '<div class="cp-compra-summary-metric"><small>Preço franqueado</small><span class="cp-cor-summary-preco-franqueado">R$ ' + escapeHtml(formatMoneyBr(cor.preco_franqueado || 0)) + '</span></div>' +
-            '<div class="cp-compra-summary-metric"><small>Preço loja</small><span class="cp-cor-summary-preco-loja">R$ ' + escapeHtml(formatMoneyBr(cor.preco_loja || 0)) + '</span></div>' +
-            '<div class="cp-compra-summary-metric"><small>Total da cor</small><span class="fw-bold text-success cp-cor-summary-total">R$ ' + escapeHtml(formatMoneyBr(cor.valor_total_produto || 0)) + '</span></div>' +
-            '</div>' +
-            '<div class="d-flex gap-2 align-items-center cp-compra-cor-actions" onclick="event.stopPropagation();">' +
+            renderCpCompraAlteracaoBadges(temLogPreco, temLogQtde) + '</td>' +
+            '<td data-label="Quantidade">' + cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'Qtde', 'Quantidade', cor.Qtde, '', 'number', readonlyCor) + '</td>' +
+            '<td data-label="Valor proposto">' + cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_proposta', 'Valor proposto', cor.preco_proposta, '', 'money', readonlyCor) + '</td>' +
+            '<td data-label="Fornecedor" class="text-end"><span class="cp-cor-summary-preco-fornecedor">R$ ' + escapeHtml(formatMoneyBr(cor.preco_fornecedor || 0)) + '</span></td>' +
+            '<td data-label="Franqueado" class="text-end"><span class="cp-cor-summary-preco-franqueado">R$ ' + escapeHtml(formatMoneyBr(cor.preco_franqueado || 0)) + '</span></td>' +
+            '<td data-label="Loja" class="text-end"><span class="cp-cor-summary-preco-loja">R$ ' + escapeHtml(formatMoneyBr(cor.preco_loja || 0)) + '</span></td>' +
+            '<td data-label="Total" class="text-end"><span class="fw-bold text-success cp-cor-summary-total">R$ ' + escapeHtml(formatMoneyBr(cor.valor_total_produto || 0)) + '</span></td>' +
+            '<td data-label="Status">' + cpCompraCorStatusGrid(itemIndex, tamanhoIndex, corIndex, cor.Sts, tamanhoInativo) + '</td>' +
+            '<td data-label="Ações" class="text-end"><div class="d-flex gap-2 justify-content-end cp-compra-cor-actions">' +
             '<button class="btn btn-sm btn-outline-secondary btn-price-log" type="button" title="Visualizar última alteração de preços" onclick="openCpCompraCorLog(' + itemIndex + ', ' + tamanhoIndex + ', ' + corIndex + ')">Preços</button>' +
             ((cpCompraReadonly || tamanhoInativo) ? '' : '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir cor" aria-label="Excluir cor" onclick="removeCpCompraCor(' + itemIndex + ', ' + tamanhoIndex + ', ' + corIndex + ')"></button>') +
-            '</div></div>' +
-            '<div id="' + collapseId + '" class="accordion-collapse collapse cp-compra-cor-collapse' + (aberto ? ' show' : '') + '" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '" data-color-index="' + corIndex + '">' +
-            '<div class="accordion-body"><div class="row g-2">' +
-            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'sku', 'SKU', cor.sku, 'col-12 col-md-3', 'text', true) +
-            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'cor', 'Cor', cor.cor, 'col-12 col-md-3', 'text', true) +
-            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'Qtde', 'Quantidade', cor.Qtde, 'col-12 col-md-2', 'number', tamanhoInativo) +
-            cpCompraCorStatus(itemIndex, tamanhoIndex, corIndex, cor.Sts, 'col-12 col-md-2', tamanhoInativo) +
-            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_proposta', 'Preço proposto', cor.preco_proposta, 'col-12 col-md-3', 'money', tamanhoInativo) +
-            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_fornecedor', 'Preço fornecedor', cor.preco_fornecedor, 'col-12 col-md-3', 'money', true) +
-            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_franqueado', 'Preço franqueado', cor.preco_franqueado, 'col-12 col-md-3', 'money', true) +
-            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_loja', 'Preço loja', cor.preco_loja, 'col-12 col-md-3', 'money', true) +
-            cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'valor_total_produto', 'Total da cor', cor.valor_total_produto, 'col-12 col-md-3', 'money', true) +
-            '</div></div></div></section>';
-    }).join('');
+            '</div></td></tr>';
+    }).join('') + '</tbody></table></div>';
 }
 
 function cpCompraTamanhoInput(itemIndex, tamanhoIndex, name, label, value, colClass, type, readonly) {
@@ -2075,6 +2075,9 @@ function cpCompraNestedInput(level, itemIndex, tamanhoIndex, corIndex, name, lab
     const className = 'form-control cp-compra-' + level + '-field' + (isMoney ? ' cp-money-field text-end' : '') + (isPercent ? ' cp-percentual-field text-end' : '') + destaqueClass;
     const attrs = cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, name);
     const input = '<input class="' + className + '" type="' + inputType + '"' + inputMode + readonlyAttr + ' value="' + displayValue + '" ' + attrs + '>';
+    if (!colClass) {
+        return isMoney ? moneyInputGroup(input, true) : input;
+    }
     return '<div class="' + colClass + '"><label class="form-label">' + label + '</label>' + (isMoney ? moneyInputGroup(input, false) : input) + '</div>';
 }
 
@@ -2092,6 +2095,14 @@ function cpCompraCorStatus(itemIndex, tamanhoIndex, corIndex, value, colClass, r
         cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, 'Sts') + disabled + '>' +
         '<option value="1"' + (String(value) !== '0' ? ' selected' : '') + '>Ativo</option>' +
         '<option value="0"' + (String(value) === '0' ? ' selected' : '') + '>Inativo</option></select></div>';
+}
+
+function cpCompraCorStatusGrid(itemIndex, tamanhoIndex, corIndex, value, readonly) {
+    const disabled = (readonly || cpCompraReadonly) ? ' disabled' : '';
+    return '<select class="form-select form-select-sm cp-compra-cor-field" ' +
+        cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, 'Sts') + disabled + '>' +
+        '<option value="1"' + (String(value) !== '0' ? ' selected' : '') + '>Ativo</option>' +
+        '<option value="0"' + (String(value) === '0' ? ' selected' : '') + '>Inativo</option></select>';
 }
 
 function cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, name) {

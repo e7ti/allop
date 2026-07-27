@@ -1457,6 +1457,26 @@ body {
     padding-right: 0.5rem;
 }
 
+.cp-compras-form-wide .cp-compra-cores-grid {
+    overflow-x: auto !important;
+}
+
+.cp-compras-form-wide .cp-compra-cores-table {
+    min-width: 1120px;
+}
+
+.cp-compras-form-wide .cp-compra-cores-table th,
+.cp-compras-form-wide .cp-compra-cores-table td {
+    vertical-align: middle;
+}
+
+.cp-compras-form-wide .cp-compra-cores-table .input-group-sm .input-group-text,
+.cp-compras-form-wide .cp-compra-cores-table .form-control,
+.cp-compras-form-wide .cp-compra-cores-table .form-select {
+    font-size: 0.78rem;
+    min-height: 31px;
+}
+
 .cp-compras-form-wide .cp-compra-referencia-select + .select2-container {
     min-width: 100%;
 }
