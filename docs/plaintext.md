@@ -1,121 +1,105 @@
-# ALLOP — Arquitetura e padrões do sistema
-# PROJETO ALLOP
+# ALLOP - Arquitetura, regras e padrões do sistema
 
-**Projeto correto para manutenção, correções e novos desenvolvimentos:** `D:\E7TI\PHP\allop`
+**Projeto correto para manutenção:** `D:\E7TI\PHP\allop`  
 **Atenção:** não usar `D:\E7TI\PHP\appf` para demandas do Allop.
 
-**Documento-base:** 01/06/2026
-**Última revisão do código:** 20/07/2026
-**Última revisão do `banco.sql`:** 15/07/2026
-**Escopo revisado:** aplicação PHP, APIs, banco principal, banco de fotos, seed, assets e módulos existentes.
+**Documento-base:** 01/06/2026  
+**Última revisão do código:** 28/07/2026  
+**Última revisão do `banco.sql`:** 15/07/2026  
+**Última revisão do `banco_fotos.sql`:** 19/06/2026  
+**Escopo conferido:** aplicação PHP, APIs, telas, assets, seed, banco principal, banco de fotos e documentação existente.
 
 ## 1. Objetivo
 
-Este documento descreve o estado atual do sistema Allop e os padrões que devem ser preservados em novas implementações.
+Este documento descreve o estado atual do sistema Allop e os padrões que devem ser preservados em manutenções, correções e novos desenvolvimentos.
 
-As informações abaixo foram conferidas diretamente no código. Quando houver divergência entre uma regra planejada e a implementação atual, a divergência está registrada em **Pontos de atenção conhecidos**.
+As informações foram conferidas diretamente no projeto em `D:\E7TI\PHP\allop`. Quando há diferença entre uma intenção original e o comportamento implementado, a diferença está registrada em **Pontos de atenção conhecidos**.
 
 ## 2. Visão geral
 
-O Allop é uma aplicação web responsiva em PHP puro, com:
+O Allop é uma aplicação web responsiva em PHP puro, com telas renderizadas no servidor e APIs PHP retornando JSON para operações de CRUD e fluxos específicos.
 
-- renderização das telas no servidor;
-- sessão PHP para autenticação;
+Principais características:
+
+- PHP procedural, sem framework backend;
+- autenticação por sessão PHP;
 - PDO para acesso ao MySQL;
-- APIs PHP que respondem JSON;
-- Bootstrap 5.3.6, jQuery 3.7.1 e Select2 4.1.0-rc.0 distribuídos localmente;
-- CSS e JavaScript compartilhados;
-- menu dinâmico baseado no perfil do usuário;
-- bancos separados para dados operacionais e fotos.
+- banco principal separado do banco de fotos;
+- telas em `mod/`;
+- endpoints em `api/`;
+- Bootstrap, jQuery e Select2 distribuídos localmente em `assets/vendor/`;
+- Dompdf instalado via Composer para geração de PDF;
+- menu dinâmico por perfil;
+- dashboard de compras;
+- módulo de compras com pedido, itens, tamanhos, cores, rateio, fotos, e-mail e workflow.
 
 Fluxo principal:
 
 ```text
 index.php
-  ├─ usuário sem sessão → login.php → api/seguranca/auth.php
-  └─ usuário autenticado → dashboard.php
-                               └─ telas em mod/
-                                    └─ chamadas AJAX para api/
-                                         ├─ db()       → banco principal
-                                         └─ db_fotos() → banco de fotos
+  -> sem sessão: login.php -> api/seguranca/auth.php
+  -> com sessão: dashboard.php
+       -> telas em mod/
+            -> chamadas AJAX para api/
+                 -> db()       -> banco principal
+                 -> db_fotos() -> banco de fotos
 ```
 
 ## 3. Estrutura do projeto
 
 | Caminho | Responsabilidade |
 | --- | --- |
-| `index.php` | Direciona para login ou dashboard conforme a sessão. |
+| `index.php` | Redireciona para login ou dashboard conforme a sessão. |
 | `login.php` | Tela pública de autenticação. |
 | `logout.php` | Encerra a sessão. |
-| `dashboard.php` | Painel inicial autenticado com indicadores e gráficos de pedidos de compra. |
-| `alterar_senha_admin.php` | Tela específica para alteração da senha do usuário `admin`. |
+| `dashboard.php` | Painel autenticado com indicadores, gráficos e últimos pedidos de compra. |
+| `alterar_senha_admin.php` | Tela específica para trocar a senha do usuário `admin`. |
 | `config/` | Configuração geral e conexões PDO. |
 | `includes/` | Autenticação, permissões, layout e envio SMTP. |
-| `mod/` | Telas dos módulos. |
+| `mod/` | Telas dos módulos do sistema. |
 | `api/` | Endpoints JSON usados pelas telas. |
-| `assets/css/` | Estilo global. |
-| `assets/js/` | Comportamento global e regras das telas. |
+| `assets/css/` | CSS global do sistema. |
+| `assets/js/` | JavaScript global, CRUD genérico e lógica de compras. |
 | `assets/vendor/` | Bootstrap, jQuery e Select2 locais. |
-| `assets/img/` | Logos e imagens do sistema. |
-| `scripts/` | Rotinas administrativas, incluindo o seed. |
+| `assets/img/` | Logos e imagens institucionais. |
+| `scripts/` | Rotinas administrativas, incluindo `seed_aplicacoes.php`. |
 | `docs/` | Documentação e registros auxiliares. |
-| `banco.sql` | Referência do banco principal. |
-| `banco_fotos.sql` | Referência do banco de fotos. |
+| `banco.sql` | Dump estrutural do banco principal. |
+| `banco_fotos.sql` | Dump estrutural do banco de fotos. |
 
-### Arquivos compartilhados centrais
+## 4. Arquivos compartilhados centrais
 
 | Arquivo | Função |
 | --- | --- |
-| `config/app.php` | Define nome da aplicação, caminho-base, `app_url()` e escape HTML com `h()`. |
-| `config/database.php` | Define `db()` e `db_fotos()`, ambas conexões PDO com prepared statements nativos. |
-| `includes/auth.php` | Inicializa sessão e fornece login, logout, usuário atual e proteção de páginas. |
-| `includes/permissions.php` | Consulta as aplicações visíveis para o perfil e monta os grupos do menu. |
-| `includes/layout.php` | Renderiza header, menu, conteúdo, footer e inclui os assets locais. |
-| `includes/smtp_mailer.php` | Cliente SMTP implementado com socket, STARTTLS/SSL e autenticação opcional. |
-| `api/bootstrap.php` | Inicialização comum das APIs, leitura da requisição e resposta JSON. |
-| `assets/js/app.js` | CRUD genérico, Select2, validações, estado de salvamento dos formulários, empresas, e-mail e todo o fluxo de compras. |
-| `assets/css/style.css` | Tema, responsividade, cards, grids, formulários, botões e módulo de compras. |
+| `config/app.php` | Define `APP_NAME`, `APP_DATE`, `BASE_PATH`, `BASE_URL`, `app_url()` e `h()`. |
+| `config/database.php` | Define `db()` e `db_fotos()` com PDO, erro por exceção e prepared statements nativos. |
+| `includes/auth.php` | Inicializa sessão e fornece `current_user()`, `require_login()`, `login_user()` e `logout_user()`. |
+| `includes/permissions.php` | Monta o menu com base em `seg_perfil_permissoes.visualizar`. |
+| `includes/layout.php` | Renderiza header, menu, área de conteúdo, footer e assets locais. |
+| `includes/smtp_mailer.php` | Cliente SMTP por socket com SSL implícito, STARTTLS e autenticação opcional. |
+| `api/bootstrap.php` | Inicialização comum das APIs, `api_response()`, `request_data()` e `api_require_login()`. |
+| `assets/js/app.js` | CRUD genérico, Select2, alertas, confirmação, sincronização de grids e fluxo completo de compras. |
+| `assets/css/style.css` | Tema global, responsividade, botões com ícones, grids, dashboard e componentes de compras. |
+| `scripts/seed_aplicacoes.php` | Seed de menus, aplicações, Administrador, permissões e estruturas auxiliares. |
 
-### 3.1 Componentes, Bibliotecas e Recursos Utilizados
+## 5. Bibliotecas e recursos
 
-| Componente | Local | Uso no projeto |
+| Componente | Local | Uso |
 | --- | --- | --- |
-| PHP puro | arquivos `.php` | Renderização server-side das telas, APIs JSON, sessão, regras de negócio e geração de PDF. |
-| PDO MySQL | `config/database.php` | Acesso ao banco principal (`db()`) e ao banco de fotos (`db_fotos()`) com prepared statements. |
-| Bootstrap 5.3.6 | `assets/vendor/bootstrap/` | Grid responsivo, navbar, dropdowns, botões, cards, tabelas, modais, accordions, collapse, alertas e utilitários visuais. |
-| jQuery 3.7.1 | `assets/vendor/jquery/jquery.min.js` | Base das chamadas Ajax, manipulação de DOM e integração com Select2. |
-| Select2 4.1.0-rc.0 | `assets/vendor/select2/` | Campos de pesquisa remota e relacionamentos pesquisáveis em listas e formulários. |
-| CSS global próprio | `assets/css/style.css` | Tema visual, responsividade, ícones por classe, badges, grids, dashboard, formulários e componentes específicos de compras. |
-| JavaScript global próprio | `assets/js/app.js` | CRUD genérico, grids, validações, Select2, popups, estado de salvamento, fluxo do Pedido, rateio, fotos e workflow. |
-| Dompdf 3.1 | `composer.json`, `vendor/`, `api/compras/cp_compras_pdf.php` | Geração do PDF do pedido de compra em A4 paisagem. |
-| Cliente SMTP próprio | `includes/smtp_mailer.php` | Envio de e-mails por socket SMTP com SSL/STARTTLS e autenticação opcional. |
-| ViaCEP | chamado pelo navegador em `assets/js/app.js` | Consulta de CEP no cadastro de Empresas. |
-| Google Fonts / Poppins | `assets/css/style.css` | Fonte visual principal do sistema. É dependência externa carregada por `@import`. |
-| Imagens institucionais | `assets/img/` | Logos Allop e KidStok no layout. |
-| Composer autoload | `vendor/autoload.php` | Carregamento das classes do Dompdf e dependências. |
+| PHP puro | arquivos `.php` | Renderização server-side, APIs JSON, sessão, regras e PDF. |
+| PDO MySQL | `config/database.php` | Acesso ao banco principal e ao banco de fotos. |
+| Bootstrap 5.3.6 | `assets/vendor/bootstrap/` | Layout, grid, navbar, dropdowns, botões, cards, modais e utilitários. |
+| jQuery 3.7.1 | `assets/vendor/jquery/jquery.min.js` | AJAX, manipulação de DOM e integração com Select2. |
+| Select2 4.1.0-rc.0 | `assets/vendor/select2/` | Campos pesquisáveis locais e remotos. |
+| Dompdf 3.1 | `composer.json`, `vendor/` | PDF do pedido de compra. |
+| ViaCEP | navegador, em `assets/js/app.js` | Preenchimento de endereço no cadastro de Empresas. |
+| Google Fonts/Poppins | `assets/css/style.css` | Fonte visual principal via `@import`. |
 
-Componentes visuais internos padronizados:
+Observação: a regra geral do projeto é manter bibliotecas locais. As exceções atuais são ViaCEP no navegador e Google Fonts no CSS.
 
-| Componente interno | Classes/arquivos principais | Uso |
-| --- | --- | --- |
-| Layout base | `includes/layout.php`, `.app-shell`, `.app-content`, `.page-heading` | Estrutura comum de header, menu, conteúdo e footer. |
-| Menu dinâmico | `menu_items()`, `menu_icon()`, `.menu-main-link`, `.menu-svg` | Menu por perfil, com ícones SVG inline por grupo/aplicação. |
-| Cards | `.card-slim`, `.dashboard-tile`, `.dashboard-chart-card` | Agrupamento visual de formulários, dashboards e painéis. |
-| Grids/tabelas | `.table-custom`, `.grid-shell`, `.grid-filter`, `.filter-inline` | Listagens responsivas com filtros e ações. |
-| Botões com ícone | `.btn-new`, `.btn-save`, `.btn-sync`, `.btn-edit`, `.btn-view`, `.btn-delete`, `.btn-print`, `.btn-photo`, `.btn-send-proposal`, `.btn-approve`, `.btn-reject`, `.btn-price-log` | Ações globais e ações específicas do Pedido. O botão `Sincronizar` deve usar `.btn-sync` com ícone de duas setas em formato circular. |
-| Popups/alertas | `appAlert()`, `appOkAlert()`, Bootstrap Modal/Alert | Mensagens de sucesso, aviso, erro e confirmação visual com OK quando necessário. |
-| Estado de salvamento | `setFormSaving()` | Desabilita botões Salvar e mostra indicador de processamento durante requisições. |
-| Badges de status | `.dashboard-grid-badge`, `.badge-status-*`, `.cp-status-badge`, `.cp-localizacao-badge` | Destaques de status, publicação, localização e ativo/inativo. |
-| Destaque do Pedido | `.cp-pedido-status-hero`, `.cp-pedido-status-badge`, `.cp-pedido-status-meta` | Bloco no topo do Pedido com status em destaque, publicação e localização. |
-| Dashboard de compras | `.dashboard-status-bars`, `.dashboard-donut`, `.dashboard-compra-tile` | Cards, gráfico por status, resumo financeiro e últimos pedidos. |
-| Accordion do Pedido | `.cp-compra-item`, `.cp-compra-tamanho`, `.cp-compra-cor` | Hierarquia item -> tamanho -> cor com resumos quando retraído. |
-| Rateio do Pedido | `#cp-rateio-modal`, `.cp-rateio-*` | Modal para informar percentuais por cor e quantidades por tamanho. |
-| Fotos do Pedido | `#cp-fotos-modal`, `.cp-fotos-grid`, `.cp-foto-card` | Visualização, inclusão e exclusão de fotos conforme status/localização. |
-| Log de preços/quantidade | `#cp-cor-log-modal`, `.cp-preco-alterado-*`, `.cp-log-preco-atualizado` | Comparativo do último log da cor e destaque de preço/quantidade alterados. |
+## 6. Módulos implementados
 
-## 4. Módulos implementados
-
-### 4.1 Segurança
+### 6.1 Segurança
 
 | Tela | API |
 | --- | --- |
@@ -127,15 +111,36 @@ Componentes visuais internos padronizados:
 
 APIs auxiliares:
 
-- `api/seguranca/auth.php`: valida usuário ativo e senha;
-- `api/seguranca/options.php`: fornece opções remotas para Select2;
-- `api/seguranca/admin_senha.php`: altera a senha do login `admin`;
-- `api/seguranca/crud.php`: CRUD genérico das entidades de Segurança;
-- `api/seguranca/perfil_aplicacoes.php`: manutenção em lote das permissões do perfil.
+| API | Ações/comportamento |
+| --- | --- |
+| `api/seguranca/auth.php` | Valida login ativo, aceita senha com `password_verify()` e texto puro legado, cria sessão e retorna redirect. |
+| `api/seguranca/options.php` | Fornece opções Select2 para perfis, aplicações, menus, usuários, CDs e empresas. |
+| `api/seguranca/admin_senha.php` | Altera a senha do login `admin` com `password_hash()`. Não exige sessão atualmente. |
+| `api/seguranca/crud.php` | CRUD genérico para entidades de segurança. |
+| `api/seguranca/perfil_aplicacoes.php` | Lista perfis, lista permissões por perfil, salva permissões em lote e exclui permissões do perfil. |
 
-As senhas novas são gravadas com `password_hash()`. O login aceita tanto hash quanto texto puro legado.
+Entidades aceitas pelo CRUD genérico:
 
-### 4.2 Configurações
+- `usuarios`;
+- `perfis`;
+- `aplicacoes`;
+- `perfil_aplicacoes`;
+- `usuarios_permissoes`;
+- `menus`.
+
+Permissões previstas:
+
+- `visualizar`;
+- `inserir`;
+- `editar`;
+- `excluir`;
+- `imprimir`;
+- `exportar`;
+- `processar`.
+
+Observação importante: em `seg_usuarios_permissoes`, o código usa as grafias legadas `edtiar` e `imprirmir`.
+
+### 6.2 Configurações
 
 | Funcionalidade | Telas | API |
 | --- | --- | --- |
@@ -143,115 +148,204 @@ As senhas novas são gravadas com `password_hash()`. O login aceita tanto hash q
 | Empresas | `mod/configuracoes/empresas/` | `api/configuracoes/empresas.php` |
 | Configurações de e-mail | `mod/configuracoes/configuracoes_email/` | `api/configuracoes/configuracoes_email.php` |
 
-Empresas possuem validações de CNPJ, CEP, código IBGE, UF, DDD e telefones. A tela consulta o serviço ViaCEP diretamente no navegador para preencher endereço.
+Empresas CD:
 
-O cadastro de Configurações de e-mail usa a tabela `config_email`, a mesma utilizada pelo envio de propostas de compra.
-Na API de Empresas, o campo `ibge` é tratado de forma compatível com o schema atual: se a coluna existir em `empresas`, o valor é lido e gravado; se não existir, o campo é retornado vazio e ignorado na persistência.
+- ações `list`, `get`, `save` e `delete`;
+- `Codigo` é informado ou calculado por `MAX(Codigo) + 1`;
+- valida `NomeCD` e `Status`.
 
-### 4.3 Compras
+Empresas:
+
+- ações `list`, `get`, `save` e `delete`;
+- `Codigo` é informado ou calculado por `MAX(Codigo) + 1`;
+- valida CD, Nome, Fantasia, CNPJ e Status;
+- valida CNPJ pelo dígito verificador;
+- normaliza CNPJ, IE, CEP, IBGE, DDD e telefones para dígitos;
+- valida CEP com 8 dígitos, IBGE com 7 dígitos, DDD com 2 dígitos e UF válida;
+- detecta se a coluna `ibge` existe antes de consultar ou persistir;
+- usa ViaCEP no frontend para auxiliar o preenchimento de endereço.
+
+Configurações de e-mail:
+
+- ações `list`, `get`, `save` e `delete`;
+- persiste na tabela `config_email`;
+- usa `cd_id`, `empresa_id`, `NomeConta`, `Habilitado`, `Servidor`, `Porta`, `ModoAutenticado`, `ModoSSL`, `Email`, `Senha` e `Status`;
+- é usada pelo envio de propostas de compra.
+
+### 6.3 Compras
 
 | Arquivo | Responsabilidade |
 | --- | --- |
-| `mod/compras/cp_compras_lista.php` | Pesquisa e lista até 200 pedidos. |
-| `mod/compras/cp_compras_form.php` | Cabeçalho, itens, variações, rateio, fotos e workflow do pedido. |
-| `api/compras/cp_compras.php` | Regras de consulta, persistência, fotos, e-mail e workflow. |
-| `api/compras/cp_compras_pdf.php` | Gera o PDF completo do pedido em A4 paisagem. |
+| `mod/compras/cp_compras_lista.php` | Pesquisa e lista pedidos de compra. |
+| `mod/compras/cp_compras_form.php` | Cabeçalho, itens, tamanhos, cores, rateio, fotos, logs e workflow. |
+| `api/compras/cp_compras.php` | API principal de compras. |
+| `api/compras/cp_compras_pdf.php` | Gera PDF completo do pedido em A4 paisagem. |
 
-O formulário organiza os dados em accordions hierárquicos: cada item contém
-seus tamanhos, e cada tamanho contém suas cores. O rateio pode ser informado no
-item, por cor, e todos os tamanhos ativos do item devem ter a mesma quantidade
-e o mesmo conjunto de cores para permitir o rateio percentual. A quantidade
-total fica no tamanho (`qtde_total`). Quando não houver percentual de rateio no
-item, a quantidade do tamanho é dividida igualmente entre suas cores ativas; se
-houver percentual informado, ele deve totalizar 100% e passa a orientar a
-distribuição das cores.
-
-Principais ações da API:
+#### Ações da API de compras
 
 | Ação | Comportamento |
 | --- | --- |
-| `list` | Lista pedidos com CD, empresa, fornecedor, localização, total e status. |
-| `get` | Carrega cabeçalho e a hierarquia de itens, tamanhos, cores, rateios e indicadores de fotos. |
-| `save` | Insere ou atualiza o pedido e mantém itens, tamanhos, cores e rateios por update quando já existem. |
-| `delete` | Exclui um pedido quando ele não está com o fornecedor. |
-| `options` | Pesquisa CD, empresa, fornecedor ou referência. |
-| `defaults` | Retorna CD/empresa automaticamente quando existe somente um registro. |
-| `referencia` | Carrega uma referência e suas combinações de tamanho/cor de `pf_colecao`. |
-| `fotos_list` | Lista fotos da KidStok em `cp_compras_fotos_ks`. |
+| `options` | Pesquisa CDs, empresas, fornecedores e referências para Select2. |
+| `defaults` | Retorna CD/empresa automaticamente quando existe apenas um registro. |
+| `list` | Lista até 200 pedidos por número, status, localização, fornecedor, empresa ou CD. |
+| `get` | Carrega cabeçalho, itens, tamanhos, cores, rateios, indicadores de fotos e último log de cor. |
+| `referencia` | Carrega referência do fornecedor a partir de `pf_colecao`, com tamanhos e cores. |
+| `save` | Insere ou atualiza pedido, itens, tamanhos, cores e rateios em transação. |
+| `delete` | Exclui pedido editável e seus filhos. |
+| `fotos_list` | Lista fotos KidStok em `cp_compras_fotos_ks`. |
 | `fotos_fornecedor_list` | Lista fotos do fornecedor em `cp_compras_fotos`. |
-| `fotos_upload` / `fotos_delete` | Mantém fotos da KidStok conforme status/localização do pedido e sincroniza o indicador do item. Fotos do fornecedor são somente visualizadas no Pedido. |
-| `enviar_proposta` | Envia e-mail, publica o pedido e transfere a localização para `Fornecedor`. |
-| `aprovar` | Aprova somente pedido publicado. Com fotos do fornecedor, marca como `Aprovado` e mantém em `KidStok`; sem fotos, marca como `Aprovado Aguardando Foto Fornecedor`, envia e-mail ao fornecedor, transfere a localização para `Fornecedor` e incrementa a iteração. |
-| `recusar` | Marca como `Recusado`, registra motivo e devolve para `KidStok`. |
+| `fotos_upload` | Recebe upload. Para origem padrão `kidstok`, grava em `cp_compras_fotos_ks`; origem `fornecedor` existe no contrato, mas é bloqueada pela regra de mutabilidade. |
+| `fotos_delete` | Exclui foto. Fotos do fornecedor são bloqueadas para exclusão pela tela interna. |
+| `cor_log_ultimo` | Retorna o último log da cor do pedido, comparando quantidade e preços. |
+| `enviar_proposta` | Envia e-mail, publica o pedido, muda localização para `Fornecedor` e incrementa iteração. |
+| `aprovar` | Aprova pedido publicado; pode aprovar direto ou colocar em aguardando foto do fornecedor. |
+| `recusar` | Recusa pedido publicado após interação com fornecedor, exige motivo e devolve para `KidStok`. |
 
-O botão **Imprimir PDF** é exibido em pedidos já gravados. O relatório contém dados do cabeçalho, auditoria, itens, tamanhos, cores, preços, markups e um resumo do rateio das cores de cada tamanho. A geração usa Dompdf instalado localmente pelo Composer.
+#### Estrutura funcional do pedido
 
-Regras atuais de compras:
+O pedido é organizado nesta hierarquia:
+
+```text
+cp_compras
+  -> cp_compras_itens
+       -> cp_compras_itens_tamanhos
+            -> cp_compras_itens_cores
+       -> cp_compras_itens_rateios
+```
+
+O frontend apresenta os itens em accordions. Cada item contém tamanhos, cada tamanho contém cores, e o rateio percentual é aplicado por cor no item quando informado.
+
+Regras de gravação e validação:
 
 - CD, empresa, fornecedor e data do pedido são obrigatórios;
-- o frontend exige pelo menos um item confirmado;
+- o frontend exige ao menos um item confirmado;
 - uma referência não pode aparecer mais de uma vez no mesmo pedido;
-- os percentuais das cores do item podem ficar zerados quando não houver rateio percentual; nesse caso, a quantidade do tamanho é dividida igualmente entre as cores ativas;
-- quando qualquer percentual de rateio for informado no item, os percentuais das cores devem totalizar 100%;
-- todos os tamanhos ativos de um item devem ter a mesma quantidade e o mesmo conjunto de cores para permitir rateio percentual;
-- a quantidade total do tamanho (`qtde_total`) é obrigatória nos tamanhos ativos e a soma das quantidades das cores deve bater com esse total;
-- a data de entrega do tamanho é opcional; quando não informada no campo do tamanho, deve ser gravada como `NULL` em `cp_compras_itens_tamanhos.entrega` e `cp_compras_itens_tamanhos.entrega_anterior`, sem assumir a data do item nem a data do pedido;
-- a quantidade da cor pode ser ajustada manualmente, mas a soma das cores não pode ultrapassar a quantidade total do tamanho;
-- na gravação do pedido, cores com quantidade zerada são inativadas automaticamente; se todas as cores do tamanho ficarem zeradas/inativas, o tamanho também é inativado; se todos os tamanhos do item ficarem zerados/inativos, o item também é inativado;
-- itens, tamanhos e cores possuem status ativo/inativo;
-- item, tamanho ou cor inativos não entram nas validações de quantidade/rateio; item ou tamanho inativo zera seus totais de quantidade e valor;
-- alterar o status do item aplica o mesmo status em cascata para seus tamanhos e cores;
-- alterar o status do tamanho aplica o mesmo status em cascata para suas cores;
-- o total é recalculado a partir de quantidade × preço proposto;
-- itens, tamanhos, cores e rateios existentes são atualizados ao editar; somente registros removidos da hierarquia são excluídos;
-- a exclusão de item, tamanho, cor ou foto exige confirmação do usuário;
-- ao salvar, o botão **Salvar** fica bloqueado com indicador de processamento até o término da requisição;
-- ao focar inputs do formulário de compras ou do modal de rateio, o conteúdo é selecionado automaticamente;
-- pedido localizado no `Fornecedor` fica somente para visualização e impressão; não pode ser editado, excluído, aprovado ou recusado;
-- pedido com status `Aprovado` ou `Recusado` fica somente para visualização; não permite editar, excluir, salvar, alterar itens/tamanhos/cores nem inserir/excluir fotos;
-- pedido com status `Aprovado Aguardando Foto Fornecedor` fica sem edição do pedido; se a localização for `KidStok`, permite apenas inserir/excluir fotos KidStok; se a localização for `Fornecedor`, permite apenas visualização;
-- quando o pedido está com status `Aprovado Aguardando Foto Fornecedor` e localização `KidStok`, o formulário exibe o botão **Enviar Fornecedor**, que executa o mesmo workflow de `enviar_proposta`;
-- o formulário do Pedido exibe um bloco de destaque no topo com status, publicação e localização, usando as mesmas cores dos badges dos grids/dashboard;
-- fotos do fornecedor (`cp_compras_fotos`) são somente leitura no Pedido; a KidStok não insere nem exclui fotos do fornecedor por esta tela;
-- pedido não publicado não pode ser aprovado;
-- pedido aprovado sem fotos do fornecedor fica com status `Aprovado Aguardando Foto Fornecedor`, é enviado ao fornecedor por e-mail e fica aguardando fotos;
-- o envio de proposta usa a configuração ativa de `config_email` para o CD/empresa;
-- os destinatários são usuários ativos de `pf_usuarios` vinculados ao fornecedor em `pf_usuario_fornecedor`;
-- fotos são armazenadas em Base64 no banco de fotos; `cp_compras_fotos_ks` guarda fotos KidStok e `cp_compras_fotos` guarda fotos do fornecedor;
-- no dashboard e na lista de pedidos, pedidos aprovados, recusados, aguardando foto ou localizados no `Fornecedor` devem usar ação de visualizar (`btn-view`), não ação de editar (`btn-edit`).
+- item ativo deve ter ao menos um tamanho ativo;
+- tamanho ativo deve ter nome, quantidade total maior que zero e ao menos uma cor ativa;
+- tamanho duplicado no mesmo item é bloqueado;
+- cor duplicada no mesmo tamanho é bloqueada;
+- percentual de rateio deve estar entre 0% e 100%;
+- se algum percentual for informado, o total do rateio deve fechar 100%;
+- os tamanhos que participam do rateio devem ter o mesmo conjunto de cores;
+- o percentual de uma mesma cor deve ser igual em todos os tamanhos que participam do rateio;
+- a soma das quantidades das cores deve bater com `qtde_total` do tamanho;
+- quantidades zeradas inativam cores automaticamente;
+- tamanho sem cor ativa ou com quantidade total zero é inativado;
+- item sem tamanho ativo é inativado;
+- item ou tamanho inativo zera seus totais de quantidade e valor;
+- somente itens/tamanhos/cores ativos entram nas validações de quantidade e rateio;
+- o total do pedido é recalculado no servidor pela soma dos totais das cores ativas;
+- registros existentes são atualizados; registros removidos da hierarquia são excluídos;
+- datas de entrega vazias nos tamanhos são gravadas como `NULL`, sem assumir a data do item nem a data do pedido.
 
-### 4.4 Dashboard
+#### Status oficiais de compras
 
-O `dashboard.php` exibe cinco cards de indicadores de pedidos de compra (status Aberto, Aprovado, Aprovado Aguardando Foto Fornecedor e Recusado, mais o total geral), um gráfico de barras por status, um resumo financeiro em rosca (donut) e a grid dos últimos 10 pedidos.
+`cp_compras.status_id` referencia `cp_compras_status.id`. O campo textual `Sts` ainda aparece em respostas e HTML para manter compatibilidade com o frontend, mas o código atual consulta e persiste por `status_id`.
 
-- os títulos dos quatro cards de status vêm de `cp_compras_status.descricao_compras` (o mesmo campo usado na coluna Status do grid de últimos pedidos), com fallback para os textos padrão do seed quando a tabela estiver vazia ou indisponível;
-- cada card também exibe o valor total (R$) somado dos pedidos daquele status, calculado na mesma consulta agregada dos contadores;
-- o fundo de cada card usa a cor do respectivo status (laranja para Aberto, verde para Aprovado, azul-claro para Aguardando Foto, vermelho para Recusado); título, valor numérico e valor em R$ ficam em branco para contraste sobre o fundo colorido, e o rótulo `PEDIDOS` (`page-kicker`) fica em preto;
-- o card "Total de pedidos" não está vinculado a um status específico e mantém o azul padrão do sistema.
-- na grid de últimos pedidos, a ação usa ícone de edição apenas para pedidos abertos e editáveis; pedidos aprovados, recusados, aguardando foto ou localizados no `Fornecedor` usam ícone de visualização.
+| id | `descricao_compras` | `descricao_portal` | Uso |
+| --- | --- | --- | --- |
+| 0 | Aberto | Aberto | Pedido em edição. |
+| 1 | Aprovado Aguardando Foto Fornecedor | Aprovado Aguardando Foto Fornecedor | Pedido aprovado comercialmente, aguardando fotos. |
+| 2 | Aprovado | Aprovado | Pedido aprovado. |
+| 3 | Recusado | Recusado | Pedido recusado com motivo. |
 
-## 5. Autenticação, menu e permissões
+O catálogo de status é garantido por `cp_ensure_status_catalog()`, que faz upsert dos IDs 0 a 3. Isso corrige textos divergentes nos IDs canônicos sem remover linhas extras.
 
-### Autenticação
+Regras de status, localização e workflow:
+
+- pedidos novos entram como `Aberto`, `Publicado = 0` e `Localizacao = KidStok`;
+- pedido localizado em `Fornecedor` não permite edição, exclusão, aprovação ou recusa pela tela interna;
+- pedido `Aprovado` ou `Recusado` fica somente para visualização e impressão;
+- pedido `Aprovado Aguardando Foto Fornecedor` não permite edição do pedido;
+- se `Aprovado Aguardando Foto Fornecedor` estiver em `KidStok`, o formulário pode exibir `Enviar Fornecedor`;
+- aprovação exige pedido publicado;
+- recusa exige pedido publicado, iteração maior que zero e motivo;
+- `enviar_proposta` usa `config_email`, `urls_allop` com módulo `apPF` e usuários ativos do fornecedor em `pf_usuarios`/`pf_usuario_fornecedor`;
+- o e-mail é enviado em texto puro e HTML pelo cliente SMTP próprio;
+- localizações válidas no fluxo atual são `KidStok` e `Fornecedor`;
+- a localização não deve ser concatenada ao status.
+
+#### Fotos
+
+O banco de fotos é acessado por `db_fotos()`.
+
+| Tabela | Origem | Uso na tela interna |
+| --- | --- | --- |
+| `cp_compras_fotos_ks` | KidStok | Listagem, upload e exclusão quando o pedido permite fotos KidStok. |
+| `cp_compras_fotos` | Fornecedor | Listagem/visualização; upload e exclusão são bloqueados pela regra interna. |
+
+Regras atuais:
+
+- fotos são armazenadas em Base64;
+- as fotos são relacionadas por pedido, referência do fornecedor, fornecedor e sequência;
+- não há chave estrangeira entre o banco principal e o banco de fotos;
+- a flag `cp_compras_itens.Foto` é sincronizada pela contagem de fotos KidStok;
+- o formulário mostra indicadores separados para fotos KidStok e fotos Fornecedor;
+- fotos do fornecedor são consideradas para definir se um pedido aguardando foto pode avançar para `Aprovado`;
+- o modal de fotos altera título, listagem e permissão conforme a origem (`kidstok` ou `fornecedor`).
+
+#### PDF
+
+`api/compras/cp_compras_pdf.php`:
+
+- exige sessão por `require_login()`;
+- usa Dompdf com fonte DejaVu Sans;
+- gera A4 paisagem;
+- não permite recursos remotos (`isRemoteEnabled = false`);
+- exibe dados do cabeçalho, auditoria, status, localização, itens, tamanhos, cores, preços, markups e resumo de rateio;
+- abre o PDF no navegador com `Attachment = false`.
+
+### 6.4 Dashboard
+
+`dashboard.php` exibe:
+
+- card de pedidos abertos;
+- card de pedidos aprovados;
+- card de pedidos aprovados aguardando foto do fornecedor;
+- card de pedidos recusados;
+- card de total geral;
+- gráfico de barras por status;
+- donut financeiro;
+- grid dos últimos 10 pedidos.
+
+Detalhes:
+
+- os status usam os IDs 0, 1, 2 e 3 de `cp_compras_status`;
+- os títulos dos cards vêm de `descricao_compras`, com fallback em texto padrão;
+- cada card mostra quantidade e valor total em reais;
+- a grid usa botão de edição apenas para pedido aberto e editável;
+- pedidos fechados, aguardando foto ou localizados em `Fornecedor` usam botão de visualização.
+
+## 7. Autenticação, sessão, menu e permissões
+
+Sessão:
 
 - a sessão guarda `id`, `nome`, `login` e `perfil_id`;
 - páginas internas chamam `require_login()`;
 - APIs internas normalmente chamam `api_require_login()`;
-- respostas de API seguem o formato `{"success": true|false, ...}`;
-- falhas usam os códigos HTTP 401, 403, 404, 422 ou 500, conforme o caso;
-- o campo de senha da tela de login tem um botão para mostrar/ocultar a senha digitada; a alternância é somente client-side (JavaScript) e não altera o contrato da API de autenticação.
+- login aceita senha com hash e senha em texto puro legado;
+- novas senhas são gravadas com `password_hash()`.
 
-### Menu
+Formato de resposta das APIs:
 
-O menu é formado por:
+```json
+{
+  "success": true
+}
+```
 
-- `seg_menu`: grupo principal;
-- `seg_aplicacoes`: nome, rota, grupo e ordem;
-- `seg_perfil_permissoes.visualizar`: define se a aplicação aparece para o perfil.
+Falhas usam `success: false` e normalmente incluem `message`. Os status HTTP usados incluem 401, 403, 404, 422 e 500.
 
-A consulta ordena por `seg_menu.id`, `seg_aplicacoes.ordem` e nome. Os grupos `Principal` e `Sair` não vêm do banco: a logo abre o dashboard e o link Sair é fixo no layout.
+Menu:
 
-IDs previstos pelo seed:
+- `seg_menu` define grupos;
+- `seg_aplicacoes` define nome, rota, menu e ordem;
+- `seg_perfil_permissoes.visualizar = 1` define o que aparece no menu;
+- `Principal` e `Sair` não vêm do banco no layout atual;
+- o link da logo abre `dashboard.php`;
+- o link `Sair` é fixo no header.
+
+IDs de menu previstos pelo seed:
 
 | ID | Menu |
 | --- | --- |
@@ -264,147 +358,80 @@ IDs previstos pelo seed:
 | 90 | Segurança |
 | 98 | Ajuda |
 
-Permissões cadastradas:
+## 8. Banco de dados
 
-- visualizar;
-- inserir;
-- editar;
-- excluir;
-- imprimir;
-- exportar;
-- processar.
+### 8.1 Banco principal
 
-## 6. Bancos de dados
+`config/database.php` aponta o sistema para o banco principal de desenvolvimento. Credenciais existem no arquivo de configuração, mas não devem ser copiadas para novas documentações, commits ou mensagens.
 
-### 6.1 Banco principal
+`banco.sql` contém:
 
-A configuração executada pelo sistema está em `config/database.php` e atualmente aponta para o banco **`allop_devel`**. Credenciais não devem ser copiadas para documentação, commits ou mensagens; a fonte atual é o arquivo de configuração e, idealmente, deve migrar para variáveis de ambiente.
+- 240 tabelas;
+- 67 triggers;
+- dump estrutural, sem dados.
 
-O `banco.sql` foi atualizado a partir do banco real `allop_devel` em
-15/07/2026. O arquivo é um dump estrutural completo do schema principal, sem
-dados, com 240 tabelas e 67 triggers.
+Principais grupos de tabelas:
 
-Principais grupos de tabelas presentes no `banco.sql`:
-
-| Domínio | Tabelas |
+| Domínio | Tabelas principais |
 | --- | --- |
 | Segurança | `seg_menu`, `seg_aplicacoes`, `seg_perfil`, `seg_perfil_permissoes`, `seg_usuarios`, `seg_usuarios_permissoes` |
-| Compras | `cp_compras`, `cp_compras_status`, `cp_compras_emails`, `cp_compras_itens`, `cp_compras_itens_log`, `cp_compras_itens_tamanhos`, `cp_compras_itens_tamanhos_log`, `cp_compras_itens_cores`, `cp_compras_itens_cores_log`, `cp_compras_itens_rateios` |
-| Configurações Allop | `empresas`, `empresas_cd`, `config_email`, `urls_allop`, `situacao` |
+| Compras | `cp_compras`, `cp_compras_status`, `cp_compras_emails`, `cp_compras_itens`, `cp_compras_itens_tamanhos`, `cp_compras_itens_cores`, `cp_compras_itens_rateios` |
+| Logs de compras | `cp_compras_itens_log`, `cp_compras_itens_tamanhos_log`, `cp_compras_itens_cores_log` |
+| Configurações | `empresas`, `empresas_cd`, `config_email`, `urls_allop`, `situacao` |
 | Portal fornecedor | `pf_colecao`, `pf_usuarios`, `pf_usuarios_copy`, `pf_usuario_fornecedor` |
-| Catálogo/produtos | tabelas `produtos*`, `KidStok`, `cfops`, `cests_ncm`, `st_*` e tabelas auxiliares |
-| ERP/operacional | tabelas `compras*`, `nfe_*`, `romaneios_*`, `fechamento*`, `provisorios*`, `transportadoras*`, `veiculos*` e demais tabelas legadas |
+| Catálogo/ERP legado | tabelas `produtos*`, `KidStok`, `cfops`, `cests_ncm`, `st_*`, `compras*`, `nfe_*`, `romaneios_*`, `fechamento*`, `provisorios*`, `transportadoras*`, `veiculos*` e auxiliares |
 
-O modelo registrado no arquivo organiza as variações de um item na hierarquia
-`cp_compras_itens` → `cp_compras_itens_tamanhos` → `cp_compras_itens_cores`.
-Cada registro de `cp_compras_itens_rateios` relaciona um item a uma cor
-(`compras_itens_id` + `cor`) e armazena o percentual do rateio daquela cor no
-item. Quando houver rateio percentual, os percentuais devem totalizar 100% por
-item. Cada tamanho mantém sua própria quantidade total em `qtde_total`; a
-quantidade da cor é calculada por `qtde_total do tamanho × percentual da cor no
-item / 100`. Quando o item não tiver percentuais informados, a quantidade do
-tamanho é dividida igualmente entre as cores ativas do tamanho. A entrega do
-tamanho é independente da entrega do item: se o campo do tamanho ficar vazio,
-`cp_compras_itens_tamanhos.entrega` e `entrega_anterior` devem permanecer
-`NULL`.
-
-A tabela `cp_compras` ganhou a coluna `status_id`, com chave estrangeira para
-a nova tabela `cp_compras_status` (`id`, `descricao_compras`,
-`descricao_portal`), no lugar da antiga coluna `Sts` (varchar) que existia
-nesta definição de tabela. O código (`api/compras/cp_compras.php`,
-`dashboard.php`, `api/compras/cp_compras_pdf.php`) já persiste e consulta o
-pedido por `status_id`; toda leitura faz `LEFT JOIN cp_compras_status` e expõe
-o texto como `descricao_compras` (mantido com o nome de campo `Sts` na
-resposta da API e no HTML, para preservar o contrato com o frontend). Ver
-seed automático do catálogo em **Pontos de atenção conhecidos**.
-
-Status oficiais de `cp_compras_status`:
-
-| id | descricao_compras | descricao_portal | Uso no sistema |
-| --- | --- | --- | --- |
-| 0 | Aberto | Aberto | Pedido em aberto, ainda em andamento. |
-| 1 | Aprovado Aguardando Foto Fornecedor | Aprovado Aguardando Foto Fornecedor | Pedido aprovado comercialmente, mas ainda aguardando fotos do fornecedor. |
-| 2 | Aprovado | Aprovado | Pedido aprovado com fotos do fornecedor quando exigidas. |
-| 3 | Recusado | Recusado | Pedido recusado, com motivo, data e usuário da recusa. |
-
-Nas telas internas do sistema, incluindo `cp_compras_lista`, dashboard,
-formulário e PDF, o status apresentado ao usuário deve ser sempre
-`cp_compras_status.descricao_compras`. O campo `descricao_portal` é reservado
-para o portal do fornecedor. A localização do pedido (`KidStok` ou
-`Fornecedor`) deve aparecer somente nos campos/colunas de localização; ela não
-deve ser concatenada ao status nem gerar rótulos como `Aberto Aguardando
-KidStok` ou `Aberto Aguardando Fornecedor`.
-
-As tabelas de log registram o snapshot anterior de itens, tamanhos e cores em
-atualizações. Elas também armazenam `Iteracao` e `Localizacao` do pedido no
-momento da alteração e agora possuem chave estrangeira `ON DELETE CASCADE`
-para a tabela de origem (antes não havia esse vínculo):
-
-| Tabela de log | Origem | Observação |
-| --- | --- | --- |
-| `cp_compras_itens_log` | `cp_compras_itens` | Alimentada quando mudam `total_qtde`, `Sts` ou `entrega`. |
-| `cp_compras_itens_tamanhos_log` | `cp_compras_itens_tamanhos` | Alimentada a cada update do tamanho. |
-| `cp_compras_itens_cores_log` | `cp_compras_itens_cores` | Alimentada quando mudam `Qtde`, `preco_proposta` ou `Sts`. |
-
-O `banco.sql` inclui 67 triggers do schema principal. As triggers relevantes
-ao fluxo atual de pedidos de compra são:
+Triggers relevantes para compras:
 
 - `cp_compras_itens_after_update`;
-- `cp_compras_itens_tamanhos_after_update`;
-- `cp_compras_itens_cores_after_update`.
+- `cp_compras_itens_cores_after_update`;
+- `cp_compras_itens_tamanhos_after_update`.
 
-Nesta revisão, `cp_compras_itens_after_update` foi corrigido para gravar
-`compras_itens_id` no log; antes gravava incorretamente o valor de origem na
-coluna `id` (chave primária autoincrementada do próprio log).
+Essas triggers gravam snapshots em tabelas de log usando os dados antigos (`OLD`) e consultam `Iteracao`/`Localizacao` no pedido.
 
-Após a leitura do banco em 15/07/2026, ainda existem referências legadas para
-tabelas que não apareceram como tabelas base no schema principal exportado:
-`romaneios_tabela_preco`, `tbestados`, `tbgrupos`, `tbmarcas`, `tbmedidas` e
-`tbmodelos`.
+### 8.2 Banco de fotos
 
-### 6.2 Banco de fotos
+`banco_fotos.sql` contém duas tabelas:
 
-A conexão `db_fotos()` aponta para **`allop_devel_fotos`**.
+- `cp_compras_fotos`;
+- `cp_compras_fotos_ks`.
 
-| Tabela | Uso |
-| --- | --- |
-| `cp_compras_fotos` | Fotos recebidas do fornecedor; no Pedido são somente visualizadas pela KidStok. |
-| `cp_compras_fotos_ks` | Fotos mantidas pela KidStok; leitura, inclusão e exclusão quando o Pedido permite alteração de fotos KidStok. |
+As tabelas têm estrutura equivalente para armazenar fotos em Base64, com campos de pedido, referência do fornecedor, fornecedor, sequência e foto.
 
-As fotos são relacionadas por pedido, referência do fornecedor, fornecedor e sequência. Não há chave estrangeira entre os dois bancos. No Pedido, a permissão para alterar fotos KidStok depende de status e localização: pedido `Aprovado` ou `Recusado` é somente visualização; pedido `Aprovado Aguardando Foto Fornecedor` só permite fotos KidStok quando a localização está em `KidStok`; pedido localizado no `Fornecedor` é somente visualização.
+## 9. Seed de aplicações
 
-## 7. Seed de aplicações
-
-O script `scripts/seed_aplicacoes.php`:
+`scripts/seed_aplicacoes.php`:
 
 - garante o perfil `Administrador`;
-- cadastra ou atualiza menus e aplicações;
-- concede todas as permissões ao Administrador quando ainda não existe registro;
-- cria o usuário inicial `admin` somente se ele ainda não existir;
-- remove rotas antigas de e-mail;
-- remove as aplicações de `Principal` e `Sair`;
+- remove a aplicação antiga `dashboard.php` do menu;
+- remove menus vazios `Principal` e `Sair`;
+- renomeia `Seguranca` para `Segurança` quando aplicável;
+- cria ou atualiza menus canônicos;
+- corrige rotas antigas de e-mail;
+- cadastra aplicações existentes;
+- concede todas as permissões ao Administrador quando a permissão ainda não existe;
+- cria o usuário `admin` apenas se ele ainda não existir;
 - cria tabelas auxiliares com `CREATE TABLE IF NOT EXISTS`;
-- recria as triggers de log de itens, tamanhos e cores.
+- recria triggers de log de compras com `DROP TRIGGER IF EXISTS` + `CREATE TRIGGER`;
+- imprime `Seed executado com sucesso.`.
 
-Aplicações registradas atualmente:
+Aplicações registradas pelo seed:
 
-- Usuários;
+- Usuarios;
 - Perfis;
-- Aplicações;
-- Perfil x Aplicações;
-- Usuário x Aplicações;
+- Aplicacoes;
+- Perfil x Aplicacoes;
+- Usuario x Aplicacoes;
 - Empresas CD;
 - Empresas;
 - E-mail;
 - Pedidos de Compra.
 
-O seed é idempotente na maior parte das operações, mas altera dados de menu e executa DDL. Deve ser executado conscientemente e com backup.
+O seed é parcialmente idempotente, mas executa DDL e altera dados de menu/permissões. Deve ser usado com backup e consciência do ambiente.
 
-## 8. Padrões para novas implementações
+## 10. Padrões para novas implementações
 
-### Cabeçalho PHP
-
-Todo arquivo de aplicação deve declarar:
+Cabeçalho obrigatório em aplicações:
 
 ```php
 /*
@@ -415,76 +442,91 @@ $aplicacao_nome = "nome_do_arquivo.php";
 $aplicacao_descricao = "Descrição objetiva da aplicação.";
 ```
 
-### Telas
+Telas:
 
-- manter telas dentro de `mod/<modulo>/`;
-- usar os sufixos `_lista.php` e `_form.php`;
+- criar telas dentro de `mod/<modulo>/`;
+- usar sufixos `_lista.php` e `_form.php`;
 - chamar `require_login()` antes de renderizar conteúdo interno;
 - usar `render_header()` e `render_footer()`;
-- colocar o botão Voltar junto ao título e Salvar no rodapé do formulário;
-- em formulários com envio Ajax, bloquear o botão **Salvar** durante a requisição, exibir indicador de processamento e liberar o botão somente após a conclusão;
-- reutilizar `card-slim`, `table-custom`, `grid-filter` e `filter-inline`;
-- usar Select2 nos filtros e relacionamentos pesquisáveis;
-- em telas de listagem/grid, exibir o botão **Sincronizar** com a classe `.btn-sync`, mantendo o ícone padrão de duas setas em formato circular; a ação deve recarregar a grid mantendo o filtro selecionado quando houver filtro ativo;
-- exibir ações de grid com as classes globais de ícone;
-- manter responsividade para celular, tablet e desktop;
-- cadastrar novas telas no seed e conceder a permissão apropriada.
+- usar APIs PHP para acessar banco;
+- não acessar banco diretamente a partir de tela quando for operação de CRUD;
+- usar Select2 em filtros e relacionamentos pesquisáveis;
+- usar `card-slim`, `table-custom`, `grid-filter` e `filter-inline`;
+- colocar Voltar junto ao título e Salvar no rodapé do formulário;
+- bloquear o botão Salvar durante requisições;
+- usar botões com classes globais (`btn-new`, `btn-save`, `btn-sync`, `btn-edit`, `btn-view`, `btn-delete`, `btn-print`, `btn-photo`);
+- manter responsividade em celular, tablet e desktop;
+- cadastrar novas telas no seed.
 
-### APIs
+APIs:
 
-- manter endpoints em `api/<modulo>/`;
+- criar endpoints em `api/<modulo>/`;
 - incluir `api/bootstrap.php`;
 - exigir sessão com `api_require_login()` nas APIs internas;
 - ler entrada por `request_data()`;
-- responder somente por `api_response()`;
+- responder por `api_response()`;
 - usar prepared statements;
 - validar dados também no servidor;
-- envolver operações compostas em transação;
-- não expor mensagens sensíveis de infraestrutura ao cliente.
+- usar transação em operações compostas;
+- evitar expor mensagens sensíveis de infraestrutura.
 
-### Frontend e visual
+Frontend:
 
-- não adicionar CDN; bibliotecas devem permanecer em `assets/vendor/`;
+- manter Bootstrap, jQuery e Select2 locais;
 - centralizar estilos em `assets/css/style.css`;
-- centralizar comportamento compartilhado em `assets/js/app.js`;
-- manter Poppins como fonte visual do sistema;
-- usar fundo de página `#f8f9fa`, cards brancos e laranja `#ff4500` como destaque;
-- usar campos compactos, borda `#dee2e6` e foco laranja;
-- manter espaçamento vertical compacto entre linhas de formulário; em cards de formulário, usar `--bs-gutter-y: 0.7rem` como referência e labels próximos dos campos;
-- preservar o comportamento mobile das tabelas em formato de cards;
-- evitar JavaScript inline extenso em novas telas.
+- centralizar comportamentos compartilhados em `assets/js/app.js`;
+- preservar Poppins como fonte visual enquanto a dependência externa existir;
+- manter fundo `#f8f9fa`, cards brancos e laranja `#ff4500` como destaque;
+- manter tabelas responsivas em formato de cards no mobile;
+- evitar JavaScript inline extenso em telas novas.
 
-### Banco
+Banco:
 
-- confirmar no schema real os nomes e tipos antes de programar;
-- usar `db()` para dados principais e `db_fotos()` exclusivamente para fotos;
-- não incluir credenciais em documentação nova;
+- confirmar nomes e tipos no schema real antes de programar;
+- usar `db()` para dados principais;
+- usar `db_fotos()` exclusivamente para fotos;
+- não documentar credenciais;
 - evitar DDL em rotinas de aplicação;
-- atualizar `banco.sql`/`banco_fotos.sql` quando uma mudança manual de schema for aprovada;
-- preservar os nomes legados quando a migração não fizer parte do escopo.
+- atualizar `banco.sql` e `banco_fotos.sql` quando uma mudança de schema for aprovada;
+- preservar nomes legados quando a migração não fizer parte do escopo.
 
-## 9. Pontos de atenção conhecidos
+## 11. Componentes visuais internos
 
-Estes itens foram encontrados nas revisões do código e do `banco.sql` até 15/07/2026 e seguem como atenção para próximas alterações:
+| Componente | Classes/funções | Uso |
+| --- | --- | --- |
+| Layout base | `.app-shell`, `.app-content`, `.page-heading` | Estrutura comum das telas. |
+| Menu | `menu_items()`, `menu_icon()`, `.menu-main-link`, `.menu-svg` | Menu por perfil com ícones SVG inline. |
+| Cards | `.card-slim`, `.dashboard-tile`, `.dashboard-chart-card` | Formulários, dashboards e painéis. |
+| Grids | `.table-custom`, `.grid-shell`, `.grid-filter`, `.filter-inline` | Listagens responsivas. |
+| Botões | `.btn-new`, `.btn-save`, `.btn-sync`, `.btn-edit`, `.btn-view`, `.btn-delete`, `.btn-print`, `.btn-photo` | Ações padronizadas com ícones por CSS. |
+| Alertas | `appAlert()`, `appOkAlert()`, `appConfirm()` | Mensagens e confirmação via Bootstrap Modal/Alert. |
+| Salvamento | `setFormSaving()` | Bloqueia botão e mostra processamento. |
+| Status | `.badge-status-*`, `.cp-localizacao-badge`, `.dashboard-grid-badge` | Badges de status, localização e publicação. |
+| Pedido | `.cp-pedido-status-hero`, `.cp-compra-item`, `.cp-compra-tamanho`, `.cp-compra-cor` | Status destacado e hierarquia de compra. |
+| Rateio | `#cp-rateio-modal`, `.cp-rateio-*` | Percentuais por cor e quantidades por tamanho. |
+| Fotos | `#cp-fotos-modal`, `.cp-fotos-grid`, `.cp-foto-card` | Listagem, upload, exclusão e preview de imagens. |
+| Log de cor | `#cp-cor-log-modal`, `.cp-preco-alterado-*` | Comparação de quantidade/preço com último log. |
 
-1. **Permissão incompleta:** o menu usa apenas permissões do perfil. `seg_usuarios_permissoes` não participa da montagem do menu, e as APIs não validam permissões de inserir, editar, excluir ou processar; validam apenas a sessão.
-2. **Dashboard sem filtro por permissão:** os indicadores de compras do dashboard ainda não variam conforme permissões do usuário.
-3. **Alteração de senha admin:** `api/seguranca/admin_senha.php` não chama `api_require_login()`.
-4. **Coluna divergente:** `banco.sql` define `seg_usuarios_permissoes.editar`, mas `api/seguranca/crud.php` usa `edtiar`. A coluna `imprirmir` está grafada dessa forma tanto no schema quanto no código.
-5. **Tabela de e-mail:** o módulo de Configurações e o envio de propostas usam `config_email`. O nome das telas e da API permanece `configuracoes_email` por compatibilidade de rota, mas a persistência é feita em `config_email`.
-6. **Coluna de empresa ausente:** a coluna `ibge` não existe em `empresas` no banco atual. A API de empresas detecta a coluna antes de consultar ou gravar; quando ela não existe, o campo é retornado vazio e não é persistido.
-7. **Referências legadas ausentes:** a leitura do schema encontrou referências para `romaneios_tabela_preco`, `tbestados`, `tbgrupos`, `tbmarcas`, `tbmedidas` e `tbmodelos`, que não apareceram como tabelas base no banco principal exportado.
-8. **Seed limitado:** o seed cria e ajusta apenas as estruturas necessárias para a aplicação Allop; ele não substitui o `banco.sql` completo do ERP legado.
-9. **Credenciais no código:** as conexões usam constantes versionadas em `config/database.php`; o recomendado é usar variáveis de ambiente.
-10. **Erros de API:** várias APIs devolvem diretamente `Throwable::getMessage()`, o que pode revelar detalhes do banco.
-11. **CSRF:** não há token CSRF nos formulários ou ações mutáveis.
-12. **Senha legada:** o login aceita senha em texto puro para compatibilidade, embora novas senhas sejam salvas com hash.
-13. **Transação entre bancos:** upload de fotos abre transações separadas nos dois bancos; não existe atomicidade distribuída caso apenas um commit conclua.
-14. **Dependências externas:** a busca de CEP usa ViaCEP pelo navegador e o CSS importa a fonte Poppins do Google Fonts. São as exceções atuais à regra de assets locais.
-15. **Tabela de backup sem uso:** `pf_usuarios_copy` está presente no `banco.sql` como cópia estrutural de `pf_usuarios`, sem qualquer referência no código; aparenta ser um artefato de backup/teste esquecido no dump.
-16. **Seed do catálogo de status:** `cp_compras_status` não tem dados no `banco.sql` (dump sem dados). `api/compras/cp_compras.php` semeia automaticamente as 4 linhas padrão (`Aberto`, `Aprovado Aguardando Foto Fornecedor`, `Aprovado`, `Recusado`, IDs 0-3) na primeira leitura se a tabela estiver vazia; se o ambiente já tiver essas linhas com texto diferente, `cp_status_id()` cai para `Aberto` como fallback.
+## 12. Pontos de atenção conhecidos
 
-## 10. Validação antes de entregar alterações
+1. **Permissão incompleta nas APIs:** o menu usa `visualizar` por perfil, mas as APIs não validam permissões específicas de inserir, editar, excluir, imprimir, exportar ou processar.
+2. **Permissões por usuário sem efeito no menu:** `seg_usuarios_permissoes` existe e possui telas, mas não participa da montagem do menu.
+3. **Dashboard sem filtro por permissão:** os indicadores de compras ainda não variam conforme permissões do usuário.
+4. **Troca de senha admin pública:** `api/seguranca/admin_senha.php` não chama `api_require_login()`.
+5. **Grafias legadas:** `seg_usuarios_permissoes` usa `edtiar` e `imprirmir` no código.
+6. **Credenciais no código:** `config/database.php` contém constantes versionadas; o recomendado é migrar para variáveis de ambiente.
+7. **Erros expostos:** várias APIs retornam `Throwable::getMessage()` diretamente ao cliente.
+8. **CSRF ausente:** não há token CSRF nos formulários ou ações mutáveis.
+9. **Senha legada aceita:** o login aceita texto puro para compatibilidade.
+10. **DDL no seed:** `seed_aplicacoes.php` cria tabelas auxiliares e recria triggers; isso deve ser executado com backup.
+11. **Transação entre bancos:** operações com fotos podem envolver banco principal e banco de fotos sem atomicidade distribuída.
+12. **Dependências externas:** ViaCEP e Google Fonts são dependências externas atuais.
+13. **`ibge` opcional em Empresas:** a API detecta a coluna; se ausente, ignora a persistência.
+14. **Referências legadas ausentes no dump:** foram identificadas referências para tabelas como `romaneios_tabela_preco`, `tbestados`, `tbgrupos`, `tbmarcas`, `tbmedidas` e `tbmodelos`, que não aparecem como tabelas base no `banco.sql`.
+15. **`pf_usuarios_copy`:** tabela presente no dump sem referência no código atual.
+16. **Status autocorrigidos por upsert:** `cp_ensure_status_catalog()` regrava os textos canônicos dos IDs 0 a 3 em `cp_compras_status`; alterações manuais nesses IDs podem ser sobrescritas.
+
+## 13. Validação antes de entregar alterações
 
 Para cada PHP alterado:
 
@@ -494,27 +536,27 @@ php -l caminho/do/arquivo.php
 
 Checklist:
 
-- conferir rotas relativas com a aplicação instalada em subpasta;
-- testar sessão expirada e respostas JSON de erro;
+- conferir rotas relativas quando a aplicação roda em subpasta;
+- testar sessão expirada e JSON de erro;
 - testar lista, filtro, inclusão, edição e exclusão;
-- testar o layout em celular, tablet e desktop;
+- testar layout em celular, tablet e desktop;
 - validar regras no frontend e na API;
-- verificar o perfil Administrador e o menu após mudanças no seed;
+- conferir perfil Administrador e menu após mudanças no seed;
 - testar rollback de operações compostas;
-- conferir os dois bancos quando houver fotos;
-- revisar o console do navegador e o log do PHP;
-- não sobrescrever alterações alheias ao escopo.
+- conferir banco principal e banco de fotos quando houver fotos;
+- revisar console do navegador e log do PHP;
+- não sobrescrever mudanças fora do escopo.
 
-## 11. Regra de manutenção deste documento
+## 14. Regra de manutenção deste documento
 
 Atualizar este arquivo sempre que houver:
 
 - novo módulo, tela ou endpoint;
 - alteração de menu ou permissão;
 - mudança no workflow de compras;
-- nova tabela, coluna ou conexão;
+- nova tabela, coluna, trigger ou conexão;
 - atualização de biblioteca;
 - mudança relevante no padrão visual;
-- correção de algum ponto de atenção conhecido.
+- correção de ponto de atenção conhecido.
 
-A documentação deve descrever o comportamento efetivamente presente no código, deixando requisitos futuros claramente identificados como planejados.
+A documentação deve sempre descrever o comportamento efetivamente presente no código. Requisitos futuros devem ficar marcados como planejados, não como implementados.
