@@ -1,4 +1,4 @@
-$(function () {
+﻿$(function () {
     $('.js-select2').select2({
         width: '100%',
         placeholder: 'Digite para pesquisar',
@@ -1090,6 +1090,7 @@ let cpCompraStatusDescricaoAtual = 'Aberto';
 let cpCompraFotoItemIndex = null;
 let cpCompraFotoOrigem = 'kidstok';
 let cpCompraRateioContext = null;
+let cpCompraItemActiveTabs = {};
 
 function cpLocalizacaoEhFornecedor(localizacao) {
     return String(localizacao || '').trim().toLocaleLowerCase() === 'fornecedor';
@@ -1280,6 +1281,7 @@ function initCpComprasForm() {
         cpCompraItens.push(emptyCpCompraItem(false));
         const itemIndex = cpCompraItens.length - 1;
         cpCompraItensOpen[itemIndex] = true;
+        cpCompraItemActiveTabs[itemIndex] = 'dados';
         renderCpCompraItens();
         focusCpCompraItemEditor(itemIndex, true);
     });
@@ -1330,6 +1332,18 @@ function initCpComprasForm() {
     $form.on('shown.bs.collapse hidden.bs.collapse', '.cp-compra-item-collapse', function (event) {
         cpCompraItensOpen[$(this).data('item-index')] = event.type === 'shown';
     });
+    $form.on('shown.bs.tab', '.cp-compra-item-tabs .nav-link', function (event) {
+        const $item = $(event.target).closest('.cp-compra-item');
+        const itemIndex = Number($item.data('item-index'));
+        const target = String($(event.target).data('bs-target') || '');
+        if (target.indexOf('cp-item-grade-') === 0 || target.indexOf('#cp-item-grade-') === 0) {
+            cpCompraItemActiveTabs[itemIndex] = 'grade';
+        } else if (target.indexOf('cp-item-fotos-') === 0 || target.indexOf('#cp-item-fotos-') === 0) {
+            cpCompraItemActiveTabs[itemIndex] = 'fotos';
+        } else {
+            cpCompraItemActiveTabs[itemIndex] = 'dados';
+        }
+    });
     $form.on('shown.bs.collapse hidden.bs.collapse', '.cp-compra-tamanho-collapse', function (event) {
         const item = cpCompraItens[Number($(this).data('item-index'))];
         const tamanho = item?.tamanhos?.[Number($(this).data('size-index'))];
@@ -1357,6 +1371,7 @@ function initCpComprasForm() {
                 cpCompraReadonly = cpCompraPedidoSomenteVisualizacao(row);
                 cpCompraItens = (row.items || []).map(mapCpCompraItemFromApi);
                 cpCompraItensOpen = {};
+                cpCompraItemActiveTabs = {};
                 applyCpCompraReadonly($form);
                 updateCpCompraWorkflowButtons(row);
                 renderCpCompraItens();
@@ -1380,6 +1395,7 @@ function initCpComprasForm() {
         loadCpCompraDefaults($form);
         cpCompraItens = [];
         cpCompraItensOpen = {};
+        cpCompraItemActiveTabs = {};
         updateCpCompraWorkflowButtons({ Localizacao: 'KidStok', Sts: 'Aberto' });
         renderCpCompraItens();
         focusCpCompraFornecedor($form);
@@ -1765,8 +1781,6 @@ function emptyCpCompraTamanho() {
     return {
         id: 0,
         tamanho: '',
-        entrega: '',
-        entrega_anterior: '',
         markup_franquia: 0,
         markup_loja: 0,
         qtde_total: 0,
@@ -1776,6 +1790,7 @@ function emptyCpCompraTamanho() {
         tem_log_preco_iteracao: 0,
         tem_log_qtde_iteracao: 0,
         _aberto: false,
+        _bulk_selected: false,
         cores: []
     };
 }
@@ -1800,6 +1815,10 @@ function emptyCpCompraCor() {
         tem_log_qtde_iteracao: 0,
         _aberto: false
     };
+}
+
+function cpCompraSemImagemSrc() {
+    return '../../assets/img/sem-imagem.png';
 }
 
 function cpCompraStatusValue(value) {
@@ -1849,8 +1868,6 @@ function mapCpCompraTamanhoFromApi(row) {
     return Object.assign(emptyCpCompraTamanho(), {
         id: Number(row.id || row.ID || 0),
         tamanho: row.tamanho || '',
-        entrega: row.entrega || '',
-        entrega_anterior: row.entrega_anterior || '',
         markup_franquia: Number(row.markup_franquia || 0),
         markup_loja: Number(row.markup_loja || 0),
         qtde_total: Number(row.qtde_total || 0),
@@ -1878,13 +1895,14 @@ function mapCpCompraTamanhoFromApi(row) {
                 tem_log_preco_iteracao: Number(cor.tem_log_preco_iteracao || 0),
                 tem_log_qtde_iteracao: Number(cor.tem_log_qtde_iteracao || 0),
                 _qtde_manual: true,
+                _initial_qtde: Number(cor.Qtde || 0),
                 _loaded_from_api: true
             });
         })
     });
 }
 
-function renderCpCompraItens() {
+function renderCpCompraItensLegacy() {
     const html = cpCompraItens.map(function (item, index) {
         const collapseId = 'cp-compra-item-collapse-' + index;
         const isOpen = cpCompraItensOpen[index] === true;
@@ -1893,11 +1911,14 @@ function renderCpCompraItens() {
         const referencia = item.referencia_fornecedor || 'Item ' + (index + 1);
         const descricao = item.descricao || 'Sem descricao';
         const composicao = item.composicao || 'N/A';
-        const entrega = item.entrega ? formatDateBr(item.entrega) : 'Não definida';
+        const dadosTabId = 'cp-item-dados-' + index;
+        const gradeTabId = 'cp-item-grade-' + index;
+        const fotosTabId = 'cp-item-fotos-' + index;
         return '<section class="accordion-item card card-slim mb-3 cp-compra-item" data-item-index="' + index + '">' +
             '<div class="accordion-header card-header bg-table-header cp-compra-item-header cursor-pointer' + collapsedClass + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + collapseId + '">' +
             '<div class="d-flex align-items-center cp-compra-item-title">' +
             '<span class="cp-compra-chevron transition-icon" aria-hidden="true"></span>' +
+            cpCompraItemThumbHtml(index, item) +
             '<div>' +
             '<span class="fw-bold text-dark">' + escapeHtml(referencia) + '</span>' +
             '<div class="extra-small text-muted">' + escapeHtml(descricao) + '</div>' +
@@ -1906,14 +1927,9 @@ function renderCpCompraItens() {
             '</div>' +
             '<div class="d-flex align-items-center gap-4 cp-compra-item-summary">' +
             cpCompraStatusBadge(item.Sts) +
-            photoButtonHtml(index, item) +
             '<div class="text-end d-none d-md-block">' +
             '<small class="text-muted d-block extra-small text-uppercase">Tamanhos</small>' +
             '<span>' + Number((item.tamanhos || []).length) + '</span>' +
-            '</div>' +
-            '<div class="text-end d-none d-md-block">' +
-            '<small class="text-muted d-block extra-small text-uppercase">Rateio</small>' +
-            '<span class="' + (cpCompraItemTemRateioManual(item) ? 'text-success' : 'text-muted') + '">' + escapeHtml(cpCompraItemRateioModo(item)) + '</span>' +
             '</div>' +
             '<div class="text-end d-none d-md-block">' +
             '<small class="text-muted d-block extra-small text-uppercase">Total do Item</small>' +
@@ -1926,8 +1942,15 @@ function renderCpCompraItens() {
             '</div>' +
             '</div>' +
             '<div id="' + collapseId + '" class="collapse cp-compra-item-collapse' + collapseClass + '" data-item-index="' + index + '">' +
-            '<div class="card-body border-top table-responsive">' +
-            '<div class="row g-3 mb-3">' +
+            '<div class="card-body border-top">' +
+            '<ul class="nav nav-tabs cp-compra-item-tabs" role="tablist">' +
+            '<li class="nav-item" role="presentation"><button class="nav-link" id="' + dadosTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + dadosTabId + '" type="button" role="tab">Dados</button></li>' +
+            '<li class="nav-item" role="presentation"><button class="nav-link active" id="' + gradeTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + gradeTabId + '" type="button" role="tab">Grade e pre&ccedil;os</button></li>' +
+            '<li class="nav-item" role="presentation"><button class="nav-link" id="' + fotosTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + fotosTabId + '" type="button" role="tab">Fotos</button></li>' +
+            '</ul>' +
+            '<div class="tab-content cp-compra-item-tab-content">' +
+            '<div class="tab-pane fade" id="' + dadosTabId + '" role="tabpanel" aria-labelledby="' + dadosTabId + '-tab">' +
+            '<div class="row g-3">' +
             referenceSelectHtml(index, item.referencia_fornecedor, 'col-12 col-lg-5', item.item_confirmado) +
             fieldHtml(index, null, 'descricao', 'Descrição', item.descricao, 'col-12 col-lg-5', 'text', null, true) +
             fieldHtml(index, null, 'entrega', 'Entrega', item.entrega, 'col-12 col-lg-2', 'date') +
@@ -1938,9 +1961,16 @@ function renderCpCompraItens() {
             itemStatusSelectHtml(index, item.Sts, 'col-12 col-md-2') +
             confirmCpCompraItemButtonHtml(index, item, 'col-12 col-md-2') +
             '</div>' +
+            '</div>' +
+            '<div class="tab-pane fade show active" id="' + gradeTabId + '" role="tabpanel" aria-labelledby="' + gradeTabId + '-tab">' +
             (item.item_confirmado
-                ? renderCpCompraTamanhos(index, item.tamanhos || [])
+                ? renderCpCompraTamanhosV2(index, item.tamanhos || [])
                 : '<div class="text-center text-muted py-3">Confirme o item para inserir os tamanhos.</div>') +
+            '</div>' +
+            '<div class="tab-pane fade" id="' + fotosTabId + '" role="tabpanel" aria-labelledby="' + fotosTabId + '-tab">' +
+            renderCpCompraItemFotosTab(index, item) +
+            '</div>' +
+            '</div>' +
             '</div>' +
             '</div>' +
             '</section>';
@@ -1948,6 +1978,199 @@ function renderCpCompraItens() {
     $('#cp-compras-itens').html(html || '<div class="text-center text-muted py-3">Nenhum item informado.</div>');
     initCpCompraReferenciaSelects();
     initCpCompraNestedFields();
+    loadCpCompraItemThumbs();
+}
+
+function renderCpCompraItens() {
+    const html = cpCompraItens.map(function (item, index) {
+        const collapseId = 'cp-compra-item-collapse-' + index;
+        const collapseClass = ' show';
+        const referencia = item.referencia_fornecedor || 'Item ' + (index + 1);
+        const descricao = item.descricao || 'Novo item';
+        const composicao = item.composicao || '';
+        const tamanhosAtivos = (item.tamanhos || []).filter(function (tamanho) {
+            return String(tamanho.Sts) !== '0';
+        }).length;
+        const activeTab = cpCompraItemActiveTabs[index] || 'dados';
+        const dadosTabId = 'cp-item-dados-' + index;
+        const gradeTabId = 'cp-item-grade-' + index;
+        const fotosTabId = 'cp-item-fotos-' + index;
+
+        return '<section class="accordion-item card card-slim mb-3 cp-compra-item" data-item-index="' + index + '">' +
+            '<div class="cp-compra-item-header">' +
+            '<div class="cp-compra-item-main">' +
+            cpCompraItemThumbHtml(index, item) +
+            '<div class="cp-compra-item-title">' +
+            '<span class="cp-compra-item-kicker">Referencia ' + escapeHtml(referencia) + '</span>' +
+            '<strong>' + escapeHtml(descricao) + '</strong>' +
+            '<small>' + escapeHtml(composicao || 'Composicao nao informada') + '</small>' +
+            '<div class="cp-compra-item-badges">' +
+            cpCompraStatusBadge(item.Sts) +
+            '<span class="badge cp-item-pill">NCM ' + escapeHtml(item.ncm || '-') + '</span>' +
+            '<span class="badge cp-item-pill">' + Number(item.Foto || 0) + ' fotos KidStok</span>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '<div class="cp-compra-item-summary">' +
+            '<div class="cp-summary-box"><small>Pe&ccedil;as</small><strong>' + escapeHtml(Number(item.total_qtde || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })) + '</strong></div>' +
+            '<div class="cp-summary-box"><small>Tamanhos ativos</small><strong>' + tamanhosAtivos + '</strong></div>' +
+            '<div class="cp-summary-box"><small>Total do item</small><strong class="cp-compra-item-total">R$ ' + escapeHtml(formatMoneyBr(item.total_produto || 0)) + '</strong></div>' +
+            '</div>' +
+            '</div>' +
+            '<div id="' + collapseId + '" class="collapse cp-compra-item-collapse' + collapseClass + '" data-item-index="' + index + '">' +
+            '<div class="cp-compra-item-toolbar">' +
+            '<ul class="nav nav-tabs cp-compra-item-tabs" role="tablist">' +
+            '<li class="nav-item" role="presentation"><button class="nav-link' + (activeTab === 'dados' ? ' active' : '') + '" id="' + dadosTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + dadosTabId + '" type="button" role="tab">Dados</button></li>' +
+            '<li class="nav-item" role="presentation"><button class="nav-link' + (activeTab === 'grade' ? ' active' : '') + '" id="' + gradeTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + gradeTabId + '" type="button" role="tab">Grade e pre&ccedil;os</button></li>' +
+            '<li class="nav-item" role="presentation"><button class="nav-link' + (activeTab === 'fotos' ? ' active' : '') + '" id="' + fotosTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + fotosTabId + '" type="button" role="tab">Fotos</button></li>' +
+            '</ul>' +
+            (cpCompraReadonly ? '' : '<div class="cp-compra-item-actions">' +
+                '<button class="btn btn-sm btn-outline-primary btn-rateio-item" type="button" onclick="ratearCpCompraItem(' + index + ')">Ratear</button>' +
+                '<button class="btn btn-sm btn-outline-danger btn-delete" type="button" onclick="removeCpCompraItem(' + index + ')">Excluir</button>' +
+                '</div>') +
+            '</div>' +
+            '<div class="card-body">' +
+            '<div class="tab-content cp-compra-item-tab-content">' +
+            '<div class="tab-pane fade' + (activeTab === 'dados' ? ' show active' : '') + '" id="' + dadosTabId + '" role="tabpanel" aria-labelledby="' + dadosTabId + '-tab">' +
+            '<div class="row g-3">' +
+            referenceSelectHtml(index, item.referencia_fornecedor, 'col-12 col-lg-3', item.item_confirmado) +
+            fieldHtml(index, null, 'descricao', 'Descricao', item.descricao, 'col-12 col-lg-4', 'text', null, true) +
+            fieldHtml(index, null, 'entrega', 'Entrega', item.entrega, 'col-12 col-lg-3', 'date') +
+            itemStatusSelectHtml(index, item.Sts, 'col-12 col-md-2') +
+            fieldHtml(index, null, 'composicao', 'Composicao', item.composicao, 'col-12 col-lg-5', 'text', null, true) +
+            fieldHtml(index, null, 'ncm', 'NCM', item.ncm, 'col-12 col-md-3', 'text', null, true) +
+            fieldHtml(index, null, 'total_produto', 'Total do item', item.total_produto, 'col-12 col-md-3', 'money', null, true) +
+            confirmCpCompraItemButtonHtml(index, item, 'col-12 col-md-2') +
+            '</div>' +
+            '</div>' +
+            '<div class="tab-pane fade' + (activeTab === 'grade' ? ' show active' : '') + '" id="' + gradeTabId + '" role="tabpanel" aria-labelledby="' + gradeTabId + '-tab">' +
+            (item.item_confirmado
+                ? renderCpCompraTamanhosV2(index, item.tamanhos || [])
+                : '<div class="text-center text-muted py-3">Confirme o item para inserir os tamanhos.</div>') +
+            '</div>' +
+            '<div class="tab-pane fade' + (activeTab === 'fotos' ? ' show active' : '') + '" id="' + fotosTabId + '" role="tabpanel" aria-labelledby="' + fotosTabId + '-tab">' +
+            renderCpCompraItemFotosTab(index, item) +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</div>' +
+            '</section>';
+    }).join('');
+
+    $('#cp-compras-itens').html(html || '<div class="text-center text-muted py-3">Nenhum item informado.</div>');
+    initCpCompraReferenciaSelects();
+    initCpCompraNestedFields();
+    loadCpCompraItemThumbs();
+}
+
+function renderCpCompraTamanhosV2(itemIndex, tamanhos) {
+    if (!tamanhos.length) {
+        return '<div class="cp-compra-empty-nested">Nenhum tamanho informado.</div>';
+    }
+    const item = cpCompraItens[itemIndex] || { tamanhos: tamanhos };
+    return renderCpCompraBulkToolbar(itemIndex, item) +
+        '<div class="accordion cp-compra-tamanhos-accordion" id="cp-tamanhos-' + itemIndex + '">' +
+        tamanhos.map(function (tamanho, tamanhoIndex) {
+            const collapseId = 'cp-tamanho-collapse-' + itemIndex + '-' + tamanhoIndex;
+            const aberto = tamanho._aberto !== false;
+            const tamanhoInativo = String(tamanho.Sts) === '0';
+            const medias = cpCompraTamanhoMedias(tamanho);
+            const temLogPreco = Number(tamanho.tem_log_preco_iteracao || 0) === 1 ||
+                (tamanho.cores || []).some(function (cor) { return Number(cor.tem_log_preco_iteracao || 0) === 1; });
+            const temLogQtde = Number(tamanho.tem_log_qtde_iteracao || 0) === 1 ||
+                (tamanho.cores || []).some(function (cor) { return Number(cor.tem_log_qtde_iteracao || 0) === 1; });
+            return '<section class="accordion-item cp-compra-tamanho" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '">' +
+                '<div class="accordion-header cp-compra-tamanho-header' + ((temLogPreco || temLogQtde) ? ' cp-preco-alterado-header' : '') + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
+                '<div class="cp-compra-tamanho-title">' +
+                '<strong>' + escapeHtml(tamanho.tamanho || (tamanhoIndex + 1)) + '</strong>' + renderCpCompraAlteracaoBadges(temLogPreco, temLogQtde) +
+                '</div>' +
+                '<div class="cp-compra-tamanho-summary cp-compra-tamanho-summary-v2">' +
+                '<div class="cp-compra-summary-metric cp-compra-summary-metric-input" onclick="event.stopPropagation();"><small>Quantidade total</small>' +
+                '<input class="form-control form-control-sm cp-compra-tamanho-field cp-tamanho-summary-qtde cp-tamanho-summary-input" type="number" min="0" step="1" inputmode="numeric"' +
+                ((tamanhoInativo || cpCompraReadonly) ? ' readonly' : '') +
+                ' value="' + escapeAttr(tamanho.qtde_total || 0) + '" ' + cpNestedDataAttrs(itemIndex, tamanhoIndex, null, 'qtde_total') + '></div>' +
+                cpCompraMediaMetricHtml('Fornecedor medio', medias.preco_fornecedor, medias.diff.preco_fornecedor, 'cp-tamanho-summary-preco-fornecedor') +
+                cpCompraMediaMetricHtml('Proposto medio', medias.preco_proposta, medias.diff.preco_proposta, 'cp-tamanho-summary-preco-proposta') +
+                cpCompraMediaMetricHtml('Franqueado medio', medias.preco_franqueado, medias.diff.preco_franqueado, 'cp-tamanho-summary-preco-franqueado') +
+                cpCompraMediaMetricHtml('Loja medio', medias.preco_loja, medias.diff.preco_loja, 'cp-tamanho-summary-preco-loja') +
+                '<div class="cp-compra-summary-metric"><small>Valor total</small><span class="fw-bold text-success cp-tamanho-summary-total">R$ ' + escapeHtml(formatMoneyBr(tamanho.valor_total || 0)) + '</span></div>' +
+                '</div>' +
+                '<div class="d-flex gap-2 align-items-center cp-compra-tamanho-actions" onclick="event.stopPropagation();">' +
+                (item._bulk_edit_open ? '<label class="cp-bulk-destino"><input class="cp-bulk-destino-field" type="checkbox" onchange="toggleCpCompraBulkDestino(' + itemIndex + ', ' + tamanhoIndex + ', this.checked)"' + (tamanho._bulk_selected ? ' checked' : '') + (cpCompraReadonly ? ' disabled' : '') + '><span>Destino</span></label>' : '') +
+                cpCompraTamanhoStatus(itemIndex, tamanhoIndex, tamanho.Sts, 'cp-tamanho-status-action') +
+                ((cpCompraReadonly || tamanhoInativo) ? '' :
+                    '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir tamanho" aria-label="Excluir tamanho" onclick="removeCpCompraTamanho(' + itemIndex + ', ' + tamanhoIndex + ')"></button>') +
+                '</div></div>' +
+                '<div id="' + collapseId + '" class="accordion-collapse collapse cp-compra-tamanho-collapse' + (aberto ? ' show' : '') + '" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '">' +
+                '<div class="accordion-body">' +
+                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'tamanho', 'Tamanho', tamanho.tamanho, '', 'hidden', true) +
+                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'valor_total', 'Total do tamanho', tamanho.valor_total, '', 'hidden', true) +
+                renderCpCompraCores(itemIndex, tamanhoIndex, tamanho.cores || [], tamanhoInativo) +
+                '</div></div></section>';
+        }).join('') + '</div>';
+}
+
+function cpCompraMediaMetricHtml(label, value, different, className) {
+    return '<div class="cp-compra-summary-metric"><small>' + label + '</small><span class="' + className + (different ? ' cp-preco-medio-diferente' : '') + '">R$ ' + escapeHtml(formatMoneyBr(value || 0)) + '</span></div>';
+}
+
+function cpCompraTamanhoMedias(tamanho) {
+    const campos = ['preco_fornecedor', 'preco_proposta', 'preco_franqueado', 'preco_loja'];
+    const result = { diff: {} };
+    const cores = (tamanho.cores || []).filter(function (cor) {
+        return String(cor.Sts) !== '0';
+    });
+    campos.forEach(function (campo) {
+        let soma = 0;
+        let qtdeTotal = 0;
+        const valores = [];
+        cores.forEach(function (cor) {
+            const qtde = Math.max(0, parseInt(Number(cor.Qtde || 0), 10) || 0);
+            const preco = roundCpMoney(cor[campo] || 0);
+            if (qtde > 0) {
+                soma += preco * qtde;
+                qtdeTotal += qtde;
+            }
+            valores.push(preco);
+        });
+        result[campo] = qtdeTotal > 0 ? roundCpMoney(soma / qtdeTotal) : 0;
+        result.diff[campo] = cpCompraValoresDiferentes(valores);
+    });
+    return result;
+}
+
+function cpCompraValoresDiferentes(values) {
+    const rounded = values
+        .map(function (value) { return Math.round((Number(value) || 0) * 100); })
+        .filter(function (value, index, list) { return list.indexOf(value) === index; });
+    return rounded.length > 1;
+}
+
+function renderCpCompraBulkToolbar(itemIndex, item) {
+    if (cpCompraReadonly) {
+        return '';
+    }
+    const open = item._bulk_edit_open === true;
+    const tamanhosAtivos = (item.tamanhos || []).filter(function (tamanho) {
+        return String(tamanho.Sts) !== '0';
+    });
+    const todosSelecionados = tamanhosAtivos.length > 0 && tamanhosAtivos.every(function (tamanho) {
+        return tamanho._bulk_selected === true;
+    });
+    const bulkSelectLabel = todosSelecionados ? 'Desmarcar todos' : 'Selecionar todos';
+    return '<div class="cp-bulk-toolbar mb-3">' +
+        '<div class="d-flex flex-wrap gap-2 justify-content-between align-items-center">' +
+        '<button class="btn btn-sm btn-outline-primary btn-bulk-edit" type="button" onclick="toggleCpCompraBulkEdit(' + itemIndex + ')">Editar em Massa</button>' +
+        (open ? '<div class="d-flex flex-wrap gap-2 cp-bulk-actions">' +
+            '<button class="btn btn-sm btn-outline-secondary btn-bulk-select" type="button" onclick="selecionarTodosCpCompraBulk(' + itemIndex + ')">' + bulkSelectLabel + '</button>' +
+            '<button class="btn btn-sm btn-orange btn-bulk-apply" type="button" onclick="aplicarCpCompraBulk(' + itemIndex + ')">Aplicar aos selecionados</button>' +
+            '</div>' : '') +
+        '</div>' +
+        (open ? '<div class="row g-2 mt-2">' +
+            '<div class="col-12 col-md-3"><label class="form-label">Quantidade do tamanho</label><input class="form-control cp-bulk-qtde" type="number" min="0" step="1" inputmode="numeric" data-item-index="' + itemIndex + '"></div>' +
+            '<div class="col-12 col-md-3"><label class="form-label">Pre&ccedil;o proposto</label><div class="input-group cp-money-input-group"><span class="input-group-text">R$</span><input class="form-control cp-money-field text-end cp-bulk-preco" type="text" inputmode="numeric" data-item-index="' + itemIndex + '"></div></div>' +
+            '</div>' : '') +
+        '</div>';
 }
 
 function renderCpCompraTamanhos(itemIndex, tamanhos) {
@@ -1963,7 +2186,6 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
             const rateioModo = cpCompraItemRateioModo(item);
             const tamanhoInativo = String(tamanho.Sts) === '0';
             const rateioClass = tamanhoInativo ? 'text-muted' : (roundCpPercent(rateio) === 100 ? 'text-success' : 'text-danger');
-            const entregaResumo = tamanho.entrega ? formatDateBr(tamanho.entrega) : 'Não definida';
             const totalCores = Number((tamanho.cores || []).length);
             const temLogPreco = Number(tamanho.tem_log_preco_iteracao || 0) === 1 ||
                 (tamanho.cores || []).some(function (cor) { return Number(cor.tem_log_preco_iteracao || 0) === 1; });
@@ -1973,7 +2195,6 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
                 '<div class="accordion-header cp-compra-tamanho-header' + ((temLogPreco || temLogQtde) ? ' cp-preco-alterado-header' : '') + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
                 '<div class="cp-compra-tamanho-title"><strong>Tamanho ' + escapeHtml(tamanho.tamanho || (tamanhoIndex + 1)) + '</strong>' + renderCpCompraAlteracaoBadges(temLogPreco, temLogQtde) + '</div>' +
                 '<div class="cp-compra-tamanho-summary">' +
-                '<div class="cp-compra-summary-metric"><small>Entrega</small><span class="cp-tamanho-summary-entrega">' + escapeHtml(entregaResumo) + '</span></div>' +
                 '<div class="cp-compra-summary-metric"><small>Quantidade</small><span class="cp-tamanho-summary-qtde">' + escapeHtml(tamanho.qtde_total || 0) + '</span></div>' +
                 '<div class="cp-compra-summary-metric"><small>Cores</small><span class="cp-tamanho-summary-cores">' + totalCores + '</span></div>' +
                 '<div class="cp-compra-summary-metric"><small>Rateio</small><span class="cp-tamanho-summary-rateio ' + rateioClass + '">' + escapeHtml(rateioModo) + '</span></div>' +
@@ -1988,7 +2209,6 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
                 '<div class="accordion-body">' +
                 '<div class="row g-3 mb-3">' +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'tamanho', 'Tamanho', tamanho.tamanho, 'col-12 col-md-2', 'text', true) +
-                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'entrega', 'Entrega', tamanho.entrega, 'col-12 col-md-2', 'date', tamanhoInativo) +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'qtde_total', 'Quantidade do tamanho', tamanho.qtde_total, 'col-12 col-md-2', 'number', tamanhoInativo) +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'valor_total', 'Total do tamanho', tamanho.valor_total, 'col-12 col-md-2', 'money', true) +
                 '<div class="col-12 col-md-2"><label class="form-label">Rateio</label><input class="form-control ' + rateioClass + ' fw-bold cp-tamanho-rateio-total" value="' + escapeAttr(rateioModo) + '" readonly></div>' +
@@ -2021,36 +2241,34 @@ function renderCpCompraCores(itemIndex, tamanhoIndex, cores, tamanhoInativo) {
     return '<div class="table-responsive cp-compra-cores-grid">' +
         '<table class="table table-sm table-striped align-middle mb-0 cp-compra-cores-table">' +
         '<thead><tr>' +
-        '<th>SKU</th>' +
-        '<th>Cor</th>' +
+        '<th>Cor e SKU</th>' +
         '<th class="text-end" style="width: 120px;">Quantidade</th>' +
-        '<th class="text-end" style="width: 170px;">Valor proposto</th>' +
+        '<th class="text-end" style="width: 170px;">Pre&ccedil;o proposto</th>' +
         '<th class="text-end">Fornecedor</th>' +
         '<th class="text-end">Franqueado</th>' +
         '<th class="text-end">Loja</th>' +
-        '<th class="text-end">Total</th>' +
-        '<th style="width: 112px;">Status</th>' +
-        '<th class="text-end" style="width: 132px;">Ações</th>' +
+        '<th class="text-end">Total da cor</th>' +
+        '<th class="text-end" style="width: 210px;">A&ccedil;&otilde;es</th>' +
         '</tr></thead><tbody>' +
         cores.map(function (cor, corIndex) {
         const temLogPreco = Number(cor.tem_log_preco_iteracao || 0) === 1;
         const temLogQtde = Number(cor.tem_log_qtde_iteracao || 0) === 1;
-        const readonlyCor = tamanhoInativo || cpCompraReadonly;
+        const corInativa = String(cor.Sts) === '0';
+        const readonlyCor = tamanhoInativo || corInativa || cpCompraReadonly;
         const rowClass = (temLogPreco || temLogQtde) ? ' class="cp-compra-cor cp-preco-alterado-header"' : ' class="cp-compra-cor"';
         return '<tr' + rowClass + ' data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '" data-color-index="' + corIndex + '">' +
-            '<td data-label="SKU"><span class="fw-semibold">' + escapeHtml(cor.sku || '-') + '</span></td>' +
-            '<td data-label="Cor"><span class="fw-semibold">' + escapeHtml(cor.cor || 'Cor ' + (corIndex + 1)) + '</span>' +
-            '<small class="d-block text-muted">Rateio: <span class="cp-cor-summary-percentual">' + escapeHtml(formatPercentInput(cor.percentual || 0)) + '%</span></small>' +
+            '<td data-label="Cor e SKU"><span class="fw-semibold">' + escapeHtml(cor.cor || 'Cor ' + (corIndex + 1)) + '</span>' +
+            '<small class="d-block text-muted">' + escapeHtml(cor.sku || '-') + '</small>' +
             renderCpCompraAlteracaoBadges(temLogPreco, temLogQtde) + '</td>' +
             '<td data-label="Quantidade">' + cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'Qtde', 'Quantidade', cor.Qtde, '', 'number', readonlyCor) + '</td>' +
-            '<td data-label="Valor proposto">' + cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_proposta', 'Valor proposto', cor.preco_proposta, '', 'money', readonlyCor) + '</td>' +
+            '<td data-label="Pre&ccedil;o proposto">' + cpCompraCorInput(itemIndex, tamanhoIndex, corIndex, 'preco_proposta', 'Pre&ccedil;o proposto', cor.preco_proposta, '', 'money', readonlyCor) + '</td>' +
             '<td data-label="Fornecedor" class="text-end"><span class="cp-cor-summary-preco-fornecedor">R$ ' + escapeHtml(formatMoneyBr(cor.preco_fornecedor || 0)) + '</span></td>' +
             '<td data-label="Franqueado" class="text-end"><span class="cp-cor-summary-preco-franqueado">R$ ' + escapeHtml(formatMoneyBr(cor.preco_franqueado || 0)) + '</span></td>' +
             '<td data-label="Loja" class="text-end"><span class="cp-cor-summary-preco-loja">R$ ' + escapeHtml(formatMoneyBr(cor.preco_loja || 0)) + '</span></td>' +
-            '<td data-label="Total" class="text-end"><span class="fw-bold text-success cp-cor-summary-total">R$ ' + escapeHtml(formatMoneyBr(cor.valor_total_produto || 0)) + '</span></td>' +
-            '<td data-label="Status">' + cpCompraCorStatusGrid(itemIndex, tamanhoIndex, corIndex, cor.Sts, tamanhoInativo) + '</td>' +
+            '<td data-label="Total da cor" class="text-end"><span class="fw-bold text-success cp-cor-summary-total">R$ ' + escapeHtml(formatMoneyBr(cor.valor_total_produto || 0)) + '</span></td>' +
             '<td data-label="Ações" class="text-end"><div class="d-flex gap-2 justify-content-end cp-compra-cor-actions">' +
-            '<button class="btn btn-sm btn-outline-secondary btn-price-log" type="button" title="Visualizar última alteração de preços" onclick="openCpCompraCorLog(' + itemIndex + ', ' + tamanhoIndex + ', ' + corIndex + ')">Preços</button>' +
+            cpCompraCorStatusGrid(itemIndex, tamanhoIndex, corIndex, cor.Sts, tamanhoInativo) +
+            '<button class="btn btn-sm btn-outline-secondary btn-price-log btn-icon-only" type="button" title="Visualizar alteracao de precos" aria-label="Visualizar alteracao de precos" onclick="openCpCompraCorLog(' + itemIndex + ', ' + tamanhoIndex + ', ' + corIndex + ')"></button>' +
             ((cpCompraReadonly || tamanhoInativo) ? '' : '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" type="button" title="Excluir cor" aria-label="Excluir cor" onclick="removeCpCompraCor(' + itemIndex + ', ' + tamanhoIndex + ', ' + corIndex + ')"></button>') +
             '</div></td></tr>';
     }).join('') + '</tbody></table></div>';
@@ -2083,26 +2301,48 @@ function cpCompraNestedInput(level, itemIndex, tamanhoIndex, corIndex, name, lab
 
 function cpCompraTamanhoStatus(itemIndex, tamanhoIndex, value, colClass) {
     const disabled = cpCompraReadonly ? ' disabled' : '';
-    return '<div class="' + colClass + '"><label class="form-label">Status</label><select class="form-select cp-compra-tamanho-field" ' +
-        cpNestedDataAttrs(itemIndex, tamanhoIndex, null, 'Sts') + disabled + '>' +
-        '<option value="1"' + (String(value) !== '0' ? ' selected' : '') + '>Ativo</option>' +
-        '<option value="0"' + (String(value) === '0' ? ' selected' : '') + '>Inativo</option></select></div>';
+    return '<div class="' + colClass + '">' +
+        cpCompraStatusToggleHtml('cp-compra-tamanho-field', cpNestedDataAttrs(itemIndex, tamanhoIndex, null, 'Sts'), value, disabled, 'toggleCpCompraNestedStatus(this)') +
+        '</div>';
 }
 
 function cpCompraCorStatus(itemIndex, tamanhoIndex, corIndex, value, colClass, readonly) {
     const disabled = (readonly || cpCompraReadonly) ? ' disabled' : '';
-    return '<div class="' + colClass + '"><label class="form-label">Status</label><select class="form-select cp-compra-cor-field" ' +
-        cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, 'Sts') + disabled + '>' +
-        '<option value="1"' + (String(value) !== '0' ? ' selected' : '') + '>Ativo</option>' +
-        '<option value="0"' + (String(value) === '0' ? ' selected' : '') + '>Inativo</option></select></div>';
+    return '<div class="' + colClass + '">' +
+        cpCompraStatusToggleHtml('cp-compra-cor-field', cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, 'Sts'), value, disabled, 'toggleCpCompraNestedStatus(this)') +
+        '</div>';
 }
 
 function cpCompraCorStatusGrid(itemIndex, tamanhoIndex, corIndex, value, readonly) {
     const disabled = (readonly || cpCompraReadonly) ? ' disabled' : '';
-    return '<select class="form-select form-select-sm cp-compra-cor-field" ' +
-        cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, 'Sts') + disabled + '>' +
-        '<option value="1"' + (String(value) !== '0' ? ' selected' : '') + '>Ativo</option>' +
-        '<option value="0"' + (String(value) === '0' ? ' selected' : '') + '>Inativo</option></select>';
+    return cpCompraStatusToggleHtml('cp-compra-cor-field', cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, 'Sts'), value, disabled, 'toggleCpCompraNestedStatus(this)');
+}
+
+function cpCompraStatusToggleHtml(hiddenClass, attrs, value, disabled, changeHandler) {
+    const statusValue = String(value) === '0' ? 0 : 1;
+    return '<label class="cp-status-toggle' + (statusValue === 1 ? ' is-active' : '') + '">' +
+        '<input type="hidden" class="' + hiddenClass + ' cp-status-toggle-value" value="' + statusValue + '" ' + attrs + '>' +
+        '<input class="cp-status-toggle-input" type="checkbox"' + (statusValue === 1 ? ' checked' : '') + disabled + ' onchange="' + changeHandler + '">' +
+        '<span class="cp-status-toggle-control" aria-hidden="true"></span>' +
+        '<span class="cp-status-toggle-text">' + (statusValue === 1 ? 'Ativo' : 'Inativo') + '</span>' +
+        '</label>';
+}
+
+function toggleCpCompraNestedStatus(input) {
+    const $input = $(input);
+    const active = $input.is(':checked');
+    const $toggle = $input.closest('.cp-status-toggle');
+    const $value = $toggle.find('.cp-status-toggle-value');
+    $value.val(active ? '1' : '0');
+    updateCpCompraStatusToggleVisual($toggle, active ? 1 : 0);
+    updateCpCompraNestedField($value);
+}
+
+function updateCpCompraStatusToggleVisual($toggle, value) {
+    const active = String(value) !== '0';
+    $toggle.toggleClass('is-active', active);
+    $toggle.find('.cp-status-toggle-input').prop('checked', active);
+    $toggle.find('.cp-status-toggle-text').text(active ? 'Ativo' : 'Inativo');
 }
 
 function cpNestedDataAttrs(itemIndex, tamanhoIndex, corIndex, name) {
@@ -2261,14 +2501,8 @@ function updateCpCompraItemStatus($field) {
     }
     const status = normalizeCpCompraValue('Sts', $field.val()) === 0 ? 0 : 1;
     item.Sts = status;
-    if (status === 0) {
-        item.total_qtde = 0;
-    }
     (item.tamanhos || []).forEach(function (tamanho) {
         tamanho.Sts = status;
-        if (status === 0) {
-            tamanho.qtde_total = 0;
-        }
         (tamanho.cores || []).forEach(function (cor) {
             cor.Sts = status;
         });
@@ -2288,10 +2522,6 @@ function updateCpCompraItemEntrega($field) {
 
     const entrega = String($field.val() || '');
     item.entrega = entrega;
-    (item.tamanhos || []).forEach(function (tamanho) {
-        tamanho.entrega = entrega;
-    });
-    $('.cp-compra-tamanho-field[data-item-index="' + itemIndex + '"][data-field="entrega"]').val(entrega);
     updateCpCompraNestedDisplays(itemIndex);
 }
 
@@ -2332,11 +2562,18 @@ function updateCpCompraNestedField($field) {
         cor[name] = normalizeCpCompraValue(name, $field.val());
         if (name === 'Qtde') {
             cor._qtde_manual = true;
-            limitarCpCompraQuantidadeCor(tamanho, cor, $field);
         }
         if (name === 'Sts') {
             updateCpCompraTamanhoStatusFromCores(tamanho);
-            $('.cp-compra-tamanho-field[data-item-index="' + itemIndex + '"][data-size-index="' + tamanhoIndex + '"][data-field="Sts"]').val(String(tamanho.Sts));
+            const $tamanhoStatus = $('.cp-compra-tamanho-field[data-item-index="' + itemIndex + '"][data-size-index="' + tamanhoIndex + '"][data-field="Sts"]');
+            $tamanhoStatus.val(String(tamanho.Sts));
+            updateCpCompraStatusToggleVisual($tamanhoStatus.closest('.cp-status-toggle'), tamanho.Sts);
+            cpCompraItensOpen[itemIndex] = true;
+            tamanho._aberto = true;
+            recalcCpCompraItem(item);
+            renderCpCompraItens();
+            recalcCpCompraTotal();
+            return;
         }
     }
     recalcCpCompraItem(item);
@@ -2355,34 +2592,11 @@ function moveCpCompraFocusToNextField(field) {
     }
 }
 
-function limitarCpCompraQuantidadeCor(tamanho, corAtual, $field) {
-    const qtdeTotal = Math.max(0, parseInt(Number(tamanho.qtde_total || 0), 10) || 0);
-    const totalOutrasCores = (tamanho.cores || []).reduce(function (total, cor) {
-        if (cor === corAtual || String(cor.Sts) === '0') {
-            return total;
-        }
-        return total + Math.max(0, parseInt(Number(cor.Qtde || 0), 10) || 0);
-    }, 0);
-    const limite = Math.max(0, qtdeTotal - totalOutrasCores);
-    if (Number(corAtual.Qtde || 0) > limite) {
-        corAtual.Qtde = limite;
-        $field.val(limite);
-        appAlert('A soma das quantidades das cores não pode passar da quantidade total do tamanho. Quantidade ajustada para ' + limite + '.', 'warning');
-    }
-}
-
 function cascadeCpCompraTamanhoStatus(tamanho, status) {
     const statusValue = Number(status) === 0 ? 0 : 1;
     tamanho.Sts = statusValue;
-    if (statusValue === 0) {
-        tamanho.qtde_total = 0;
-    }
     (tamanho.cores || []).forEach(function (cor) {
         cor.Sts = statusValue;
-        if (statusValue === 0) {
-            cor.Qtde = 0;
-            delete cor._qtde_manual;
-        }
     });
 }
 
@@ -2466,6 +2680,37 @@ function selectHtml(itemIndex, detailIndex, name, label, value, colClass, option
     }).join('');
     const disabledAttr = cpCompraReadonly ? ' disabled' : '';
     return '<div class="' + colClass + '"><label class="form-label">' + label + '</label><select class="form-select cp-compra-field" ' + attr + disabledAttr + '>' + opts + '</select></div>';
+}
+
+function cpCompraItemThumbHtml(itemIndex, item) {
+    const src = item._foto_kidstok_src || cpCompraSemImagemSrc();
+    const canUpload = Boolean(item.item_confirmado) && cpCompraPodeAlterarFoto('kidstok');
+    return '<div class="cp-item-thumb-wrap" onclick="event.stopPropagation();">' +
+        '<button class="cp-item-thumb-button" type="button" title="Selecionar foto KidStok" aria-label="Selecionar foto KidStok" onclick="openCpCompraFotoUpload(' + itemIndex + ')"' + (canUpload ? '' : '') + '>' +
+        '<img class="cp-item-thumb-img" data-item-index="' + itemIndex + '" src="' + escapeAttr(src) + '" alt="Sem imagem">' +
+        '</button>' +
+        '<input class="cp-item-foto-input d-none" type="file" accept="image/png,image/jpeg,image/webp" onchange="uploadCpCompraFotosFromItem(this, ' + itemIndex + ')">' +
+        '<input type="hidden" class="cp-compra-field" value="' + (Number(item.Foto || 0) === 1 ? 1 : 0) + '" ' + cpDataAttrs(itemIndex, null, 'Foto') + '>' +
+        '</div>';
+}
+
+function renderCpCompraItemFotosTab(itemIndex, item) {
+    if (!item.item_confirmado) {
+        return '<div class="text-center text-muted py-3">Confirme o item para inserir ou visualizar fotos.</div>';
+    }
+    return '<div class="cp-item-fotos-tab">' +
+        photoButtonHtml(itemIndex, item) +
+        '<div class="row g-3 mt-1">' +
+        '<div class="col-12 col-xl-6">' +
+        '<div class="cp-item-gallery-header">Fotos KidStok</div>' +
+        '<div class="cp-fotos-grid cp-item-fotos-gallery" data-item-index="' + itemIndex + '" data-origem="kidstok"><div class="text-center text-muted py-4">Carregando fotos...</div></div>' +
+        '</div>' +
+        '<div class="col-12 col-xl-6">' +
+        '<div class="cp-item-gallery-header">Fotos Fornecedor</div>' +
+        '<div class="cp-fotos-grid cp-item-fotos-gallery" data-item-index="' + itemIndex + '" data-origem="fornecedor"><div class="text-center text-muted py-4">Carregando fotos...</div></div>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
 }
 
 function photoButtonHtml(itemIndex, item) {
@@ -2613,6 +2858,59 @@ function openCpCompraFotos(itemIndex, origem) {
     loadCpCompraFotos();
 }
 
+function openCpCompraFotoUpload(itemIndex) {
+    if (!cpCompraItens[itemIndex]?.item_confirmado) {
+        appAlert('Confirme o item antes de inserir fotos.', 'warning');
+        return;
+    }
+    const context = cpCompraFotoContextForItem(itemIndex, 'kidstok');
+    if (!context) {
+        return;
+    }
+    if (!cpCompraPodeAlterarFoto('kidstok')) {
+        openCpCompraFotos(itemIndex, 'kidstok');
+        return;
+    }
+    const $input = $('.cp-compra-item[data-item-index="' + itemIndex + '"] .cp-item-foto-input').first();
+    if ($input.length) {
+        $input.val('');
+        $input.trigger('click');
+    }
+}
+
+function uploadCpCompraFotosFromItem(input, itemIndex) {
+    cpCompraFotoItemIndex = itemIndex;
+    cpCompraFotoOrigem = 'kidstok';
+    uploadCpCompraFotos.call(input);
+}
+
+function cpCompraFotoContextForItem(itemIndex, origem, silent) {
+    const $form = $('#cp-compras-form');
+    const pedidoId = Number($form.data('id') || $form.find('[name="id"]').val() || 0);
+    const fornecedorId = $form.find('[name="Fornecedor_id"]').val() || '';
+    const item = cpCompraItens[itemIndex] || null;
+    const referencia = item ? (item.referencia_fornecedor || '') : '';
+    if (!pedidoId) {
+        if (!silent) {
+            appAlert('Salve o pedido antes de inserir ou visualizar fotos.', 'warning');
+        }
+        return null;
+    }
+    if (!fornecedorId || !referencia) {
+        if (!silent) {
+            appAlert('Informe fornecedor e referÃªncia antes de acessar fotos.', 'warning');
+        }
+        return null;
+    }
+    return {
+        itemIndex: itemIndex,
+        origem: origem === 'fornecedor' ? 'fornecedor' : 'kidstok',
+        pedidoId: pedidoId,
+        fornecedorId: fornecedorId,
+        referencia: referencia
+    };
+}
+
 function loadCpCompraFotos() {
     const context = cpCompraFotoContext();
     if (!context) {
@@ -2634,6 +2932,52 @@ function loadCpCompraFotos() {
     }).fail(function (xhr) {
         $('#cp-fotos-list').html('<div class="alert alert-danger mb-0">' + escapeHtml(xhr.responseJSON?.message || 'Não foi possível carregar as fotos.') + '</div>');
     });
+}
+
+function loadCpCompraItemThumbs() {
+    cpCompraItens.forEach(function (item, itemIndex) {
+        if (!item.item_confirmado) {
+            return;
+        }
+        loadCpCompraItemFotosInline(itemIndex, 'kidstok');
+        loadCpCompraItemFotosInline(itemIndex, 'fornecedor');
+    });
+}
+
+function loadCpCompraItemFotosInline(itemIndex, origem) {
+    const context = cpCompraFotoContextForItem(itemIndex, origem, true);
+    if (!context) {
+        $('.cp-item-fotos-gallery[data-item-index="' + itemIndex + '"][data-origem="' + origem + '"]').html('<div class="text-center text-muted py-4">Salve o pedido para visualizar fotos.</div>');
+        return;
+    }
+    $.getJSON(window.cpComprasFormConfig.api, {
+        action: context.origem === 'fornecedor' ? 'fotos_fornecedor_list' : 'fotos_list',
+        pedido_id: context.pedidoId,
+        referencia: context.referencia,
+        fornecedor_id: context.fornecedorId
+    }).done(function (response) {
+        const fotos = response.data || [];
+        renderCpCompraItemInlineFotos(itemIndex, context.origem, fotos);
+        if (context.origem === 'kidstok') {
+            updateCpCompraFotoFlag(itemIndex, Number(response.count || fotos.length || 0) > 0 ? 1 : 0, fotos[0]?.src || '');
+        } else {
+            updateCpCompraFotoFornecedorFlag(itemIndex, Number(response.count || fotos.length || 0) > 0 ? 1 : 0);
+        }
+    }).fail(function () {
+        $('.cp-item-fotos-gallery[data-item-index="' + itemIndex + '"][data-origem="' + origem + '"]').html('<div class="alert alert-danger mb-0">N&atilde;o foi poss&iacute;vel carregar as fotos.</div>');
+    });
+}
+
+function renderCpCompraItemInlineFotos(itemIndex, origem, fotos) {
+    const $gallery = $('.cp-item-fotos-gallery[data-item-index="' + itemIndex + '"][data-origem="' + origem + '"]');
+    if (!$gallery.length) {
+        return;
+    }
+    if (!fotos.length) {
+        $gallery.html('<div class="text-center text-muted py-4">Nenhuma foto inserida.</div>');
+        return;
+    }
+    $gallery.html(renderCpCompraFotosCards(fotos, origem, itemIndex));
 }
 
 function uploadCpCompraFotos() {
@@ -2673,9 +3017,12 @@ function uploadCpCompraFotos() {
             updateCpCompraFotoFornecedorFlag(context.itemIndex, 1);
         }
         $('#cp-foto-input').val('');
+        $('.cp-compra-item[data-item-index="' + context.itemIndex + '"] .cp-item-foto-input').val('');
         loadCpCompraFotos();
+        loadCpCompraItemFotosInline(context.itemIndex, context.origem);
     }).fail(function (xhr) {
         $('#cp-fotos-list').html('<div class="alert alert-danger mb-0">' + escapeHtml(xhr.responseJSON?.message || 'Não foi possível inserir as fotos.') + '</div>');
+        appAlert(xhr.responseJSON?.message || 'Não foi possível inserir as fotos.', 'danger');
     });
 }
 
@@ -2699,6 +3046,7 @@ function deleteCpCompraFoto(fotoId) {
                 updateCpCompraFotoFornecedorFlag(context.itemIndex, Number(response.count || 0) > 0 ? 1 : 0);
             }
             loadCpCompraFotos();
+            loadCpCompraItemFotosInline(context.itemIndex, context.origem);
         }, 'json').fail(function (xhr) {
             appAlert(xhr.responseJSON?.message || 'Não foi possível excluir a foto.', 'danger');
         });
@@ -2740,6 +3088,48 @@ function renderCpCompraFotos(fotos) {
     }).join(''));
 }
 
+function renderCpCompraFotos(fotos) {
+    const $list = $('#cp-fotos-list');
+    const context = cpCompraFotoContext();
+    $('#cp-foto-count').text(fotos.length + (fotos.length === 1 ? ' foto' : ' fotos'));
+    if (!fotos.length) {
+        $list.html('<div class="text-center text-muted py-4">Nenhuma foto inserida para esta referencia.</div>');
+        if (context) {
+            renderCpCompraItemInlineFotos(context.itemIndex, context.origem, []);
+            if (context.origem === 'kidstok') {
+                updateCpCompraFotoFlag(context.itemIndex, 0, '');
+            }
+        }
+        return;
+    }
+    $list.html(renderCpCompraFotosCards(fotos, cpCompraFotoOrigem, cpCompraFotoItemIndex));
+    if (context) {
+        renderCpCompraItemInlineFotos(context.itemIndex, context.origem, fotos);
+        if (context.origem === 'kidstok') {
+            updateCpCompraFotoFlag(context.itemIndex, 1, fotos[0]?.src || '');
+        }
+    }
+}
+
+function renderCpCompraFotosCards(fotos, origem, itemIndex) {
+    return fotos.map(function (foto) {
+        const origemNormalizada = origem === 'fornecedor' ? 'fornecedor' : 'kidstok';
+        const deleteButton = cpCompraPodeAlterarFoto(origemNormalizada)
+            ? '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only cp-foto-delete" title="Excluir" aria-label="Excluir" type="button" onclick="deleteCpCompraFotoFromItem(' + Number(itemIndex) + ', \'' + origemNormalizada + '\', ' + Number(foto.id || 0) + ')"></button>'
+            : '';
+        return '<figure class="cp-foto-card">' +
+            '<img src="' + escapeAttr(foto.src || '') + '" alt="Foto ' + escapeAttr(foto.Sequencia || '') + '" title="Ampliar foto" onclick="openCpCompraFotoPreview(this)">' +
+            '<figcaption><span>Foto ' + escapeHtml(foto.Sequencia || '') + '</span>' + deleteButton + '</figcaption>' +
+            '</figure>';
+    }).join('');
+}
+
+function deleteCpCompraFotoFromItem(itemIndex, origem, fotoId) {
+    cpCompraFotoItemIndex = itemIndex;
+    cpCompraFotoOrigem = origem === 'fornecedor' ? 'fornecedor' : 'kidstok';
+    deleteCpCompraFoto(fotoId);
+}
+
 function openCpCompraFotoPreview(image) {
     const src = image ? image.getAttribute('src') : '';
     if (!src) {
@@ -2751,12 +3141,16 @@ function openCpCompraFotoPreview(image) {
     bootstrap.Modal.getOrCreateInstance(document.getElementById('cp-foto-preview-modal')).show();
 }
 
-function updateCpCompraFotoFlag(itemIndex, value) {
+function updateCpCompraFotoFlag(itemIndex, value, src) {
     if (!cpCompraItens[itemIndex]) {
         return;
     }
     cpCompraItens[itemIndex].Foto = value;
+    cpCompraItens[itemIndex]._foto_kidstok_src = value && src ? src : (value ? cpCompraItens[itemIndex]._foto_kidstok_src : '');
     $('.cp-compra-field[data-item-index="' + itemIndex + '"][data-field="Foto"]').val(value);
+    $('.cp-item-thumb-img[data-item-index="' + itemIndex + '"]')
+        .attr('src', cpCompraItens[itemIndex]._foto_kidstok_src || cpCompraSemImagemSrc())
+        .attr('alt', value ? 'Foto KidStok' : 'Sem imagem');
     const $button = $('.cp-compra-item[data-item-index="' + itemIndex + '"] .cp-foto-kidstok');
     if ($button.length) {
         $button.toggleClass('btn-photo-sim', Boolean(value)).toggleClass('btn-photo-nao', !Boolean(value));
@@ -2786,12 +3180,23 @@ function itemStatusSelectHtml(itemIndex, value, colClass) {
     const statusValue = String(value) === '0' ? 0 : 1;
     const disabled = cpCompraReadonly ? ' disabled' : '';
     return '<div class="' + colClass + '">' +
-        '<label class="form-label">Status</label>' +
-        '<select class="form-select cp-compra-field cp-compra-item-status" ' + cpDataAttrs(itemIndex, null, 'Sts') + disabled + '>' +
-        '<option value="1"' + (statusValue === 1 ? ' selected' : '') + '>Ativo</option>' +
-        '<option value="0"' + (statusValue === 0 ? ' selected' : '') + '>Inativo</option>' +
-        '</select>' +
+        '<label class="cp-status-toggle' + (statusValue === 1 ? ' is-active' : '') + '">' +
+        '<input type="hidden" class="cp-compra-field cp-compra-item-status-value" value="' + statusValue + '" ' + cpDataAttrs(itemIndex, null, 'Sts') + '>' +
+        '<input class="cp-status-toggle-input" type="checkbox"' + (statusValue === 1 ? ' checked' : '') + disabled + ' onchange="toggleCpCompraItemStatus(this)">' +
+        '<span class="cp-status-toggle-control" aria-hidden="true"></span>' +
+        '<span class="cp-status-toggle-text">' + (statusValue === 1 ? 'Ativo' : 'Inativo') + '</span>' +
+        '</label>' +
         '</div>';
+}
+
+function toggleCpCompraItemStatus(input) {
+    const $input = $(input);
+    const active = $input.is(':checked');
+    const $toggle = $input.closest('.cp-status-toggle');
+    const $value = $toggle.find('.cp-compra-item-status-value');
+    $value.val(active ? '1' : '0');
+    updateCpCompraStatusToggleVisual($toggle, active ? 1 : 0);
+    updateCpCompraItemStatus($value);
 }
 
 function confirmCpCompraItemButtonHtml(itemIndex, item, colClass) {
@@ -3327,10 +3732,6 @@ function confirmCpCompraItem(itemIndex) {
 
     item.item_confirmado = true;
     item.tamanhos = (item._pendingTamanhos && item._pendingTamanhos.length) ? item._pendingTamanhos : item.tamanhos;
-    (item.tamanhos || []).forEach(function (tamanho) {
-        tamanho.entrega = tamanho.entrega || '';
-        tamanho.entrega_anterior = tamanho.entrega_anterior || tamanho.entrega || '';
-    });
     const rateioStatus = cpCompraItemRateioStatus(item);
     if (!rateioStatus.ok) {
         appAlert(rateioStatus.message + ' Não será possível informar rateio para este item enquanto houver divergência.', 'warning');
@@ -3376,15 +3777,145 @@ function aplicarCpCompraPrecoPropostoMedio(itemIndex, tamanhoIndex) {
     $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
 }
 
+function toggleCpCompraBulkEdit(itemIndex) {
+    syncCpCompraItensFromDom();
+    const item = cpCompraItens[itemIndex] || null;
+    if (!item || cpCompraReadonly) {
+        return;
+    }
+    item._bulk_edit_open = item._bulk_edit_open !== true;
+    cpCompraItensOpen[itemIndex] = true;
+    renderCpCompraItens();
+}
+
+function toggleCpCompraBulkDestino(itemIndex, tamanhoIndex, checked) {
+    const tamanho = cpCompraItens[itemIndex]?.tamanhos?.[tamanhoIndex];
+    if (tamanho) {
+        tamanho._bulk_selected = checked === true;
+    }
+}
+
+function selecionarTodosCpCompraBulk(itemIndex) {
+    const item = cpCompraItens[itemIndex] || null;
+    if (!item) {
+        return;
+    }
+    const tamanhosAtivos = (item.tamanhos || []).filter(function (tamanho) {
+        return String(tamanho.Sts) !== '0';
+    });
+    const todosSelecionados = tamanhosAtivos.length > 0 && tamanhosAtivos.every(function (tamanho) {
+        return tamanho._bulk_selected === true;
+    });
+    const proximoEstado = !todosSelecionados;
+    (item.tamanhos || []).forEach(function (tamanho) {
+        tamanho._bulk_selected = String(tamanho.Sts) !== '0' && proximoEstado;
+    });
+    cpCompraItensOpen[itemIndex] = true;
+    renderCpCompraItens();
+}
+
+function aplicarCpCompraBulk(itemIndex) {
+    syncCpCompraItensFromDom();
+    const item = cpCompraItens[itemIndex] || null;
+    if (!item || cpCompraReadonly) {
+        return;
+    }
+    const $item = $('.cp-compra-item[data-item-index="' + itemIndex + '"]');
+    const qtdeRaw = String($item.find('.cp-bulk-qtde').val() || '').trim();
+    const precoRaw = String($item.find('.cp-bulk-preco').val() || '').trim();
+    const alterarQtde = qtdeRaw !== '';
+    const alterarPreco = precoRaw !== '';
+    if (!alterarQtde && !alterarPreco) {
+        appAlert('Informe quantidade, preÃ§o proposto ou ambos antes de aplicar.', 'warning');
+        return;
+    }
+    const qtde = alterarQtde ? Math.max(0, parseInt(qtdeRaw.replace(/\D/g, ''), 10) || 0) : null;
+    const preco = alterarPreco ? roundCpMoney(parseMoneyInput(precoRaw)) : null;
+    const destinos = (item.tamanhos || []).filter(function (tamanho) {
+        return tamanho._bulk_selected === true;
+    });
+    if (!destinos.length) {
+        appAlert('Selecione ao menos um tamanho de destino.', 'warning');
+        return;
+    }
+    destinos.forEach(function (tamanho) {
+        if (alterarQtde) {
+            aplicarCpCompraQuantidadeTamanho(tamanho, qtde);
+        }
+        if (alterarPreco) {
+            (tamanho.cores || []).forEach(function (cor) {
+                cor.preco_proposta = preco;
+            });
+        }
+        tamanho._aberto = true;
+    });
+    cpCompraItensOpen[itemIndex] = true;
+    recalcCpCompraItem(item);
+    renderCpCompraItens();
+    recalcCpCompraTotal();
+}
+
+function aplicarCpCompraQuantidadeTamanho(tamanho, qtdeTotal) {
+    const coresAtivas = (tamanho.cores || []).filter(function (cor) {
+        return String(cor.Sts) !== '0' || qtdeTotal > 0;
+    });
+    if (!coresAtivas.length) {
+        tamanho.qtde_total = 0;
+        tamanho.Sts = 0;
+        return;
+    }
+    const pesos = cpCompraPesosDistribuicao(coresAtivas);
+    let restante = qtdeTotal;
+    coresAtivas.forEach(function (cor, index) {
+        const qtde = index === coresAtivas.length - 1
+            ? restante
+            : Math.floor(qtdeTotal * pesos[index]);
+        cor.Qtde = Math.max(0, qtde);
+        restante -= cor.Qtde;
+    });
+    (tamanho.cores || []).forEach(function (cor) {
+        cor.Sts = Number(cor.Qtde || 0) > 0 ? 1 : 0;
+        cor._qtde_manual = true;
+    });
+    tamanho.qtde_total = qtdeTotal;
+    updateCpCompraTamanhoStatusFromCores(tamanho);
+    if (qtdeTotal <= 0) {
+        tamanho.Sts = 0;
+    }
+}
+
+function cpCompraPesosDistribuicao(cores) {
+    const qtdeAtual = cores.reduce(function (total, cor) {
+        return total + Math.max(0, parseInt(Number(cor.Qtde || 0), 10) || 0);
+    }, 0);
+    let base = qtdeAtual > 0
+        ? cores.map(function (cor) { return Math.max(0, parseInt(Number(cor.Qtde || 0), 10) || 0); })
+        : cores.map(function (cor) {
+            const inicial = Math.max(0, parseInt(Number(cor._initial_qtde || 0), 10) || 0);
+            return inicial > 0 ? inicial : Math.max(0, Number(cor.percentual || 0));
+        });
+    let total = base.reduce(function (sum, value) { return sum + Number(value || 0); }, 0);
+    if (total <= 0) {
+        base = cores.map(function () { return 1; });
+        total = base.length;
+    }
+    return base.map(function (value) {
+        return Number(value || 0) / total;
+    });
+}
+
 function removeCpCompraItem(itemIndex) {
     syncCpCompraItensFromDom();
     appConfirm('Excluir este item?', function () {
         const openBefore = Object.assign({}, cpCompraItensOpen);
+        const activeTabsBefore = Object.assign({}, cpCompraItemActiveTabs);
         cpCompraItens.splice(itemIndex, 1);
         cpCompraItensOpen = {};
+        cpCompraItemActiveTabs = {};
         cpCompraItens.forEach(function (_item, index) {
             const previousIndex = index >= itemIndex ? index + 1 : index;
             cpCompraItensOpen[index] = openBefore[previousIndex] === true;
+            cpCompraItemActiveTabs[index] = activeTabsBefore[previousIndex] || 'dados';
         });
         renderCpCompraItens();
         recalcCpCompraTotal();
@@ -3516,6 +4047,9 @@ function recalcCpCompraItem(item) {
                 corSobraIndex += 1;
             }
         }
+        if (temQtdeManual) {
+            tamanho.qtde_total = qtdeAplicada;
+        }
         let totalTamanho = 0;
         (tamanho.cores || []).forEach(function (cor) {
             applyCpCompraDetailMarkups(cor, markups);
@@ -3562,9 +4096,11 @@ function updateCpCompraNestedDisplays(itemIndex) {
             .toggleClass('text-muted', tamanhoInativo)
             .toggleClass('text-success', rateioValido)
             .toggleClass('text-danger', !tamanhoInativo && !rateioValido);
-        $tamanho.find('.cp-compra-tamanho-field[data-field="Sts"]').val(String(tamanho.Sts));
+        const $tamanhoStatus = $tamanho.find('.cp-compra-tamanho-field[data-field="Sts"]');
+        $tamanhoStatus.val(String(tamanho.Sts));
+        updateCpCompraStatusToggleVisual($tamanhoStatus.closest('.cp-status-toggle'), tamanho.Sts);
         $tamanho.find('.cp-tamanho-summary-qtde').text(tamanho.qtde_total || 0);
-        $tamanho.find('.cp-tamanho-summary-entrega').text(tamanho.entrega ? formatDateBr(tamanho.entrega) : 'Não definida');
+        $tamanho.find('.cp-compra-tamanho-field[data-field="qtde_total"]').val(parseInt(tamanho.qtde_total || 0, 10));
         $tamanho.find('.cp-tamanho-summary-rateio')
             .text(rateioModo)
             .toggleClass('text-muted', tamanhoInativo)
@@ -3572,6 +4108,19 @@ function updateCpCompraNestedDisplays(itemIndex) {
             .toggleClass('text-danger', !tamanhoInativo && !rateioValido);
         $tamanho.find('.cp-tamanho-summary-total').text('R$ ' + formatMoneyBr(tamanho.valor_total || 0));
         $tamanho.find('.cp-compra-tamanho-field[data-field="valor_total"]').val(formatMoneyInput(tamanho.valor_total || 0));
+        const medias = cpCompraTamanhoMedias(tamanho);
+        $tamanho.find('.cp-tamanho-summary-preco-fornecedor')
+            .text('R$ ' + formatMoneyBr(medias.preco_fornecedor || 0))
+            .toggleClass('cp-preco-medio-diferente', medias.diff.preco_fornecedor);
+        $tamanho.find('.cp-tamanho-summary-preco-proposta')
+            .text('R$ ' + formatMoneyBr(medias.preco_proposta || 0))
+            .toggleClass('cp-preco-medio-diferente', medias.diff.preco_proposta);
+        $tamanho.find('.cp-tamanho-summary-preco-franqueado')
+            .text('R$ ' + formatMoneyBr(medias.preco_franqueado || 0))
+            .toggleClass('cp-preco-medio-diferente', medias.diff.preco_franqueado);
+        $tamanho.find('.cp-tamanho-summary-preco-loja')
+            .text('R$ ' + formatMoneyBr(medias.preco_loja || 0))
+            .toggleClass('cp-preco-medio-diferente', medias.diff.preco_loja);
         (tamanho.cores || []).forEach(function (cor, corIndex) {
             const $cor = $('.cp-compra-cor[data-item-index="' + itemIndex + '"][data-size-index="' + tamanhoIndex + '"][data-color-index="' + corIndex + '"]');
             $cor.find('.cp-compra-cor-field[data-field="Qtde"]').val(parseInt(cor.Qtde || 0, 10));
@@ -3579,6 +4128,9 @@ function updateCpCompraNestedDisplays(itemIndex) {
             $cor.find('.cp-compra-cor-field[data-field="preco_franqueado"]').val(formatMoneyInput(cor.preco_franqueado || 0));
             $cor.find('.cp-compra-cor-field[data-field="preco_loja"]').val(formatMoneyInput(cor.preco_loja || 0));
             $cor.find('.cp-compra-cor-field[data-field="valor_total_produto"]').val(formatMoneyInput(cor.valor_total_produto || 0));
+            const $corStatus = $cor.find('.cp-compra-cor-field[data-field="Sts"]');
+            $corStatus.val(String(cor.Sts));
+            updateCpCompraStatusToggleVisual($corStatus.closest('.cp-status-toggle'), cor.Sts);
             $cor.find('.cp-cor-summary-percentual').text(formatPercentInput(cor.percentual || 0) + '%');
             $cor.find('.cp-cor-summary-qtde').text(parseInt(cor.Qtde || 0, 10));
             $cor.find('.cp-cor-summary-preco-proposta').text('R$ ' + formatMoneyBr(cor.preco_proposta || 0));

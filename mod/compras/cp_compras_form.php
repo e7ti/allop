@@ -54,7 +54,6 @@ $id = (int) ($_GET['id'] ?? 0);
             <input type="hidden" name="Sts" value="Aberto">
             <input type="hidden" name="Publicado" value="0">
             <input type="hidden" name="Localizacao" value="KidStok">
-            <div class="col-12 col-md-2"><label class="form-label">Status</label><input class="form-control" name="Sts_display" value="Aberto" readonly></div>
             <div class="col-12 col-md-2"><label class="form-label">Publicado</label><input class="form-control" name="Publicado_display" value="Não Publicado" readonly></div>
             <div class="col-12 col-md-2"><label class="form-label">Localização</label><input class="form-control" name="Localizacao_display" value="KidStok" readonly></div>
             <div class="col-12 d-none" id="cp-sts-motivo-group">
@@ -69,10 +68,13 @@ $id = (int) ($_GET['id'] ?? 0);
             </div>
         </div>
     </section>
-    <section class="card card-slim mb-3">
-        <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-center">
-            <strong>Itens</strong>
-            <button class="btn btn-orange btn-new" id="btn-add-cp-item" type="button">Novo item</button>
+    <section class="card card-slim mb-3 cp-itens-pedido-section">
+        <div class="card-header d-flex flex-wrap gap-2 justify-content-between align-items-start">
+            <div>
+                <strong>Itens do pedido</strong>
+                <span>Abra um tamanho para editar quantidades, preços e cores.</span>
+            </div>
+            <button class="btn btn-orange btn-new" id="btn-add-cp-item" type="button">Adicionar item</button>
         </div>
         <div class="card-body">
             <div class="accordion cp-compras-itens-accordion" id="cp-compras-itens"></div>
@@ -135,7 +137,7 @@ $id = (int) ($_GET['id'] ?? 0);
             <div class="modal-body">
                 <div id="cp-foto-upload-block" class="mb-3">
                     <label class="form-label">Inserir fotos</label>
-                    <input class="form-control" id="cp-foto-input" type="file" accept="image/*" multiple>
+                    <input class="form-control" id="cp-foto-input" type="file" accept="image/png,image/jpeg,image/webp" multiple>
                 </div>
                 <div id="cp-fotos-list" class="cp-fotos-grid"></div>
             </div>
