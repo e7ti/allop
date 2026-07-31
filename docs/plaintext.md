@@ -62,7 +62,7 @@ index.php
 | `assets/css/` | CSS global do sistema. |
 | `assets/js/` | JavaScript global, CRUD generico e logica de compras. |
 | `assets/vendor/` | Bootstrap, jQuery e Select2 locais. |
-| `assets/img/` | Logos e imagens institucionais, incluindo `sem-imagem.png`. |
+| `assets/img/` | Logos e imagens institucionais, incluindo `SemFoto.png` como placeholder atual de item sem foto. |
 | `scripts/` | Rotinas administrativas, incluindo `seed_aplicacoes.php`. |
 | `docs/` | Documentacao e registros auxiliares. |
 | `banco.sql` | Dump estrutural do banco principal. |
@@ -217,7 +217,7 @@ Configuracoes de e-mail:
 | `cor_log_ultimo` | Retorna o ultimo log de preco da cor do pedido. |
 | `enviar_proposta` | Envia e-mail, publica o pedido, muda localizacao para `Fornecedor` e incrementa `Iteracao`. |
 | `aprovar` | Aprova pedido publicado; se ainda nao ha foto do fornecedor, muda para `Aprovado Aguardando Foto Fornecedor`, envia e-mail e devolve ao fornecedor. |
-| `recusar` | Recusa pedido publicado apos interacao com fornecedor, exige motivo e devolve para `KidStok`. |
+| `recusar` | Recusa pedido publicado, exige motivo e devolve para `KidStok`. |
 
 #### Estrutura Funcional do Pedido
 
@@ -232,6 +232,14 @@ cp_compras
 ```
 
 O frontend apresenta os itens em accordions. Cada item contem tamanhos, cada tamanho contem cores, e o rateio percentual e aplicado por cor no item quando informado.
+
+O formulario de compra usa layout em duas colunas em desktop:
+
+- coluna principal com dados do pedido e itens;
+- painel lateral `Resumo do pedido` com total de pecas, total/ativos/inativos de itens, tamanhos e cores, total financeiro e botoes de workflow;
+- em telas menores o resumo vai para o topo do conteudo.
+
+No resumo ficam `Salvar alteracoes`, `Imprimir PDF`, `Enviar Proposta`, `Enviar Fornecedor`, `Aprovar` e `Recusar`, exibidos conforme status, publicacao, localizacao, fotos e alteracoes pendentes.
 
 Regras de gravacao e validacao:
 
@@ -256,6 +264,7 @@ Regras de gravacao e validacao:
 - o total do pedido e recalculado no servidor pela soma dos totais das cores ativas;
 - registros existentes sao atualizados; registros removidos da hierarquia sao excluidos;
 - datas de entrega vazias nos tamanhos sao gravadas como `NULL`, sem assumir a data do item nem a data do pedido.
+- a quantidade de pecas exibida no item e no resumo e derivada da soma das cores ativas; quando um tamanho nao tem cores, usa a quantidade do tamanho.
 
 #### Status Oficiais de Compras
 
@@ -278,10 +287,12 @@ Regras de status, localizacao e workflow:
 - pedido `Aprovado Aguardando Foto Fornecedor` nao permite edicao do pedido;
 - se `Aprovado Aguardando Foto Fornecedor` estiver em `KidStok`, o formulario pode exibir `Enviar Fornecedor`;
 - aprovacao exige pedido publicado;
+- se a KidStok alterar preco, valor ou data de entrega em relacao ao pedido carregado, `Aprovar` e `Recusar` ficam bloqueados/ocultos; o caminho correto passa a ser `Enviar Proposta`;
+- ao salvar alteracoes locais de preco, valor ou data de entrega, o pedido e marcado como `Publicado = 0` para exigir nova proposta ao fornecedor;
 - aprovacao sem fotos do fornecedor envia e-mail e muda para `Aprovado Aguardando Foto Fornecedor`, `Localizacao = Fornecedor`, `Publicado = 1` e incrementa `Iteracao`;
 - aprovacao de pedido aguardando foto exige fotos do fornecedor antes de mudar para `Aprovado`;
 - aprovacao com fotos do fornecedor muda para `Aprovado` e `Localizacao = KidStok`;
-- recusa exige pedido publicado, `Iteracao > 0` e motivo;
+- recusa exige pedido publicado e motivo;
 - `enviar_proposta` usa `config_email`, `urls_allop` com modulo `apPF` e usuarios ativos do fornecedor em `pf_usuarios`/`pf_usuario_fornecedor`;
 - o e-mail e enviado em texto puro e HTML pelo cliente SMTP proprio;
 - localizacoes validas no fluxo atual sao `KidStok` e `Fornecedor`;
@@ -307,6 +318,10 @@ Regras atuais:
 - o formulario mostra indicadores separados para fotos KidStok e fotos Fornecedor;
 - fotos do fornecedor sao consideradas para definir se um pedido aguardando foto pode avancar para `Aprovado`;
 - o modal de fotos altera titulo, listagem e permissao conforme a origem (`kidstok` ou `fornecedor`);
+- a aba Fotos do item usa dois paineis: `Fotos KidStok` com `Gerenciar fotos` e `Fotos do fornecedor` com `Ver fotos`;
+- `Gerenciar fotos` abre modal com area de clique/arraste para upload KidStok, listagem e exclusao;
+- `Ver fotos` abre o mesmo modal em modo de visualizacao para fotos do fornecedor;
+- item sem foto usa `assets/img/SemFoto.png` como placeholder visual;
 - a API abre transacoes no banco principal e no banco de fotos durante upload KidStok, mas nao ha atomicidade distribuida real entre conexoes.
 
 #### PDF
@@ -532,14 +547,14 @@ Banco:
 | Layout base | `.app-shell`, `.app-content`, `.page-heading` | Estrutura comum das telas. |
 | Menu | `menu_items()`, `menu_icon()`, `.menu-main-link`, `.menu-svg` | Menu por perfil com icones SVG inline. |
 | Cards | `.card-slim`, `.dashboard-tile`, `.dashboard-chart-card` | Formularios, dashboards e paineis. |
-| Grids | `.table-custom`, `.grid-shell`, `.grid-filter`, `.filter-inline` | Listagens responsivas. |
-| Botoes | `.btn-new`, `.btn-save`, `.btn-sync`, `.btn-edit`, `.btn-view`, `.btn-delete`, `.btn-print`, `.btn-photo`, `.btn-filter`, `.btn-back` | Acoes padronizadas com icones por CSS. |
+| Grids | `.table-custom`, `.grid-shell`, `.grid-filter`, `.filter-inline` | Listagens responsivas em linhas-card, com espacamento entre linhas e hover destacado. |
+| Botoes | `.btn-new`, `.btn-save`, `.btn-sync`, `.btn-edit`, `.btn-view`, `.btn-delete`, `.btn-print`, `.btn-photo`, `.btn-manage-photos`, `.btn-filter`, `.btn-back` | Acoes padronizadas com icones por CSS. |
 | Alertas | `appAlert()`, `appOkAlert()`, `appConfirm()` | Mensagens e confirmacao via Bootstrap Modal/Alert. |
 | Salvamento | `setFormSaving()` | Bloqueia botao e mostra processamento. |
 | Status | `.badge-status-*`, `.cp-localizacao-badge`, `.dashboard-grid-badge` | Badges de status, localizacao e publicacao. |
-| Pedido | `.cp-pedido-status-hero`, `.cp-compra-item`, `.cp-compra-tamanho`, `.cp-compra-cor` | Status destacado e hierarquia de compra. |
+| Pedido | `.cp-pedido-status-hero`, `.cp-compra-layout`, `.cp-pedido-resumo`, `.cp-compra-item`, `.cp-compra-tamanho`, `.cp-compra-cor` | Status destacado, resumo lateral, workflow e hierarquia de compra. |
 | Rateio | `#cp-rateio-modal`, `.cp-rateio-*` | Percentuais por cor e quantidades por tamanho. |
-| Fotos | `#cp-fotos-modal`, `.cp-fotos-grid`, `.cp-foto-card`, `.cp-foto-preview-img` | Listagem, upload, exclusao e preview de imagens. |
+| Fotos | `#cp-fotos-modal`, `.cp-item-fotos-panels`, `.cp-foto-dropzone`, `.cp-fotos-grid`, `.cp-foto-card`, `.cp-foto-preview-img` | Paineis de fotos, upload, exclusao e preview de imagens. |
 | Log de cor | `#cp-cor-log-modal`, `.cp-preco-alterado-*`, `.btn-price-log` | Comparacao de preco com ultimo log. |
 | Login | `.login-page`, `.login-shell`, `.login-card`, `.login-showcase` | Tela de acesso com logos e alternancia de visibilidade da senha. |
 
@@ -563,6 +578,7 @@ Banco:
 16. **Status autocorrigidos por upsert:** `cp_ensure_status_catalog()` regrava os textos canonicos dos IDs 0 a 3 em `cp_compras_status`; alteracoes manuais nesses IDs podem ser sobrescritas.
 17. **Encoding legado:** varios arquivos PHP e documentos legados ainda exibem acentos quebrados em strings ja versionadas; novos textos deste documento foram gravados em UTF-8/ASCII para reduzir novas quebras.
 18. **Contrato de fotos do fornecedor:** a acao `fotos_upload` aceita `origem=fornecedor`, mas `cp_require_foto_mutavel()` bloqueia qualquer insercao ou exclusao em `cp_compras_fotos` pela tela interna.
+19. **Workflow depende de snapshot no frontend:** o bloqueio de `Aprovar` e `Recusar` apos alteracoes locais de preco, valor ou entrega compara a grade atual com o estado carregado em `cpCompraWorkflowSnapshot`. Alteracoes feitas por fora da tela dependem do estado persistido e das regras da API.
 
 ## 13. Validacao Antes de Entregar Alteracoes
 

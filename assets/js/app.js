@@ -1087,10 +1087,12 @@ let cpCompraReadonly = false;
 let cpCompraReadonlyLocalizacao = '';
 let cpCompraStatusIdAtual = 0;
 let cpCompraStatusDescricaoAtual = 'Aberto';
+let cpCompraTemFotosFornecedorAtual = 0;
 let cpCompraFotoItemIndex = null;
 let cpCompraFotoOrigem = 'kidstok';
 let cpCompraRateioContext = null;
 let cpCompraItemActiveTabs = {};
+let cpCompraWorkflowSnapshot = [];
 
 function cpLocalizacaoEhFornecedor(localizacao) {
     return String(localizacao || '').trim().toLocaleLowerCase() === 'fornecedor';
@@ -1389,6 +1391,10 @@ function initCpComprasForm() {
                 cpCompraStatusDescricaoAtual = row.descricao_compras || row.Sts || 'Aberto';
                 cpCompraReadonly = cpCompraPedidoSomenteVisualizacao(row);
                 cpCompraItens = (row.items || []).map(mapCpCompraItemFromApi);
+                cpCompraItens.forEach(function (item) {
+                    recalcCpCompraItem(item);
+                });
+                cpCompraWorkflowSnapshot = cpCompraWorkflowSnapshotFromItens(cpCompraItens);
                 cpCompraItensOpen = {};
                 cpCompraItemActiveTabs = {};
                 applyCpCompraReadonly($form);
@@ -1405,6 +1411,7 @@ function initCpComprasForm() {
         $form.find('[name="Sts_display"]').val('Aberto');
         cpCompraStatusIdAtual = 0;
         cpCompraStatusDescricaoAtual = 'Aberto';
+        cpCompraTemFotosFornecedorAtual = 0;
         $form.find('[name="Publicado"]').val('0');
         $form.find('[name="Publicado_display"]').val(formatPublicadoCpCompra(0));
         $form.find('[name="Localizacao"]').val('KidStok');
@@ -1413,6 +1420,7 @@ function initCpComprasForm() {
         toggleCpCompraMotivo($form);
         loadCpCompraDefaults($form);
         cpCompraItens = [];
+        cpCompraWorkflowSnapshot = [];
         cpCompraItensOpen = {};
         cpCompraItemActiveTabs = {};
         updateCpCompraWorkflowButtons({ Localizacao: 'KidStok', Sts: 'Aberto' });
@@ -1444,6 +1452,8 @@ function salvarCpCompraForm($form, done) {
         updateCpCompraNestedDisplays(itemIndex);
     });
     $form.find('[name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
+    updateCpCompraResumoPedido();
+    cpCompraMarcarPropostaPendenteSeNecessario($form);
     const message = validarCpCompraForm($form);
     if (message) {
         appAlert(message, 'danger');
@@ -1459,6 +1469,7 @@ function salvarCpCompraForm($form, done) {
             $form.data('id', response.id);
             updateCpCompraWorkflowButtons({ Localizacao: 'KidStok', Sts: 'Aberto' });
         }
+        updateCpCompraWorkflowButtonsFromForm();
         if (typeof done === 'function') {
             done(response);
         }
@@ -1631,8 +1642,9 @@ function updateCpCompraWorkflowButtons(row) {
     const localizacao = row.Localizacao || 'KidStok';
     const status = row.descricao_compras || row.Sts || 'Aberto';
     const publicado = Number(row.Publicado || 0) === 1;
-    const teveInteracaoFornecedor = Number(row.Iteracao || 0) > 0;
     const temFotosFornecedor = Number(row.TemFotosFornecedor || 0) === 1;
+    cpCompraTemFotosFornecedorAtual = temFotosFornecedor ? 1 : 0;
+    const temAlteracaoParaFornecedor = cpCompraTemAlteracaoParaFornecedor();
     const pedidoId = Number($('#cp-compras-form').data('id') || $('#cp-compras-form [name="id"]').val() || 0);
     const isClosed = status === 'Aprovado' || status === 'Aprovado sem fotos' || status === 'Aprovado aguardando foto' || status === 'Aprovado Aguardando Foto Fornecedor' || status === 'Recusado';
     const podeAprovarAguardandoFoto = (status === 'Aprovado aguardando foto' || status === 'Aprovado Aguardando Foto Fornecedor') && temFotosFornecedor;
@@ -1642,12 +1654,104 @@ function updateCpCompraWorkflowButtons(row) {
     $('#btn-cp-enviar-fornecedor').toggleClass('d-none', !podeEnviarFornecedorAguardandoFoto);
     $('#btn-cp-aprovar').toggleClass(
         'd-none',
-        !pedidoId || !publicado || cpLocalizacaoEhFornecedor(localizacao) || (isClosed && !podeAprovarAguardandoFoto)
+        !pedidoId || !publicado || temAlteracaoParaFornecedor || cpLocalizacaoEhFornecedor(localizacao) || (isClosed && !podeAprovarAguardandoFoto)
     );
     $('#btn-cp-recusar').toggleClass(
         'd-none',
-        !pedidoId || !publicado || !teveInteracaoFornecedor || cpLocalizacaoEhFornecedor(localizacao) || isClosed
+        !pedidoId || !publicado || temAlteracaoParaFornecedor || cpLocalizacaoEhFornecedor(localizacao) || isClosed
     );
+}
+
+function updateCpCompraWorkflowButtonsFromForm() {
+    const $form = $('#cp-compras-form');
+    updateCpCompraWorkflowButtons({
+        Localizacao: $form.find('[name="Localizacao"]').val() || cpCompraReadonlyLocalizacao || 'KidStok',
+        Sts: cpCompraStatusDescricaoAtual || $form.find('[name="Sts"]').val() || 'Aberto',
+        descricao_compras: cpCompraStatusDescricaoAtual || $form.find('[name="Sts"]').val() || 'Aberto',
+        status_id: cpCompraStatusIdAtual,
+        Publicado: $form.find('[name="Publicado"]').val() || 0,
+        TemFotosFornecedor: cpCompraTemFotosFornecedorAtual
+    });
+}
+
+function cpCompraWorkflowSnapshotFromItens(items) {
+    const snapshot = {};
+    (items || []).forEach(function (item, itemIndex) {
+        const itemKey = cpCompraSnapshotKey('item', item.id, item.referencia_fornecedor || itemIndex);
+        snapshot[itemKey] = {
+            entrega: cpCompraNormalizeDate(item.entrega),
+            total_produto: cpCompraWorkflowMoney(item.total_produto)
+        };
+        (item.tamanhos || []).forEach(function (tamanho, tamanhoIndex) {
+            const tamanhoKey = itemKey + '/' + cpCompraSnapshotKey('tamanho', tamanho.id, tamanho.tamanho || tamanhoIndex);
+            snapshot[tamanhoKey] = {
+                entrega: cpCompraNormalizeDate(tamanho.entrega),
+                valor_total: cpCompraWorkflowMoney(tamanho.valor_total)
+            };
+            (tamanho.cores || []).forEach(function (cor, corIndex) {
+                const corKey = tamanhoKey + '/' + cpCompraSnapshotKey('cor', cor.id, cor.sku || cor.cor || corIndex);
+                snapshot[corKey] = {
+                    preco_fornecedor: cpCompraWorkflowMoney(cor.preco_fornecedor),
+                    preco_proposta: cpCompraWorkflowMoney(cor.preco_proposta),
+                    valor_total_produto: cpCompraWorkflowMoney(cor.valor_total_produto),
+                    preco_franqueado: cpCompraWorkflowMoney(cor.preco_franqueado),
+                    preco_loja: cpCompraWorkflowMoney(cor.preco_loja)
+                };
+            });
+        });
+    });
+    return snapshot;
+}
+
+function cpCompraTemAlteracaoParaFornecedor() {
+    if (!cpCompraWorkflowSnapshot || Object.keys(cpCompraWorkflowSnapshot).length === 0) {
+        return false;
+    }
+    const atual = cpCompraWorkflowSnapshotFromItens(cpCompraItens);
+    const keys = Object.keys(atual);
+    for (let index = 0; index < keys.length; index++) {
+        const key = keys[index];
+        const antes = cpCompraWorkflowSnapshot[key];
+        if (!antes) {
+            continue;
+        }
+        const agora = atual[key];
+        const campos = Object.keys(agora);
+        for (let campoIndex = 0; campoIndex < campos.length; campoIndex++) {
+            const campo = campos[campoIndex];
+            if (String(antes[campo] ?? '') !== String(agora[campo] ?? '')) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+function cpCompraMarcarPropostaPendenteSeNecessario($form) {
+    if (!cpCompraTemAlteracaoParaFornecedor()) {
+        return;
+    }
+    $form.find('[name="Publicado"]').val('0');
+    $form.find('[name="Publicado_display"]').val(formatPublicadoCpCompra(0));
+    updateCpCompraStatusDestaque({
+        Sts: cpCompraStatusDescricaoAtual || $form.find('[name="Sts"]').val() || 'Aberto',
+        descricao_compras: cpCompraStatusDescricaoAtual || $form.find('[name="Sts"]').val() || 'Aberto',
+        Publicado: 0,
+        Localizacao: $form.find('[name="Localizacao"]').val() || 'KidStok'
+    });
+}
+
+function cpCompraSnapshotKey(prefix, id, fallback) {
+    return prefix + ':' + (Number(id || 0) > 0 ? 'id-' + Number(id) : 'tmp-' + String(fallback || ''));
+}
+
+function cpCompraNormalizeDate(value) {
+    const date = String(value || '').trim();
+    return date === '0000-00-00' ? '' : date.slice(0, 10);
+}
+
+function cpCompraWorkflowMoney(value) {
+    return Math.round((Number(value) || 0) * 100);
 }
 
 function updateCpCompraStatusDestaque(row) {
@@ -1767,6 +1871,7 @@ function applyCpCompraHeaderMarkupsToItens() {
         updateCpCompraNestedDisplays(itemIndex);
     });
     $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
+    updateCpCompraResumoPedido();
 }
 
 function collapseCpCompraItens() {
@@ -1998,6 +2103,7 @@ function renderCpCompraItensLegacy() {
     initCpCompraReferenciaSelects();
     initCpCompraNestedFields();
     loadCpCompraItemThumbs();
+    updateCpCompraResumoPedido();
 }
 
 function renderCpCompraItens() {
@@ -2031,7 +2137,7 @@ function renderCpCompraItens() {
             '</div>' +
             '</div>' +
             '<div class="cp-compra-item-summary">' +
-            '<div class="cp-summary-box"><small>Pe&ccedil;as</small><strong>' + escapeHtml(Number(item.total_qtde || 0).toLocaleString('pt-BR', { maximumFractionDigits: 0 })) + '</strong></div>' +
+            '<div class="cp-summary-box"><small>Pe&ccedil;as</small><strong class="cp-compra-item-pecas">' + escapeHtml(cpCompraItemPecas(item).toLocaleString('pt-BR', { maximumFractionDigits: 0 })) + '</strong></div>' +
             '<div class="cp-summary-box"><small>Tamanhos ativos</small><strong>' + tamanhosAtivos + '</strong></div>' +
             '<div class="cp-summary-box"><small>Total do item</small><strong class="cp-compra-item-total">R$ ' + escapeHtml(formatMoneyBr(item.total_produto || 0)) + '</strong></div>' +
             '</div>' +
@@ -2542,6 +2648,7 @@ function updateCpCompraItemEntrega($field) {
     const entrega = String($field.val() || '');
     item.entrega = entrega;
     updateCpCompraNestedDisplays(itemIndex);
+    updateCpCompraWorkflowButtonsFromForm();
 }
 
 function updateCpCompraNestedField($field) {
@@ -2598,6 +2705,7 @@ function updateCpCompraNestedField($field) {
     recalcCpCompraItem(item);
     updateCpCompraNestedDisplays(itemIndex);
     $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
+    updateCpCompraResumoPedido();
 }
 
 function moveCpCompraFocusToNextField(field) {
@@ -2734,7 +2842,7 @@ function cpCompraFotoPanelHtml(itemIndex, item, origem) {
         ? 'Clique na miniatura principal ou gerencie todas as fotos.'
         : 'Imagens recebidas junto a referencia do produto.';
     const buttonLabel = isKidStok ? 'Gerenciar fotos' : 'Ver fotos';
-    const buttonClass = isKidStok ? 'btn-orange cp-foto-kidstok' : 'btn-outline-secondary cp-foto-fornecedor';
+    const buttonClass = isKidStok ? 'btn-orange btn-manage-photos cp-foto-kidstok' : 'btn-orange btn-view cp-foto-fornecedor';
     const disabledAttr = item.item_confirmado ? '' : ' disabled';
     return '<section class="cp-item-foto-panel">' +
         '<h6>' + title + '</h6>' +
@@ -3289,6 +3397,7 @@ function updateCpCompraItemTotalDisplay(itemIndex) {
     const $item = $('.cp-compra-item[data-item-index="' + itemIndex + '"]');
     $item.find('[data-field="total_qtde"]').val(parseInt(item.total_qtde || 0, 10));
     $item.find('[data-field="total_produto"]').val(formatMoneyInput(total));
+    $item.find('.cp-compra-item-pecas').text(cpCompraItemPecas(item).toLocaleString('pt-BR', { maximumFractionDigits: 0 }));
     $item.find('.cp-compra-item-total').text('R$ ' + formatMoneyBr(total));
 }
 
@@ -3843,6 +3952,7 @@ function aplicarCpCompraPrecoPropostoMedio(itemIndex, tamanhoIndex) {
     recalcCpCompraItem(item);
     updateCpCompraNestedDisplays(itemIndex);
     $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
+    updateCpCompraResumoPedido();
 }
 
 function toggleCpCompraBulkEdit(itemIndex) {
@@ -4130,7 +4240,10 @@ function recalcCpCompraItem(item) {
         tamanho.Itens = coresAtivas.length;
         tamanho.markup_franquia = roundCpMoney(markups.franquia || 0);
         tamanho.markup_loja = roundCpMoney(markups.franqueadora || 0);
-        totalQtdeItem += tamanhoAtivo ? (temQtdeManual ? qtdeAplicada : totalQtde) : 0;
+        const totalQtdeCores = (tamanho.cores || []).reduce(function (sum, cor) {
+            return sum + (String(cor.Sts) !== '0' ? Math.max(0, parseInt(Number(cor.Qtde || 0), 10) || 0) : 0);
+        }, 0);
+        totalQtdeItem += tamanhoAtivo ? (totalQtdeCores || Math.max(0, parseInt(Number(tamanho.qtde_total || 0), 10) || 0)) : 0;
         totalItem += totalTamanho;
     });
     item.total_qtde = totalQtdeItem;
@@ -4217,6 +4330,7 @@ function recalcCpCompraTotal() {
         updateCpCompraNestedDisplays(itemIndex);
     });
     $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
+    updateCpCompraResumoPedido();
 }
 
 function sumCpCompraTotal() {
@@ -4225,6 +4339,74 @@ function sumCpCompraTotal() {
         total += Number(item.total_produto || 0);
     });
     return total;
+}
+
+function cpCompraItemPecas(item) {
+    if (!item || String(item.Sts) === '0') {
+        return 0;
+    }
+    return (item.tamanhos || []).reduce(function (total, tamanho) {
+        if (String(tamanho.Sts) === '0') {
+            return total;
+        }
+        const cores = tamanho.cores || [];
+        if (cores.length) {
+            return total + cores.reduce(function (sum, cor) {
+                return sum + (String(cor.Sts) !== '0' ? Math.max(0, parseInt(Number(cor.Qtde || 0), 10) || 0) : 0);
+            }, 0);
+        }
+        return total + Math.max(0, parseInt(Number(tamanho.qtde_total || 0), 10) || 0);
+    }, 0);
+}
+
+function updateCpCompraResumoPedido() {
+    const resumo = cpCompraItens.reduce(function (acc, item) {
+        const itemAtivo = String(item.Sts) !== '0';
+        acc.itens.total += 1;
+        if (itemAtivo) {
+            acc.itens.ativos += 1;
+            acc.pecas += cpCompraItemPecas(item);
+        } else {
+            acc.itens.inativos += 1;
+        }
+        (item.tamanhos || []).forEach(function (tamanho) {
+            const tamanhoAtivo = itemAtivo && String(tamanho.Sts) !== '0';
+            acc.tamanhos.total += 1;
+            if (tamanhoAtivo) {
+                acc.tamanhos.ativos += 1;
+            } else {
+                acc.tamanhos.inativos += 1;
+            }
+            (tamanho.cores || []).forEach(function (cor) {
+                const corAtiva = tamanhoAtivo && String(cor.Sts) !== '0';
+                acc.cores.total += 1;
+                if (corAtiva) {
+                    acc.cores.ativas += 1;
+                } else {
+                    acc.cores.inativas += 1;
+                }
+            });
+        });
+        return acc;
+    }, {
+        itens: { total: 0, ativos: 0, inativos: 0 },
+        pecas: 0,
+        tamanhos: { total: 0, ativos: 0, inativos: 0 },
+        cores: { total: 0, ativas: 0, inativas: 0 }
+    });
+
+    $('#cp-resumo-pecas').text(resumo.pecas.toLocaleString('pt-BR', { maximumFractionDigits: 0 }));
+    $('#cp-resumo-itens-total').text(resumo.itens.total.toLocaleString('pt-BR'));
+    $('#cp-resumo-itens-ativos').text(resumo.itens.ativos.toLocaleString('pt-BR'));
+    $('#cp-resumo-itens-inativos').text(resumo.itens.inativos.toLocaleString('pt-BR'));
+    $('#cp-resumo-tamanhos-total').text(resumo.tamanhos.total.toLocaleString('pt-BR'));
+    $('#cp-resumo-tamanhos-ativos').text(resumo.tamanhos.ativos.toLocaleString('pt-BR'));
+    $('#cp-resumo-tamanhos-inativos').text(resumo.tamanhos.inativos.toLocaleString('pt-BR'));
+    $('#cp-resumo-cores-total').text(resumo.cores.total.toLocaleString('pt-BR'));
+    $('#cp-resumo-cores-ativas').text(resumo.cores.ativas.toLocaleString('pt-BR'));
+    $('#cp-resumo-cores-inativas').text(resumo.cores.inativas.toLocaleString('pt-BR'));
+    $('#cp-resumo-total').text('R$ ' + formatMoneyBr(sumCpCompraTotal()));
+    updateCpCompraWorkflowButtonsFromForm();
 }
 
 function parseMoneyInput(value) {

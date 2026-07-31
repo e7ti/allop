@@ -16,16 +16,6 @@ $id = (int) ($_GET['id'] ?? 0);
 <form id="cp-compras-form" class="form-section cp-compras-form-wide" data-id="<?= $id ?>" novalidate>
     <input type="hidden" name="id" value="<?= $id ?>">
 
-    <div class="cp-compras-workflow-actions d-flex flex-wrap gap-2 justify-content-center mb-3">
-        <?php if ($id > 0): ?>
-            <a class="btn btn-outline-secondary btn-print" href="../../api/compras/cp_compras_pdf.php?id=<?= $id ?>" target="_blank" rel="noopener">Imprimir PDF</a>
-        <?php endif; ?>
-        <button class="btn btn-outline-secondary btn-send-proposal" id="btn-cp-enviar-proposta" type="button">Enviar Proposta</button>
-        <button class="btn btn-outline-secondary btn-send-proposal d-none" id="btn-cp-enviar-fornecedor" type="button">Enviar Fornecedor</button>
-        <button class="btn btn-outline-success btn-approve d-none" id="btn-cp-aprovar" type="button">Aprovar</button>
-        <button class="btn btn-outline-danger btn-reject d-none" id="btn-cp-recusar" type="button">Recusar</button>
-    </div>
-
     <div class="cp-pedido-status-hero mb-3">
         <div>
             <span class="cp-pedido-status-label">Status do Pedido</span>
@@ -39,6 +29,8 @@ $id = (int) ($_GET['id'] ?? 0);
         </div>
     </div>
 
+    <div class="cp-compra-layout">
+        <div class="cp-compra-main">
     <section class="card card-slim mb-3">
         <div class="card-header"><strong>Pedido</strong></div>
         <div class="card-body row g-3">
@@ -81,11 +73,45 @@ $id = (int) ($_GET['id'] ?? 0);
         </div>
     </section>
 
-    <section class="card card-slim mb-3">
-        <div class="card-footer bg-white d-flex flex-wrap gap-2 justify-content-end">
-            <button class="btn btn-orange btn-save btn-save-main" type="submit">Salvar</button>
         </div>
-    </section>
+
+        <aside class="cp-pedido-resumo">
+            <h3>Resumo do pedido</h3>
+            <p>Valores atualizados conforme a grade.</p>
+            <div class="cp-pedido-resumo-metrics">
+                <div class="cp-resumo-line"><span>Pe&ccedil;as</span><strong id="cp-resumo-pecas">0</strong></div>
+                <div class="cp-resumo-group">
+                    <div class="cp-resumo-totalizador"><span>Total de itens</span><strong id="cp-resumo-itens-total">0</strong></div>
+                    <div><span>Itens ativos</span><strong id="cp-resumo-itens-ativos">0</strong></div>
+                    <div><span>Itens inativos</span><strong id="cp-resumo-itens-inativos">0</strong></div>
+                </div>
+                <div class="cp-resumo-group">
+                    <div class="cp-resumo-totalizador"><span>Total de tamanhos</span><strong id="cp-resumo-tamanhos-total">0</strong></div>
+                    <div><span>Tamanhos ativos</span><strong id="cp-resumo-tamanhos-ativos">0</strong></div>
+                    <div><span>Tamanhos inativos</span><strong id="cp-resumo-tamanhos-inativos">0</strong></div>
+                </div>
+                <div class="cp-resumo-group">
+                    <div class="cp-resumo-totalizador"><span>Total de cores</span><strong id="cp-resumo-cores-total">0</strong></div>
+                    <div><span>Cores ativas</span><strong id="cp-resumo-cores-ativas">0</strong></div>
+                    <div><span>Cores inativas</span><strong id="cp-resumo-cores-inativas">0</strong></div>
+                </div>
+            </div>
+            <div class="cp-pedido-resumo-total">
+                <span>Total</span>
+                <strong id="cp-resumo-total">R$ 0,00</strong>
+            </div>
+            <button class="btn btn-orange btn-save btn-save-main w-100" type="submit">Salvar altera&ccedil;&otilde;es</button>
+            <div class="cp-pedido-resumo-actions">
+                <?php if ($id > 0): ?>
+                    <a class="btn btn-outline-secondary btn-print" href="../../api/compras/cp_compras_pdf.php?id=<?= $id ?>" target="_blank" rel="noopener">Imprimir PDF</a>
+                <?php endif; ?>
+                <button class="btn btn-outline-secondary btn-send-proposal" id="btn-cp-enviar-proposta" type="button">Enviar Proposta</button>
+                <button class="btn btn-outline-secondary btn-send-proposal d-none" id="btn-cp-enviar-fornecedor" type="button">Enviar Fornecedor</button>
+                <button class="btn btn-outline-success btn-approve d-none" id="btn-cp-aprovar" type="button">Aprovar</button>
+                <button class="btn btn-outline-danger btn-reject d-none" id="btn-cp-recusar" type="button">Recusar</button>
+            </div>
+        </aside>
+    </div>
 </form>
 
 <div class="modal fade" id="cp-rateio-modal" tabindex="-1" aria-hidden="true">
