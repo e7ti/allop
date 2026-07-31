@@ -3039,7 +3039,7 @@ function openCpCompraFotoUpload(itemIndex) {
 function uploadCpCompraFotosFromItem(input, itemIndex) {
     cpCompraFotoItemIndex = itemIndex;
     cpCompraFotoOrigem = 'kidstok';
-    uploadCpCompraFotos.call(input);
+    uploadCpCompraFotos.call(input, true);
 }
 
 function cpCompraFotoContextForItem(itemIndex, origem, silent) {
@@ -3138,7 +3138,8 @@ function renderCpCompraItemInlineFotos(itemIndex, origem, fotos) {
     $gallery.html(renderCpCompraFotoPreview(src, fotos.length > 0, origem));
 }
 
-function uploadCpCompraFotos() {
+function uploadCpCompraFotos(showSuccessMessage) {
+    const shouldShowSuccessMessage = showSuccessMessage === true;
     const context = cpCompraFotoContext();
     if (!context || !cpCompraPodeAlterarFoto(context.origem)) {
         $('#cp-foto-input').val('');
@@ -3168,7 +3169,9 @@ function uploadCpCompraFotos() {
         processData: false,
         contentType: false
     }).done(function (response) {
-        appAlert(response.message || 'Fotos inseridas.', 'success');
+        if (shouldShowSuccessMessage) {
+            appAlert('Foto inserida com sucesso', 'success');
+        }
         if (context.origem === 'kidstok') {
             updateCpCompraFotoFlag(context.itemIndex, 1);
         } else {
@@ -3197,7 +3200,6 @@ function deleteCpCompraFoto(fotoId) {
             origem: context.origem,
             foto_id: fotoId
         }, function (response) {
-            appAlert(response.message || 'Foto excluída.', 'success');
             if (context.origem === 'kidstok') {
                 updateCpCompraFotoFlag(context.itemIndex, Number(response.count || 0) > 0 ? 1 : 0);
             } else {
