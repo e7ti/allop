@@ -125,7 +125,7 @@ $id = (int) ($_GET['id'] ?? 0);
 </div>
 
 <div class="modal fade" id="cp-fotos-modal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <div>
@@ -136,13 +136,16 @@ $id = (int) ($_GET['id'] ?? 0);
             </div>
             <div class="modal-body">
                 <div id="cp-foto-upload-block" class="mb-3">
-                    <label class="form-label">Inserir fotos</label>
-                    <input class="form-control" id="cp-foto-input" type="file" accept="image/png,image/jpeg,image/webp" multiple>
+                    <label class="cp-foto-dropzone" for="cp-foto-input">
+                        <strong>Clique ou arraste imagens aqui</strong>
+                        <span>PNG, JPG ou WebP - voc&ecirc; pode selecionar v&aacute;rias fotos</span>
+                    </label>
+                    <input class="d-none" id="cp-foto-input" type="file" accept="image/png,image/jpeg,image/webp" multiple>
                 </div>
                 <div id="cp-fotos-list" class="cp-fotos-grid"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary btn-back" data-bs-dismiss="modal">Voltar</button>
+                <button type="button" class="btn btn-orange" data-bs-dismiss="modal">Concluir</button>
             </div>
         </div>
     </div>

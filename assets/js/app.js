@@ -1311,6 +1311,25 @@ function initCpComprasForm() {
     });
 
     $('#cp-foto-input').on('change', uploadCpCompraFotos);
+    $('#cp-foto-upload-block').on('dragover dragenter', '.cp-foto-dropzone', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        $(this).addClass('is-dragover');
+    }).on('dragleave dragend drop', '.cp-foto-dropzone', function (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        $(this).removeClass('is-dragover');
+    }).on('drop', '.cp-foto-dropzone', function (event) {
+        const files = event.originalEvent?.dataTransfer?.files || [];
+        if (!files.length) {
+            return;
+        }
+        const input = document.getElementById('cp-foto-input');
+        if (input) {
+            input.files = files;
+            uploadCpCompraFotos.call(input);
+        }
+    });
     $('#btn-aplicar-cp-rateio').on('click', aplicarCpCompraRateio);
     $('#cp-rateio-modal').on('input', '.cp-rateio-percentual, .cp-rateio-qtde, #cp-rateio-qtde-total', updateCpCompraRateioModalTotal);
     $form.on('focusin', 'input', function () {
@@ -1818,7 +1837,7 @@ function emptyCpCompraCor() {
 }
 
 function cpCompraSemImagemSrc() {
-    return '../../assets/img/sem-imagem.png';
+    return '../../assets/img/SemFoto.png';
 }
 
 function cpCompraStatusValue(value) {
@@ -2699,18 +2718,49 @@ function renderCpCompraItemFotosTab(itemIndex, item) {
         return '<div class="text-center text-muted py-3">Confirme o item para inserir ou visualizar fotos.</div>';
     }
     return '<div class="cp-item-fotos-tab">' +
-        photoButtonHtml(itemIndex, item) +
-        '<div class="row g-3 mt-1">' +
-        '<div class="col-12 col-xl-6">' +
-        '<div class="cp-item-gallery-header">Fotos KidStok</div>' +
-        '<div class="cp-fotos-grid cp-item-fotos-gallery" data-item-index="' + itemIndex + '" data-origem="kidstok"><div class="text-center text-muted py-4">Carregando fotos...</div></div>' +
-        '</div>' +
-        '<div class="col-12 col-xl-6">' +
-        '<div class="cp-item-gallery-header">Fotos Fornecedor</div>' +
-        '<div class="cp-fotos-grid cp-item-fotos-gallery" data-item-index="' + itemIndex + '" data-origem="fornecedor"><div class="text-center text-muted py-4">Carregando fotos...</div></div>' +
-        '</div>' +
+        '<input type="hidden" class="cp-compra-field" value="' + (Number(item.Foto || 0) === 1 ? 1 : 0) + '" ' + cpDataAttrs(itemIndex, null, 'Foto') + '>' +
+        '<div class="cp-item-fotos-panels">' +
+        cpCompraFotoPanelHtml(itemIndex, item, 'kidstok') +
+        cpCompraFotoPanelHtml(itemIndex, item, 'fornecedor') +
         '</div>' +
         '</div>';
+}
+
+function cpCompraFotoPanelHtml(itemIndex, item, origem) {
+    const isKidStok = origem !== 'fornecedor';
+    const hasPhoto = Number(isKidStok ? item.Foto : item.FotoFornecedor || 0) === 1;
+    const title = isKidStok ? 'Fotos KidStok' : 'Fotos do fornecedor';
+    const description = isKidStok
+        ? 'Clique na miniatura principal ou gerencie todas as fotos.'
+        : 'Imagens recebidas junto a referencia do produto.';
+    const buttonLabel = isKidStok ? 'Gerenciar fotos' : 'Ver fotos';
+    const buttonClass = isKidStok ? 'btn-orange cp-foto-kidstok' : 'btn-outline-secondary cp-foto-fornecedor';
+    const disabledAttr = item.item_confirmado ? '' : ' disabled';
+    return '<section class="cp-item-foto-panel">' +
+        '<h6>' + title + '</h6>' +
+        '<p>' + description + '</p>' +
+        '<div class="cp-item-foto-preview cp-item-fotos-gallery" data-item-index="' + itemIndex + '" data-origem="' + origem + '">' +
+        renderCpCompraFotoPreview(hasPhoto ? (isKidStok ? item._foto_kidstok_src : item._foto_fornecedor_src) : '', hasPhoto, origem) +
+        '</div>' +
+        '<button class="btn btn-sm ' + buttonClass + '" type="button" onclick="openCpCompraFotos(' + itemIndex + ', \'' + origem + '\')"' + disabledAttr + '>' + buttonLabel + '</button>' +
+        '</section>';
+}
+
+function renderCpCompraFotoPreview(src, hasPhoto, origem) {
+    const origemLabel = origem === 'fornecedor' ? 'fornecedor' : 'KidStok';
+    const imageSrc = src || cpCompraSemImagemSrc();
+    const emptyText = hasPhoto ? 'Foto disponivel.' : 'Nenhuma foto disponivel' + (origem === 'fornecedor' ? ' do fornecedor.' : ' na KidStok.');
+    return '<button class="cp-item-foto-mini" type="button" title="Ver fotos" onclick="openCpCompraFotosFromPreview(this)">' +
+        '<img src="' + escapeAttr(imageSrc) + '" alt="' + (hasPhoto ? 'Foto ' + origemLabel : 'Sem foto') + '">' +
+        '</button>' +
+        '<span>' + emptyText + '</span>';
+}
+
+function openCpCompraFotosFromPreview(button) {
+    const $gallery = $(button).closest('.cp-item-fotos-gallery');
+    const itemIndex = Number($gallery.data('item-index'));
+    const origem = String($gallery.data('origem') || 'kidstok');
+    openCpCompraFotos(itemIndex, origem);
 }
 
 function photoButtonHtml(itemIndex, item) {
@@ -2947,7 +2997,7 @@ function loadCpCompraItemThumbs() {
 function loadCpCompraItemFotosInline(itemIndex, origem) {
     const context = cpCompraFotoContextForItem(itemIndex, origem, true);
     if (!context) {
-        $('.cp-item-fotos-gallery[data-item-index="' + itemIndex + '"][data-origem="' + origem + '"]').html('<div class="text-center text-muted py-4">Salve o pedido para visualizar fotos.</div>');
+        $('.cp-item-fotos-gallery[data-item-index="' + itemIndex + '"][data-origem="' + origem + '"]').html('<span>Salve o pedido para visualizar fotos.</span>');
         return;
     }
     $.getJSON(window.cpComprasFormConfig.api, {
@@ -2961,10 +3011,13 @@ function loadCpCompraItemFotosInline(itemIndex, origem) {
         if (context.origem === 'kidstok') {
             updateCpCompraFotoFlag(itemIndex, Number(response.count || fotos.length || 0) > 0 ? 1 : 0, fotos[0]?.src || '');
         } else {
+            if (cpCompraItens[itemIndex]) {
+                cpCompraItens[itemIndex]._foto_fornecedor_src = fotos[0]?.src || '';
+            }
             updateCpCompraFotoFornecedorFlag(itemIndex, Number(response.count || fotos.length || 0) > 0 ? 1 : 0);
         }
     }).fail(function () {
-        $('.cp-item-fotos-gallery[data-item-index="' + itemIndex + '"][data-origem="' + origem + '"]').html('<div class="alert alert-danger mb-0">N&atilde;o foi poss&iacute;vel carregar as fotos.</div>');
+        $('.cp-item-fotos-gallery[data-item-index="' + itemIndex + '"][data-origem="' + origem + '"]').html('<span>N&atilde;o foi poss&iacute;vel carregar as fotos.</span>');
     });
 }
 
@@ -2973,11 +3026,8 @@ function renderCpCompraItemInlineFotos(itemIndex, origem, fotos) {
     if (!$gallery.length) {
         return;
     }
-    if (!fotos.length) {
-        $gallery.html('<div class="text-center text-muted py-4">Nenhuma foto inserida.</div>');
-        return;
-    }
-    $gallery.html(renderCpCompraFotosCards(fotos, origem, itemIndex));
+    const src = fotos.length ? (fotos[0]?.src || '') : '';
+    $gallery.html(renderCpCompraFotoPreview(src, fotos.length > 0, origem));
 }
 
 function uploadCpCompraFotos() {
@@ -3093,11 +3143,20 @@ function renderCpCompraFotos(fotos) {
     const context = cpCompraFotoContext();
     $('#cp-foto-count').text(fotos.length + (fotos.length === 1 ? ' foto' : ' fotos'));
     if (!fotos.length) {
-        $list.html('<div class="text-center text-muted py-4">Nenhuma foto inserida para esta referencia.</div>');
+        const origemTexto = cpCompraFotoOrigem === 'fornecedor' ? 'do fornecedor' : 'na KidStok';
+        $list.html('<div class="cp-foto-modal-empty">' +
+            '<img src="' + escapeAttr(cpCompraSemImagemSrc()) + '" alt="Sem foto">' +
+            '<span>Nenhuma foto dispon&iacute;vel ' + origemTexto + '.</span>' +
+            '</div>');
         if (context) {
             renderCpCompraItemInlineFotos(context.itemIndex, context.origem, []);
             if (context.origem === 'kidstok') {
                 updateCpCompraFotoFlag(context.itemIndex, 0, '');
+            } else {
+                if (cpCompraItens[context.itemIndex]) {
+                    cpCompraItens[context.itemIndex]._foto_fornecedor_src = '';
+                }
+                updateCpCompraFotoFornecedorFlag(context.itemIndex, 0);
             }
         }
         return;
@@ -3153,8 +3212,12 @@ function updateCpCompraFotoFlag(itemIndex, value, src) {
         .attr('alt', value ? 'Foto KidStok' : 'Sem imagem');
     const $button = $('.cp-compra-item[data-item-index="' + itemIndex + '"] .cp-foto-kidstok');
     if ($button.length) {
-        $button.toggleClass('btn-photo-sim', Boolean(value)).toggleClass('btn-photo-nao', !Boolean(value));
-        $button.html((value || !cpCompraPodeAlterarFoto('kidstok') ? 'Ver Fotos' : 'Inserir Fotos') + fotoBadgeHtml(Boolean(value)));
+        if ($button.hasClass('btn-photo')) {
+            $button.toggleClass('btn-photo-sim', Boolean(value)).toggleClass('btn-photo-nao', !Boolean(value));
+            $button.html((value || !cpCompraPodeAlterarFoto('kidstok') ? 'Ver Fotos' : 'Inserir Fotos') + fotoBadgeHtml(Boolean(value)));
+        } else {
+            $button.text('Gerenciar fotos');
+        }
     }
 }
 
@@ -3163,10 +3226,15 @@ function updateCpCompraFotoFornecedorFlag(itemIndex, value) {
         return;
     }
     cpCompraItens[itemIndex].FotoFornecedor = value;
+    cpCompraItens[itemIndex]._foto_fornecedor_src = value ? (cpCompraItens[itemIndex]._foto_fornecedor_src || '') : '';
     const $button = $('.cp-compra-item[data-item-index="' + itemIndex + '"] .cp-foto-fornecedor');
     if ($button.length) {
-        $button.toggleClass('btn-photo-sim', Boolean(value)).toggleClass('btn-photo-nao', !Boolean(value));
-        $button.html('Ver Fotos' + fotoBadgeHtml(Boolean(value)));
+        if ($button.hasClass('btn-photo')) {
+            $button.toggleClass('btn-photo-sim', Boolean(value)).toggleClass('btn-photo-nao', !Boolean(value));
+            $button.html('Ver Fotos' + fotoBadgeHtml(Boolean(value)));
+        } else {
+            $button.text('Ver fotos');
+        }
     }
     updateCpCompraWorkflowButtons({
         Localizacao: $('#cp-compras-form [name="Localizacao"]').val() || 'KidStok',
