@@ -1204,10 +1204,10 @@ function loadCpComprasGrid() {
                     '<td data-label="CD">' + escapeHtml(row.cd_nome || '') + '</td>' +
                     '<td data-label="Empresa">' + escapeHtml(row.empresa_nome || '') + '</td>' +
                     '<td data-label="Fornecedor">' + escapeHtml(row.fornecedor_nome || '') + '</td>' +
+                    '<td data-label="Status">' + cpPedidoStatusBadge(row.descricao_compras || row.Sts, localizacao) + '</td>' +
                     '<td data-label="Localização">' + cpLocalizacaoBadge(localizacao) + '</td>' +
                     '<td data-label="Publicado">' + cpPublicadoBadge(row.Publicado) + '</td>' +
-                    '<td data-label="Total">' + escapeHtml(formatMoneyBr(row.ValorTotalPedido || 0)) + '</td>' +
-                    '<td data-label="Status">' + cpPedidoStatusBadge(row.descricao_compras || row.Sts, localizacao) + '</td>' +
+                    '<td data-label="Valor" class="text-end">' + escapeHtml(formatMoneyBr(row.ValorTotalPedido || 0)) + '</td>' +
                     '<td data-label="Ações" class="text-end">' +
                     actions +
                     '</td>' +
