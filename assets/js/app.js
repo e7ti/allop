@@ -1905,6 +1905,8 @@ function emptyCpCompraTamanho() {
     return {
         id: 0,
         tamanho: '',
+        entrega: '',
+        entrega_anterior: '',
         markup_franquia: 0,
         markup_loja: 0,
         qtde_total: 0,
@@ -1913,6 +1915,7 @@ function emptyCpCompraTamanho() {
         Sts: 1,
         tem_log_preco_iteracao: 0,
         tem_log_qtde_iteracao: 0,
+        tem_log_entrega_fornecedor: 0,
         _aberto: false,
         _bulk_selected: false,
         cores: []
@@ -1992,6 +1995,8 @@ function mapCpCompraTamanhoFromApi(row) {
     return Object.assign(emptyCpCompraTamanho(), {
         id: Number(row.id || row.ID || 0),
         tamanho: row.tamanho || '',
+        entrega: row.entrega || '',
+        entrega_anterior: row.entrega_anterior || '',
         markup_franquia: Number(row.markup_franquia || 0),
         markup_loja: Number(row.markup_loja || 0),
         qtde_total: Number(row.qtde_total || 0),
@@ -2000,6 +2005,7 @@ function mapCpCompraTamanhoFromApi(row) {
         Sts: cpCompraStatusValue(row.Sts),
         tem_log_preco_iteracao: Number(row.tem_log_preco_iteracao || 0),
         tem_log_qtde_iteracao: Number(row.tem_log_qtde_iteracao || 0),
+        tem_log_entrega_fornecedor: Number(row.tem_log_entrega_fornecedor || 0),
         cores: (row.cores || []).map(function (cor) {
             return Object.assign(emptyCpCompraCor(), {
                 id: Number(cor.id || cor.ID || 0),
@@ -2204,13 +2210,18 @@ function renderCpCompraTamanhosV2(itemIndex, tamanhos) {
                 (tamanho.cores || []).some(function (cor) { return Number(cor.tem_log_preco_iteracao || 0) === 1; });
             const temLogQtde = Number(tamanho.tem_log_qtde_iteracao || 0) === 1 ||
                 (tamanho.cores || []).some(function (cor) { return Number(cor.tem_log_qtde_iteracao || 0) === 1; });
+            const temLogEntregaFornecedor = Number(tamanho.tem_log_entrega_fornecedor || 0) === 1;
             return '<section class="accordion-item cp-compra-tamanho" data-item-index="' + itemIndex + '" data-size-index="' + tamanhoIndex + '">' +
                 '<div class="accordion-header cp-compra-tamanho-header' + ((temLogPreco || temLogQtde) ? ' cp-preco-alterado-header' : '') + (aberto ? '' : ' collapsed') + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (aberto ? 'true' : 'false') + '">' +
                 '<div class="cp-compra-tamanho-title">' +
                 '<strong>' + escapeHtml(tamanho.tamanho || (tamanhoIndex + 1)) + '</strong>' + renderCpCompraAlteracaoBadges(temLogPreco, temLogQtde) +
                 '</div>' +
                 '<div class="cp-compra-tamanho-summary cp-compra-tamanho-summary-v2">' +
-                '<div class="cp-compra-summary-metric cp-compra-summary-metric-input" onclick="event.stopPropagation();"><small>Quantidade total</small>' +
+                '<div class="cp-compra-summary-metric cp-compra-summary-metric-input cp-compra-summary-metric-date' + (temLogEntregaFornecedor ? ' cp-entrega-alterada-fornecedor' : '') + '" onclick="event.stopPropagation();"><small>Data entrega</small>' +
+                '<input class="form-control form-control-sm cp-compra-tamanho-field cp-tamanho-summary-entrega cp-tamanho-summary-input' + (temLogEntregaFornecedor ? ' cp-entrega-alterada-input' : '') + '" type="date"' +
+                ((tamanhoInativo || cpCompraReadonly) ? ' readonly' : '') +
+                ' value="' + escapeAttr(tamanho.entrega || '') + '" ' + cpNestedDataAttrs(itemIndex, tamanhoIndex, null, 'entrega') + '></div>' +
+                '<div class="cp-compra-summary-metric cp-compra-summary-metric-input cp-compra-summary-metric-quantity" onclick="event.stopPropagation();"><small>Quantidade total</small>' +
                 '<input class="form-control form-control-sm cp-compra-tamanho-field cp-tamanho-summary-qtde cp-tamanho-summary-input" type="number" min="0" step="1" inputmode="numeric"' +
                 ((tamanhoInativo || cpCompraReadonly) ? ' readonly' : '') +
                 ' value="' + escapeAttr(tamanho.qtde_total || 0) + '" ' + cpNestedDataAttrs(itemIndex, tamanhoIndex, null, 'qtde_total') + '></div>' +
@@ -2292,7 +2303,7 @@ function renderCpCompraBulkToolbar(itemIndex, item) {
             '</div>' : '') +
         '</div>' +
         (open ? '<div class="row g-2 mt-2">' +
-            '<div class="col-12 col-md-3"><label class="form-label">Quantidade do tamanho</label><input class="form-control cp-bulk-qtde" type="number" min="0" step="1" inputmode="numeric" data-item-index="' + itemIndex + '"></div>' +
+            '<div class="col-12 col-md-3"><label class="form-label">Quantidade total</label><input class="form-control cp-bulk-qtde" type="number" min="0" step="1" inputmode="numeric" data-item-index="' + itemIndex + '"></div>' +
             '<div class="col-12 col-md-3"><label class="form-label">Pre&ccedil;o proposto</label><div class="input-group cp-money-input-group"><span class="input-group-text">R$</span><input class="form-control cp-money-field text-end cp-bulk-preco" type="text" inputmode="numeric" data-item-index="' + itemIndex + '"></div></div>' +
             '</div>' : '') +
         '</div>';
@@ -2334,7 +2345,8 @@ function renderCpCompraTamanhos(itemIndex, tamanhos) {
                 '<div class="accordion-body">' +
                 '<div class="row g-3 mb-3">' +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'tamanho', 'Tamanho', tamanho.tamanho, 'col-12 col-md-2', 'text', true) +
-                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'qtde_total', 'Quantidade do tamanho', tamanho.qtde_total, 'col-12 col-md-2', 'number', tamanhoInativo) +
+                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'entrega', 'Entrega', tamanho.entrega, 'col-12 col-md-2', 'date', tamanhoInativo) +
+                cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'qtde_total', 'Quantidade total', tamanho.qtde_total, 'col-12 col-md-2', 'number', tamanhoInativo) +
                 cpCompraTamanhoInput(itemIndex, tamanhoIndex, 'valor_total', 'Total do tamanho', tamanho.valor_total, 'col-12 col-md-2', 'money', true) +
                 '<div class="col-12 col-md-2"><label class="form-label">Rateio</label><input class="form-control ' + rateioClass + ' fw-bold cp-tamanho-rateio-total" value="' + escapeAttr(rateioModo) + '" readonly></div>' +
                 cpCompraPrecoPropostoMedioHtml(itemIndex, tamanhoIndex, tamanhoInativo) +
@@ -2647,8 +2659,18 @@ function updateCpCompraItemEntrega($field) {
 
     const entrega = String($field.val() || '');
     item.entrega = entrega;
+    cascadeCpCompraItemEntrega(item, entrega);
     updateCpCompraNestedDisplays(itemIndex);
     updateCpCompraWorkflowButtonsFromForm();
+}
+
+function cascadeCpCompraItemEntrega(item, entrega) {
+    (item.tamanhos || []).forEach(function (tamanho) {
+        tamanho.entrega = entrega;
+    });
+    (item._pendingTamanhos || []).forEach(function (tamanho) {
+        tamanho.entrega = entrega;
+    });
 }
 
 function updateCpCompraNestedField($field) {
@@ -2706,6 +2728,7 @@ function updateCpCompraNestedField($field) {
     updateCpCompraNestedDisplays(itemIndex);
     $('#cp-compras-form [name="ValorTotalPedido"]').val(formatMoneyInput(sumCpCompraTotal()));
     updateCpCompraResumoPedido();
+    updateCpCompraWorkflowButtonsFromForm();
 }
 
 function moveCpCompraFocusToNextField(field) {
@@ -2781,14 +2804,17 @@ function loadCpCompraReferenciaItem(itemIndex, codigoReferencia) {
     }
 
     syncCpCompraItensFromDom();
+    const previousEntrega = cpCompraItens[itemIndex]?.entrega || '';
     $.getJSON(window.cpComprasFormConfig.api, {
         action: 'referencia',
         fornecedor_id: fornecedorId,
         codigo_referencia: codigoReferencia
     }).done(function (response) {
         const itemData = Object.assign(emptyCpCompraItem(false), response.data || {});
+        itemData.entrega = itemData.entrega || previousEntrega;
         itemData.item_confirmado = false;
         itemData._pendingTamanhos = (itemData.tamanhos || []).map(mapCpCompraTamanhoFromApi);
+        cascadeCpCompraItemEntrega(itemData, itemData.entrega || '');
         itemData.tamanhos = [];
         cpCompraItens[itemIndex] = itemData;
         cpCompraItensOpen[itemIndex] = true;
@@ -3422,6 +3448,7 @@ function addCpCompraTamanho(itemIndex) {
         return;
     }
     const tamanho = emptyCpCompraTamanho();
+    tamanho.entrega = cpCompraItens[itemIndex].entrega || '';
     cpCompraItensOpen[itemIndex] = true;
     cpCompraItens[itemIndex].tamanhos.push(tamanho);
     renderCpCompraItens();
@@ -3911,6 +3938,7 @@ function confirmCpCompraItem(itemIndex) {
 
     item.item_confirmado = true;
     item.tamanhos = (item._pendingTamanhos && item._pendingTamanhos.length) ? item._pendingTamanhos : item.tamanhos;
+    cascadeCpCompraItemEntrega(item, item.entrega || '');
     const rateioStatus = cpCompraItemRateioStatus(item);
     if (!rateioStatus.ok) {
         appAlert(rateioStatus.message + ' Não será possível informar rateio para este item enquanto houver divergência.', 'warning');
@@ -4274,6 +4302,7 @@ function updateCpCompraNestedDisplays(itemIndex) {
         const rateioModo = cpCompraItemRateioModo(item);
         const tamanhoInativo = String(tamanho.Sts) === '0';
         const rateioValido = !tamanhoInativo && roundCpPercent(rateio) === 100;
+        const entregaAlteradaFornecedor = Number(tamanho.tem_log_entrega_fornecedor || 0) === 1;
         $tamanho.find('.cp-tamanho-rateio-total')
             .val(rateioModo)
             .toggleClass('text-muted', tamanhoInativo)
@@ -4283,6 +4312,11 @@ function updateCpCompraNestedDisplays(itemIndex) {
         $tamanhoStatus.val(String(tamanho.Sts));
         updateCpCompraStatusToggleVisual($tamanhoStatus.closest('.cp-status-toggle'), tamanho.Sts);
         $tamanho.find('.cp-tamanho-summary-qtde').text(tamanho.qtde_total || 0);
+        $tamanho.find('.cp-compra-tamanho-field[data-field="entrega"]').val(tamanho.entrega || '');
+        $tamanho.find('.cp-compra-summary-metric-date')
+            .toggleClass('cp-entrega-alterada-fornecedor', entregaAlteradaFornecedor);
+        $tamanho.find('.cp-compra-tamanho-field[data-field="entrega"]')
+            .toggleClass('cp-entrega-alterada-input', entregaAlteradaFornecedor);
         $tamanho.find('.cp-compra-tamanho-field[data-field="qtde_total"]').val(parseInt(tamanho.qtde_total || 0, 10));
         $tamanho.find('.cp-tamanho-summary-rateio')
             .text(rateioModo)

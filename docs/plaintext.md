@@ -265,7 +265,10 @@ Regras de gravacao e validacao:
 - somente itens/tamanhos/cores ativos entram nas validacoes de quantidade e rateio;
 - o total do pedido e recalculado no servidor pela soma dos totais das cores ativas;
 - registros existentes sao atualizados; registros removidos da hierarquia sao excluidos;
-- datas de entrega vazias nos tamanhos sao gravadas como `NULL`, sem assumir a data do item nem a data do pedido.
+- a data de entrega e informada por item e aplicada em cascata aos tamanhos;
+- a data de entrega de cada tamanho pode ser alterada manualmente depois da cascata do item;
+- se o fornecedor alterar a data de entrega do tamanho, o campo Data entrega fica destacado em vermelho na tela interna;
+- datas de entrega vazias nos tamanhos sao gravadas como `NULL`, sem assumir a data do pedido.
 - a quantidade de pecas exibida no item e no resumo e derivada da soma das cores ativas; quando um tamanho nao tem cores, usa a quantidade do tamanho.
 
 #### Status Oficiais de Compras

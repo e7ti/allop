@@ -657,7 +657,7 @@ body {
 }
 
 .app-content {
-    max-width: 1680px;
+    max-width: 1920px;
 }
 
 .page-title {
@@ -1133,14 +1133,14 @@ body {
 }
 
 .cp-compras-form-wide {
-    max-width: 1520px;
+    max-width: 1840px;
 }
 
 .cp-compra-layout {
     align-items: flex-start;
     display: grid;
     gap: 1.35rem;
-    grid-template-columns: minmax(0, 1fr) 280px;
+    grid-template-columns: minmax(0, 1fr) 260px;
 }
 
 .cp-compra-main {
@@ -1512,7 +1512,7 @@ body {
 }
 
 .cp-compras-form-wide .cp-compra-tamanho-summary-v2 {
-    grid-template-columns: minmax(72px, 0.8fr) repeat(4, minmax(92px, 1fr)) minmax(92px, 1fr);
+    grid-template-columns: minmax(128px, 1fr) minmax(136px, 1fr) repeat(4, minmax(122px, 1fr)) minmax(110px, 1fr);
 }
 
 .cp-compras-form-wide .cp-preco-medio-diferente {
@@ -1606,6 +1606,7 @@ body {
     letter-spacing: 0;
     line-height: 1.1;
     text-transform: uppercase;
+    white-space: nowrap;
 }
 
 .cp-compras-form-wide .cp-compra-summary-metric span {
@@ -1619,7 +1620,19 @@ body {
 }
 
 .cp-compras-form-wide .cp-compra-summary-metric-input {
-    max-width: 108px;
+    max-width: 136px;
+}
+
+.cp-compras-form-wide .cp-compra-summary-metric-date {
+    max-width: 128px;
+}
+
+.cp-compras-form-wide .cp-tamanho-summary-entrega {
+    max-width: 128px;
+}
+
+.cp-compras-form-wide .cp-compra-summary-metric-quantity {
+    max-width: 136px;
 }
 
 .cp-compras-form-wide .cp-compra-summary-metric .cp-tamanho-summary-input {
@@ -1631,6 +1644,21 @@ body {
     margin-top: 0.12rem;
     padding: 0.1rem 0.45rem;
     text-align: right;
+}
+
+.cp-compras-form-wide .cp-entrega-alterada-fornecedor small {
+    color: #dc3545;
+}
+
+.cp-compras-form-wide .cp-entrega-alterada-input {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.cp-compras-form-wide .cp-entrega-alterada-input:focus {
+    border-color: #dc3545;
+    box-shadow: 0 0 0 0.16rem rgba(220, 53, 69, 0.18);
+    color: #dc3545;
 }
 
 .cp-compras-form-wide .cp-compra-tamanho-actions {

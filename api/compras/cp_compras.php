@@ -523,9 +523,18 @@ function cp_load_pedido(int $id): ?array
     $items = $stmt->fetchAll();
 
     $tamanhoStmt = db()->prepare(
-        "SELECT *
-           FROM cp_compras_itens_tamanhos
-          WHERE compras_itens_id = :item_id
+        "SELECT t.*,
+                EXISTS (
+                    SELECT 1
+                      FROM cp_compras_itens_tamanhos_log l
+                     WHERE l.compras_itens_tamanho_id = t.id
+                       AND l.Iteracao = :iteracao_entrega
+                       AND l.Localizacao = 'Fornecedor'
+                       AND NOT (l.entrega <=> t.entrega)
+                     LIMIT 1
+                ) AS tem_log_entrega_fornecedor
+           FROM cp_compras_itens_tamanhos t
+          WHERE t.compras_itens_id = :item_id
           ORDER BY tamanho ASC, id ASC"
     );
     $corStmt = db()->prepare(
@@ -562,7 +571,10 @@ function cp_load_pedido(int $id): ?array
     );
 
     foreach ($items as &$item) {
-        $tamanhoStmt->execute(['item_id' => $item['id']]);
+        $tamanhoStmt->execute([
+            'item_id' => $item['id'],
+            'iteracao_entrega' => (int) ($pedido['Iteracao'] ?? 0),
+        ]);
         $tamanhos = $tamanhoStmt->fetchAll();
         foreach ($tamanhos as &$tamanho) {
             $corStmt->execute([
@@ -1465,8 +1477,9 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
             $tamanhoSts = $itemAtivo && $tamanhoSolicitadoAtivo && $itensAtivos > 0 ? 1 : 0;
             $nomeTamanho = cp_trim($tamanho['tamanho'] ?? '');
             $tamanhoId = cp_id($tamanho['id'] ?? 0) ?: cp_find_tamanho_id($itemId, $nomeTamanho);
-            $tamanhoEntrega = cp_optional_date($tamanho['entrega'] ?? '');
-            $tamanhoEntregaAnterior = $tamanhoEntrega === null ? null : cp_optional_date($tamanho['entrega_anterior'] ?? '', $tamanho['entrega'] ?? '');
+            $tamanhoEntregaRaw = array_key_exists('entrega', $tamanho) ? ($tamanho['entrega'] ?? '') : $itemEntrega;
+            $tamanhoEntrega = cp_optional_date($tamanhoEntregaRaw);
+            $tamanhoEntregaAnterior = $tamanhoEntrega === null ? null : cp_optional_date($tamanho['entrega_anterior'] ?? '', $tamanhoEntregaRaw);
             $tamanhoPayload = [
                 'compras_itens_id' => $itemId,
                 'tamanho' => $nomeTamanho,
