@@ -241,6 +241,8 @@ O formulario de compra usa layout em duas colunas em desktop:
 
 No resumo ficam `Salvar alteracoes`, `Imprimir PDF`, `Enviar Proposta`, `Enviar Fornecedor`, `Aprovar` e `Recusar`, exibidos conforme status, publicacao, localizacao, fotos e alteracoes pendentes.
 
+A lista `cp_compras_lista` usa a mesma ordem de campos do dashboard em `Ultimos 10 pedidos`: Pedido, Data, CD, Empresa, Fornecedor, Status, Localizacao, Publicado, Valor e Acoes.
+
 Regras de gravacao e validacao:
 
 - CD, empresa, fornecedor e data do pedido sao obrigatorios;
@@ -580,7 +582,79 @@ Banco:
 18. **Contrato de fotos do fornecedor:** a acao `fotos_upload` aceita `origem=fornecedor`, mas `cp_require_foto_mutavel()` bloqueia qualquer insercao ou exclusao em `cp_compras_fotos` pela tela interna.
 19. **Workflow depende de snapshot no frontend:** o bloqueio de `Aprovar` e `Recusar` apos alteracoes locais de preco, valor ou entrega compara a grade atual com o estado carregado em `cpCompraWorkflowSnapshot`. Alteracoes feitas por fora da tela dependem do estado persistido e das regras da API.
 
-## 13. Validacao Antes de Entregar Alteracoes
+## 13. Como Recriar o Projeto do Zero
+
+Esta secao descreve o caminho minimo para reconstruir o Allop em um ambiente novo usando o codigo e os dumps atuais do repositorio. Ela complementa a documentacao de arquitetura; nao substitui a conferencia do codigo quando houver divergencia.
+
+### 13.1 Requisitos do Ambiente
+
+Ambiente esperado:
+
+- servidor web com PHP habilitado, como Apache/IIS/Nginx com PHP-FPM;
+- PHP com extensoes `pdo`, `pdo_mysql`, `mbstring`, `openssl`, `json`, `fileinfo` e `gd` quando houver geracao/manipulacao de imagem ou PDF;
+- MySQL ou MariaDB compativel com o dump existente;
+- Composer instalado para restaurar dependencias PHP;
+- navegador com acesso aos assets locais do projeto.
+
+O projeto pode rodar em subpasta, pois `config/app.php` calcula `BASE_URL` com base em `SCRIPT_NAME`. Mesmo assim, depois de publicar em uma nova pasta, conferir rotas de `api/`, `mod/` e assets.
+
+### 13.2 Arquivos Necessarios
+
+Para recriar o projeto, manter estes itens:
+
+- codigo fonte da raiz, `api/`, `config/`, `includes/`, `mod/`, `assets/`, `scripts/` e `docs/`;
+- `composer.json` e `composer.lock`;
+- `banco.sql`;
+- `banco_fotos.sql`;
+- imagens em `assets/img/`, especialmente `SemFoto.png`;
+- bibliotecas locais em `assets/vendor/`.
+
+A pasta `vendor/` pode ser recriada com Composer quando `composer.json` e `composer.lock` estiverem presentes.
+
+### 13.3 Passo a Passo
+
+1. Copiar o projeto para a pasta servida pelo web server.
+2. Rodar `composer install` na raiz do projeto para restaurar `vendor/`.
+3. Criar o banco principal no MySQL/MariaDB.
+4. Importar `banco.sql` no banco principal.
+5. Criar o banco de fotos.
+6. Importar `banco_fotos.sql` no banco de fotos.
+7. Ajustar `config/database.php` com host, nome dos bancos, usuarios, senhas e charset do novo ambiente.
+8. Acessar `index.php` pelo navegador e validar se a tela de login carrega com CSS, JS e imagens.
+9. Executar `scripts/seed_aplicacoes.php` apenas apos backup ou em ambiente novo, para criar/atualizar menus, aplicacoes, permissoes, perfil Administrador e usuario administrador inicial.
+10. Entrar como administrador e trocar a senha inicial imediatamente pela tela `alterar_senha_admin.php` ou por fluxo administrativo equivalente.
+11. Conferir o menu do perfil Administrador e liberar permissoes dos demais perfis conforme necessario.
+12. Testar dashboard, listagens principais, cadastro de empresas/CD, configuracao de e-mail e fluxo de pedido de compra.
+
+### 13.4 Ordem Recomendada de Validacao Inicial
+
+Depois da instalacao:
+
+- abrir `login.php` e validar autenticacao;
+- abrir `dashboard.php` e validar indicadores e `Ultimos 10 pedidos`;
+- abrir `mod/seguranca/*_lista.php` para conferir menus, perfis e permissoes;
+- abrir `mod/configuracoes/empresas/empresas_lista.php`;
+- abrir `mod/configuracoes/empresas_cd/empresas_cd_lista.php`;
+- abrir `mod/configuracoes/configuracoes_email/configuracoes_email_lista.php`;
+- abrir `mod/compras/cp_compras_lista.php`;
+- criar ou editar um pedido em `mod/compras/cp_compras_form.php`;
+- testar upload/visualizacao de fotos usando o banco de fotos;
+- gerar PDF por `api/compras/cp_compras_pdf.php`;
+- testar envio de e-mail apenas com SMTP configurado.
+
+### 13.5 Pontos que Nao Devem Ser Inferidos
+
+Ao recriar o sistema, nao inventar:
+
+- credenciais de banco ou SMTP;
+- URL publica definitiva;
+- dados comerciais reais, fornecedores, empresas ou produtos;
+- permissoes especificas de perfis diferentes de Administrador;
+- alteracoes de schema fora dos dumps `banco.sql` e `banco_fotos.sql`.
+
+Se o ambiente novo precisar de dados reais, eles devem vir de importacao autorizada ou cadastro manual, nao da documentacao.
+
+## 14. Validacao Antes de Entregar Alteracoes
 
 Para cada PHP alterado:
 
@@ -601,7 +675,7 @@ Checklist:
 - revisar console do navegador e log do PHP;
 - nao sobrescrever mudancas fora do escopo.
 
-## 14. Regra de Manutencao Deste Documento
+## 15. Regra de Manutencao Deste Documento
 
 Atualizar este arquivo sempre que houver:
 
