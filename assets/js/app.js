@@ -1959,7 +1959,7 @@ function cpCompraStatusBadge(value) {
         '</span>';
 }
 
-function renderCpCompraAlteracaoBadges(temLogPreco, temLogQtde) {
+function renderCpCompraAlteracaoBadges(temLogPreco, temLogQtde, temLogEntrega) {
     let html = '';
     if (temLogPreco) {
         html += '<span class="badge cp-preco-alterado-badge">Preço alterado</span>';
@@ -1967,7 +1967,25 @@ function renderCpCompraAlteracaoBadges(temLogPreco, temLogQtde) {
     if (temLogQtde) {
         html += '<span class="badge cp-preco-alterado-badge">Qtde alterada</span>';
     }
+    if (temLogEntrega) {
+        html += '<span class="badge cp-entrega-alterada-badge">Entrega alterada</span>';
+    }
     return html;
+}
+
+function cpCompraItemTemLogPreco(item) {
+    return (item.tamanhos || []).some(function (tamanho) {
+        return Number(tamanho.tem_log_preco_iteracao || 0) === 1 ||
+            (tamanho.cores || []).some(function (cor) {
+                return Number(cor.tem_log_preco_iteracao || 0) === 1;
+            });
+    });
+}
+
+function cpCompraItemTemLogEntrega(item) {
+    return (item.tamanhos || []).some(function (tamanho) {
+        return Number(tamanho.tem_log_entrega_fornecedor || 0) === 1;
+    });
 }
 
 function mapCpCompraItemFromApi(row) {
@@ -2044,6 +2062,9 @@ function renderCpCompraItensLegacy() {
         const dadosTabId = 'cp-item-dados-' + index;
         const gradeTabId = 'cp-item-grade-' + index;
         const fotosTabId = 'cp-item-fotos-' + index;
+        const temLogPrecoItem = cpCompraItemTemLogPreco(item);
+        const temLogEntregaItem = cpCompraItemTemLogEntrega(item);
+        const itemAlteracaoBadges = renderCpCompraAlteracaoBadges(temLogPrecoItem, false, temLogEntregaItem);
         return '<section class="accordion-item card card-slim mb-3 cp-compra-item" data-item-index="' + index + '">' +
             '<div class="accordion-header card-header bg-table-header cp-compra-item-header cursor-pointer' + collapsedClass + '" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (isOpen ? 'true' : 'false') + '" aria-controls="' + collapseId + '">' +
             '<div class="d-flex align-items-center cp-compra-item-title">' +
@@ -2065,9 +2086,10 @@ function renderCpCompraItensLegacy() {
             '<small class="text-muted d-block extra-small text-uppercase">Total do Item</small>' +
             '<span class="fw-bold text-success cp-compra-item-total">R$ ' + escapeHtml(formatMoneyBr(item.total_produto || 0)) + '</span>' +
             '</div>' +
-            (cpCompraReadonly ? '' : '<div class="d-flex flex-wrap gap-2 cp-compra-item-actions" onclick="event.stopPropagation();">' +
-                '<button class="btn btn-sm btn-outline-primary btn-rateio-item" type="button" onclick="ratearCpCompraItem(' + index + ')">Ratear</button>' +
-                '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraItem(' + index + ')"></button>' +
+            ((cpCompraReadonly && !itemAlteracaoBadges) ? '' : '<div class="d-flex flex-wrap gap-2 cp-compra-item-actions" onclick="event.stopPropagation();">' +
+                itemAlteracaoBadges +
+                (cpCompraReadonly ? '' : '<button class="btn btn-sm btn-outline-primary btn-rateio-item" type="button" onclick="ratearCpCompraItem(' + index + ')">Ratear</button>' +
+                '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" type="button" onclick="removeCpCompraItem(' + index + ')"></button>') +
                 '</div>') +
             '</div>' +
             '</div>' +
@@ -2126,6 +2148,9 @@ function renderCpCompraItens() {
         const dadosTabId = 'cp-item-dados-' + index;
         const gradeTabId = 'cp-item-grade-' + index;
         const fotosTabId = 'cp-item-fotos-' + index;
+        const temLogPrecoItem = cpCompraItemTemLogPreco(item);
+        const temLogEntregaItem = cpCompraItemTemLogEntrega(item);
+        const itemAlteracaoBadges = renderCpCompraAlteracaoBadges(temLogPrecoItem, false, temLogEntregaItem);
 
         return '<section class="accordion-item card card-slim mb-3 cp-compra-item" data-item-index="' + index + '">' +
             '<div class="cp-compra-item-header">' +
@@ -2155,9 +2180,10 @@ function renderCpCompraItens() {
             '<li class="nav-item" role="presentation"><button class="nav-link' + (activeTab === 'grade' ? ' active' : '') + '" id="' + gradeTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + gradeTabId + '" type="button" role="tab">Grade e pre&ccedil;os</button></li>' +
             '<li class="nav-item" role="presentation"><button class="nav-link' + (activeTab === 'fotos' ? ' active' : '') + '" id="' + fotosTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + fotosTabId + '" type="button" role="tab">Fotos</button></li>' +
             '</ul>' +
-            (cpCompraReadonly ? '' : '<div class="cp-compra-item-actions">' +
-                '<button class="btn btn-sm btn-outline-primary btn-rateio-item" type="button" onclick="ratearCpCompraItem(' + index + ')">Ratear</button>' +
-                '<button class="btn btn-sm btn-outline-danger btn-delete" type="button" onclick="removeCpCompraItem(' + index + ')">Excluir</button>' +
+            ((cpCompraReadonly && !itemAlteracaoBadges) ? '' : '<div class="cp-compra-item-actions">' +
+                itemAlteracaoBadges +
+                (cpCompraReadonly ? '' : '<button class="btn btn-sm btn-outline-primary btn-rateio-item" type="button" onclick="ratearCpCompraItem(' + index + ')">Ratear</button>' +
+                '<button class="btn btn-sm btn-outline-danger btn-delete" type="button" onclick="removeCpCompraItem(' + index + ')">Excluir</button>') +
                 '</div>') +
             '</div>' +
             '<div class="card-body">' +

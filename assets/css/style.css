@@ -1702,6 +1702,24 @@ body {
     padding: 0.24rem 0.45rem;
 }
 
+.cp-compras-form-wide .cp-entrega-alterada-badge {
+    background: #dc3545;
+    color: #fff;
+    display: inline-flex;
+    font-size: 0.68rem;
+    font-weight: 700;
+    margin-right: 0.28rem;
+    margin-top: 0.28rem;
+    padding: 0.24rem 0.45rem;
+}
+
+.cp-compras-form-wide .cp-compra-item-actions .cp-preco-alterado-badge,
+.cp-compras-form-wide .cp-compra-item-actions .cp-entrega-alterada-badge {
+    align-items: center;
+    min-height: 31px;
+    margin-top: 0;
+}
+
 .cp-log-preco-atualizado {
     color: #9a3f00;
     font-weight: 800;
