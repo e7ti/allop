@@ -43,6 +43,11 @@ $entities = [
         ],
         'search' => [],
     ],
+    'cp_compras_emails' => [
+        'table' => 'cp_compras_emails',
+        'columns' => ['config_email_id', 'Nome', 'email', 'status'],
+        'search' => ['Nome', 'email'],
+    ],
     'menus' => [
         'table' => 'seg_menu',
         'columns' => ['menu'],
@@ -135,6 +140,36 @@ try {
             api_response(true, ['data' => $stmt->fetchAll()]);
         }
 
+        if ($entityName === 'cp_compras_emails') {
+            $term = trim((string) ($data['q'] ?? ''));
+            $where = '';
+            $params = [];
+            if ($term !== '') {
+                $where = " WHERE cpe.Nome LIKE :q_nome OR cpe.email LIKE :q_email OR ce.NomeConta LIKE :q_conta OR ce.Email LIKE :q_conta_email";
+                $params['q_nome'] = '%' . $term . '%';
+                $params['q_email'] = '%' . $term . '%';
+                $params['q_conta'] = '%' . $term . '%';
+                $params['q_conta_email'] = '%' . $term . '%';
+            }
+
+            $stmt = db()->prepare(
+                "SELECT cpe.id,
+                        cpe.config_email_id,
+                        COALESCE(NULLIF(ce.NomeConta, ''), ce.Email) AS config_email_id_text,
+                        cpe.Nome,
+                        cpe.email,
+                        cpe.status,
+                        CASE WHEN cpe.status = 1 THEN 'Ativo' ELSE 'Inativo' END AS status_text
+                   FROM cp_compras_emails cpe
+                   LEFT JOIN config_email ce ON ce.Codigo = cpe.config_email_id
+                   $where
+                  ORDER BY cpe.id DESC
+                  LIMIT 200"
+            );
+            $stmt->execute($params);
+            api_response(true, ['data' => $stmt->fetchAll()]);
+        }
+
         $term = trim((string) ($data['q'] ?? ''));
         $params = [];
         $where = '';
@@ -183,6 +218,30 @@ try {
             api_response(true, ['data' => $stmt->fetch()]);
         }
 
+        if ($entityName === 'usuarios') {
+            $stmt = db()->prepare(
+                "SELECT u.*,
+                        p.nome AS perfil_id_text
+                   FROM seg_usuarios u
+                   LEFT JOIN seg_perfil p ON p.id = u.perfil_id
+                  WHERE u.id = :id"
+            );
+            $stmt->execute(['id' => $id]);
+            api_response(true, ['data' => $stmt->fetch()]);
+        }
+
+        if ($entityName === 'cp_compras_emails') {
+            $stmt = db()->prepare(
+                "SELECT cpe.*,
+                        COALESCE(NULLIF(ce.NomeConta, ''), ce.Email) AS config_email_id_text
+                   FROM cp_compras_emails cpe
+                   LEFT JOIN config_email ce ON ce.Codigo = cpe.config_email_id
+                  WHERE cpe.id = :id"
+            );
+            $stmt->execute(['id' => $id]);
+            api_response(true, ['data' => $stmt->fetch()]);
+        }
+
         $stmt = db()->prepare("SELECT * FROM $table WHERE id = :id");
         $stmt->execute(['id' => $id]);
         api_response(true, ['data' => $stmt->fetch()]);
@@ -205,7 +264,7 @@ try {
         }
 
         foreach ($payload as $column => $value) {
-            if (in_array($column, ['visualizar', 'inserir', 'editar', 'edtiar', 'excluir', 'imprimir', 'imprirmir', 'exportar', 'processar', 'ativo'], true)) {
+            if (in_array($column, ['visualizar', 'inserir', 'editar', 'edtiar', 'excluir', 'imprimir', 'imprirmir', 'exportar', 'processar', 'ativo', 'status'], true)) {
                 $payload[$column] = (int) (bool) $value;
             }
         }

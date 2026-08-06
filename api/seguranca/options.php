@@ -21,6 +21,7 @@ $map = [
     'usuarios' => ['table' => 'seg_usuarios', 'id' => 'id', 'label' => 'nome'],
     'empresas_cd' => ['table' => 'empresas_cd', 'id' => 'Codigo', 'label' => 'NomeCD'],
     'empresas' => ['table' => 'empresas', 'id' => 'Codigo', 'label' => 'Fantasia', 'fallback' => 'Nome'],
+    'config_email' => ['table' => 'config_email', 'id' => 'Codigo', 'label' => 'NomeConta', 'fallback' => 'Email'],
 ];
 
 if (!isset($map[$type])) {

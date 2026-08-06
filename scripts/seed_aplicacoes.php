@@ -180,6 +180,7 @@ $empresasRoute = 'mod/configuracoes/empresas/empresas_lista.php';
 $empresasCdRoute = 'mod/configuracoes/empresas_cd/empresas_cd_lista.php';
 $emailRoute = 'mod/configuracoes/configuracoes_email/configuracoes_email_lista.php';
 $cpComprasRoute = 'mod/compras/cp_compras_lista.php';
+$cpComprasEmailsRoute = 'mod/seguranca/cp_compras_emails_lista.php';
 $oldEmailRoutes = [
     'mod/configuracoes_email/email_lista.php',
     'mod/configuracoes/email_lista.php',
@@ -218,6 +219,7 @@ $aplicacoes = [
     ['nome' => 'Empresas CD', 'rota' => $empresasCdRoute, 'menu_id' => $menuConfiguracoesId, 'ordem' => 5],
     ['nome' => 'Empresas', 'rota' => $empresasRoute, 'menu_id' => $menuConfiguracoesId, 'ordem' => 6],
     ['nome' => 'E-mail', 'rota' => $emailRoute, 'menu_id' => $menuConfiguracoesId, 'ordem' => 10],
+    ['nome' => 'E-mails de Compras', 'rota' => $cpComprasEmailsRoute, 'menu_id' => $menuConfiguracoesId, 'ordem' => 20],
     ['nome' => 'Pedidos de Compra', 'rota' => $cpComprasRoute, 'menu_id' => $menuComprasId, 'ordem' => 10],
 ];
 
