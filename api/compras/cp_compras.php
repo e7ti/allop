@@ -153,6 +153,23 @@ function cp_option_select(string $type, string $q): void
         api_response(true, ['results' => $stmt->fetchAll()]);
     }
 
+    if ($type === 'categorias') {
+        if (!cp_table_exists('produtos_categorias')) {
+            api_response(true, ['results' => []]);
+        }
+        $stmt = db()->prepare(
+            "SELECT Codigo AS id,
+                    CONCAT(TipoProduto, ' - ', Codigo) AS text
+               FROM produtos_categorias
+              WHERE Codigo LIKE :q_codigo
+                 OR TipoProduto LIKE :q_tipo
+              ORDER BY TipoProduto
+              LIMIT 30"
+        );
+        $stmt->execute(['q_codigo' => $term, 'q_tipo' => $term]);
+        api_response(true, ['results' => $stmt->fetchAll()]);
+    }
+
     if ($type === 'referencias') {
         $fornecedorId = cp_trim($_GET['fornecedor_id'] ?? $_POST['fornecedor_id'] ?? '');
         if ($fornecedorId === '') {
@@ -322,8 +339,6 @@ function cp_validate_item_percentuais(array $items): void
 
         $tamanhosAtivos = 0;
         $tamanhosUsados = [];
-        $coresRateioReferencia = null;
-        $rateioItem = [];
         foreach ($tamanhos as $tamanho) {
             $tamanhoAtivo = (int) ($tamanho['Sts'] ?? 1) !== 0;
             if (!$tamanhoAtivo) {
@@ -353,10 +368,6 @@ function cp_validate_item_percentuais(array $items): void
             }
 
             $coresUsadas = [];
-            $coresTamanho = [];
-            $percentuaisTamanho = [];
-            $totalQtdeCores = 0;
-            $totalPercentualTamanho = 0.0;
             foreach ($coresAtivas as $cor) {
                 $nomeCor = cp_trim($cor['cor'] ?? '');
                 if ($nomeCor === '') {
@@ -366,43 +377,6 @@ function cp_validate_item_percentuais(array $items): void
                     api_response(false, ['message' => "A cor $nomeCor está duplicada no tamanho $nomeTamanho."], 422);
                 }
                 $coresUsadas[$nomeCor] = true;
-                $coresTamanho[] = $nomeCor;
-
-                $percentual = cp_decimal($cor['percentual'] ?? 0);
-                $percentuaisTamanho[$nomeCor] = $percentual;
-                $totalPercentualTamanho += $percentual;
-                if ($percentual < 0 || $percentual > 100) {
-                    api_response(false, ['message' => "Item $referencia, cor $nomeCor: o percentual do rateio deve estar entre 0% e 100%."], 422);
-                }
-                $totalQtdeCores += max(0, (int) ($cor['Qtde'] ?? 0));
-            }
-            sort($coresTamanho, SORT_STRING);
-            if (round($totalPercentualTamanho, 4) > 0) {
-                if (round($totalPercentualTamanho, 4) !== 100.0000) {
-                    api_response(false, ['message' => "Item $referencia, tamanho $nomeTamanho: o rateio das cores deve totalizar 100%. Total atual: " . number_format($totalPercentualTamanho, 2, ',', '.') . "%."], 422);
-                }
-                if ($coresRateioReferencia === null) {
-                    $coresRateioReferencia = $coresTamanho;
-                } elseif ($coresRateioReferencia !== $coresTamanho) {
-                    api_response(false, ['message' => "Item $referencia: os tamanhos que participam do rateio devem ter o mesmo conjunto de cores. Verifique o tamanho $nomeTamanho."], 422);
-                }
-                foreach ($coresTamanho as $nomeCorRateio) {
-                    $percentualRateio = $percentuaisTamanho[$nomeCorRateio] ?? 0;
-                    if (!isset($rateioItem[$nomeCorRateio])) {
-                        $rateioItem[$nomeCorRateio] = $percentualRateio;
-                    } elseif (round($rateioItem[$nomeCorRateio], 4) !== round($percentualRateio, 4)) {
-                        api_response(false, ['message' => "Item $referencia, cor $nomeCorRateio: o percentual do rateio deve ser igual nos tamanhos que participam do rateio."], 422);
-                    }
-                }
-            }
-            if ($totalQtdeCores !== $qtdeTotalTamanho) {
-                api_response(false, ['message' => "Item $referencia, tamanho $nomeTamanho: a soma das quantidades das cores deve bater com a quantidade total. Total informado: $qtdeTotalTamanho. Soma das cores: $totalQtdeCores."], 422);
-            }
-        }
-        if ($itemAtivo && $tamanhosAtivos > 0) {
-            $totalRateioItem = array_sum($rateioItem);
-            if (round($totalRateioItem, 4) > 0 && round($totalRateioItem, 4) !== 100.0000) {
-                api_response(false, ['message' => "Item $referencia: o rateio das cores do item deve totalizar 100%. Total atual: " . number_format($totalRateioItem, 2, ',', '.') . "%."], 422);
             }
         }
     }
@@ -424,6 +398,7 @@ function cp_header_payload(array $data): array
         'Publicado' => (int) ($data['Publicado'] ?? 0),
         'StsMotivo' => cp_trim($data['StsMotivo'] ?? ''),
         'Localizacao' => cp_trim($data['Localizacao'] ?? 'KidStok') ?: 'KidStok',
+        'Categoria' => cp_trim($data['Categoria'] ?? '') ?: null,
     ];
 }
 
@@ -495,6 +470,12 @@ function cp_load_pedido(int $id): ?array
     $fornecedorText = cp_table_exists('produtos_fornecedor')
         ? "CONCAT(c.Fornecedor_id, ' - ', $fornecedorLabel)"
         : 'c.Fornecedor_id';
+    $categoriaJoin = cp_table_exists('produtos_categorias')
+        ? 'LEFT JOIN produtos_categorias pc ON pc.Codigo = c.Categoria'
+        : '';
+    $categoriaText = cp_table_exists('produtos_categorias')
+        ? "CONCAT(pc.TipoProduto, ' - ', c.Categoria)"
+        : 'c.Categoria';
 
     $stmt = db()->prepare(
         "SELECT c.*,
@@ -503,6 +484,7 @@ function cp_load_pedido(int $id): ?array
                 cd.NomeCD AS cd_id_text,
                 COALESCE(NULLIF(e.Fantasia, ''), e.Nome) AS empresa_id_text,
                 $fornecedorText AS Fornecedor_id_text,
+                $categoriaText AS Categoria_text,
                 COALESCE(cst.descricao_compras, '') AS descricao_compras,
                 COALESCE(cst.descricao_compras, '') AS Sts
            FROM cp_compras c
@@ -510,6 +492,7 @@ function cp_load_pedido(int $id): ?array
            LEFT JOIN empresas e ON e.Codigo = c.empresa_id
            LEFT JOIN cp_compras_status cst ON cst.id = c.status_id
            $fornecedorJoin
+           $categoriaJoin
           WHERE c.id = :id"
     );
     $stmt->execute(['id' => $id]);
@@ -1477,7 +1460,7 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
             $tamanhoSts = $itemAtivo && $tamanhoSolicitadoAtivo && $itensAtivos > 0 ? 1 : 0;
             $nomeTamanho = cp_trim($tamanho['tamanho'] ?? '');
             $tamanhoId = cp_id($tamanho['id'] ?? 0) ?: cp_find_tamanho_id($itemId, $nomeTamanho);
-            $tamanhoEntregaRaw = array_key_exists('entrega', $tamanho) ? ($tamanho['entrega'] ?? '') : $itemEntrega;
+            $tamanhoEntregaRaw = $itemEntrega;
             $tamanhoEntrega = cp_optional_date($tamanhoEntregaRaw);
             $tamanhoEntregaAnterior = $tamanhoEntrega === null ? null : cp_optional_date($tamanho['entrega_anterior'] ?? '', $tamanhoEntregaRaw);
             $tamanhoPayload = [
@@ -1691,7 +1674,7 @@ function cp_workflow_update(int $id, string $workflowAction): void
     }
 
     $stmt = db()->prepare(
-        "SELECT c.id, c.id AS ID, c.Localizacao, c.Publicado, c.status_id, c.Iteracao
+        "SELECT c.id, c.id AS ID, c.Localizacao, c.Publicado, c.status_id, c.Iteracao, c.Categoria
            FROM cp_compras c
           WHERE c.id = :id"
     );
@@ -1714,6 +1697,9 @@ function cp_workflow_update(int $id, string $workflowAction): void
 
     $usuario = cp_current_user_name();
     if ($workflowAction === 'enviar_proposta') {
+        if (cp_trim($pedido['Categoria'] ?? '') === '') {
+            api_response(false, ['message' => 'A categoria é obrigatória para enviar a proposta ao fornecedor.'], 422);
+        }
         $recipientCount = cp_send_proposta_email($id);
         $stmt = db()->prepare(
             "UPDATE cp_compras
@@ -2040,6 +2026,7 @@ try {
                         Publicado = :Publicado,
                         StsMotivo = :StsMotivo,
                         Localizacao = :Localizacao,
+                        Categoria = :Categoria,
                         Alteracao = :Alteracao,
                         Usuario = :Usuario
                   WHERE id = :id"
@@ -2055,10 +2042,10 @@ try {
         $stmt = db()->prepare(
             "INSERT INTO cp_compras
                 (cd_id, empresa_id, Fornecedor_id, DataPedido, MarkupFranqueadora, MarkupFranquia, MarkupTotal,
-                 ValorTotalPedido, status_id, TemFotos, Publicado, StsMotivo, Localizacao, Inclusao, Alteracao, Usuario)
+                 ValorTotalPedido, status_id, TemFotos, Publicado, StsMotivo, Localizacao, Categoria, Inclusao, Alteracao, Usuario)
              VALUES
                 (:cd_id, :empresa_id, :Fornecedor_id, :DataPedido, :MarkupFranqueadora, :MarkupFranquia, :MarkupTotal,
-                 :ValorTotalPedido, :status_id, :TemFotos, :Publicado, :StsMotivo, :Localizacao, :Inclusao, :Alteracao, :Usuario)"
+                 :ValorTotalPedido, :status_id, :TemFotos, :Publicado, :StsMotivo, :Localizacao, :Categoria, :Inclusao, :Alteracao, :Usuario)"
         );
         $stmt->execute($payload);
         $newId = (int) db()->lastInsertId();
