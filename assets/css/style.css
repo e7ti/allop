@@ -540,6 +540,21 @@ body {
     padding: 0.42rem 0.65rem;
 }
 
+.cp-localizacao-form-badge {
+    align-items: center;
+    background: #fff7ed;
+    border: 1px solid #ffd7a8;
+    border-radius: 8px;
+    display: flex;
+    min-height: 38px;
+    padding: 0.25rem 0.45rem;
+}
+
+.cp-localizacao-form-badge .cp-localizacao-badge {
+    font-size: 0.82rem;
+    padding: 0.5rem 0.78rem;
+}
+
 .badge-localizacao-kidstok {
     background-color: #d1e7dd !important;
     color: #0f5132 !important;

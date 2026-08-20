@@ -728,7 +728,7 @@ CREATE TABLE IF NOT EXISTS `cp_compras` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `cd_id` int(11) NOT NULL,
   `empresa_id` int(11) NOT NULL,
-  `Fornecedor_id` varchar(2) CHARACTER SET latin1 NOT NULL,
+  `Fornecedor_id` varchar(2) NOT NULL COLLATE 'latin1_swedish_ci',
   `DataPedido` date NOT NULL,
   `MarkupFranqueadora` decimal(6,2) NOT NULL,
   `MarkupFranquia` decimal(6,2) NOT NULL,
@@ -736,27 +736,28 @@ CREATE TABLE IF NOT EXISTS `cp_compras` (
   `ValorTotalPedido` decimal(15,2) NOT NULL DEFAULT '0.00',
   `status_id` int(11) NOT NULL DEFAULT '0' COMMENT 'Id da tabela cp_compras_status',
   `TemFotos` tinyint(4) NOT NULL DEFAULT '0' COMMENT '0 - Não tem, 1 - Tem',
-  `StsMotivo` varchar(500) CHARACTER SET latin1 DEFAULT '',
-  `Localizacao` varchar(15) CHARACTER SET latin1 NOT NULL DEFAULT 'KidStok' COMMENT 'Allop/Fornecedor',
+  `StsMotivo` varchar(500) DEFAULT '' COLLATE 'latin1_swedish_ci',
+  `Localizacao` varchar(15) NOT NULL DEFAULT 'KidStok' COMMENT 'Allop/Fornecedor' COLLATE 'latin1_swedish_ci',
   `DataAprovacao` date DEFAULT NULL,
   `DataRecusa` date DEFAULT NULL,
-  `UsuarioAprovacao` varchar(50) CHARACTER SET latin1 DEFAULT '',
-  `UsuarioRecusa` varchar(50) CHARACTER SET latin1 DEFAULT '',
+  `UsuarioAprovacao` varchar(50) DEFAULT '' COLLATE 'latin1_swedish_ci',
+  `UsuarioRecusa` varchar(50) DEFAULT '' COLLATE 'latin1_swedish_ci',
   `Inclusao` date DEFAULT NULL,
   `Alteracao` date DEFAULT NULL,
-  `Usuario` varchar(50) CHARACTER SET latin1 DEFAULT NULL,
+  `Usuario` varchar(50) DEFAULT NULL COLLATE 'latin1_swedish_ci',
   `Iteracao` int(11) NOT NULL DEFAULT '0' COMMENT 'Iteracoes allop',
   `Publicado` int(11) NOT NULL DEFAULT '0',
+  `Categoria` varchar(2) DEFAULT NULL COMMENT 'Codigo da tabela produtos_categoria (R2)' COLLATE 'utf8mb4_swedish_ci',
   PRIMARY KEY (`id`) USING BTREE,
-  KEY `FK_cp_compras_produtos_fornecedor` (`Fornecedor_id`),
-  KEY `FK_cp_compras_empresas` (`empresa_id`),
+  KEY `FK_cp_compras_produtos_fornecedor` (`Fornecedor_id`) USING BTREE,
+  KEY `FK_cp_compras_empresas` (`empresa_id`) USING BTREE,
   KEY `FK_cp_compras_empresas_cd` (`cd_id`) USING BTREE,
-  KEY `FK_cp_compras_cp_compras_status` (`status_id`),
-  CONSTRAINT `FK_cp_compras_cp_compras_status` FOREIGN KEY (`status_id`) REFERENCES `cp_compras_status` (`id`) ON UPDATE NO ACTION,
-  CONSTRAINT `FK_cp_compras_empresas` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`Codigo`) ON UPDATE NO ACTION,
-  CONSTRAINT `FK_cp_compras_empresas_cd` FOREIGN KEY (`cd_id`) REFERENCES `empresas_cd` (`Codigo`) ON UPDATE NO ACTION,
-  CONSTRAINT `FK_cp_compras_produtos_fornecedor` FOREIGN KEY (`Fornecedor_id`) REFERENCES `produtos_fornecedor` (`Codigo`) ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=33 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_swedish_ci;
+  KEY `FK_cp_compras_cp_compras_status` (`status_id`) USING BTREE,
+  CONSTRAINT `FK_cp_compras_cp_compras_status` FOREIGN KEY (`status_id`) REFERENCES `cp_compras_status` (`id`) ON DELETE RESTRICT ON UPDATE NO ACTION,
+  CONSTRAINT `FK_cp_compras_empresas` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`Codigo`) ON DELETE RESTRICT ON UPDATE NO ACTION,
+  CONSTRAINT `FK_cp_compras_empresas_cd` FOREIGN KEY (`cd_id`) REFERENCES `empresas_cd` (`Codigo`) ON DELETE RESTRICT ON UPDATE NO ACTION,
+  CONSTRAINT `FK_cp_compras_produtos_fornecedor` FOREIGN KEY (`Fornecedor_id`) REFERENCES `produtos_fornecedor` (`Codigo`) ON DELETE RESTRICT ON UPDATE NO ACTION
+) ENGINE=InnoDB AUTO_INCREMENT=75 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_swedish_ci;
 
 -- --------------------------------------------------------
 -- Estrutura da tabela `cp_compras_emails`
@@ -2721,15 +2722,15 @@ CREATE TABLE IF NOT EXISTS `produtos_categoria_composicao_api` (
 -- Estrutura da tabela `produtos_categorias`
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `produtos_categorias` (
-  `Codigo` varchar(2) NOT NULL,
-  `TipoProduto` varchar(30) NOT NULL,
-  `Status` varchar(8) NOT NULL,
+  `Codigo` varchar(2) NOT NULL COLLATE 'latin1_swedish_ci',
+  `TipoProduto` varchar(30) NOT NULL COLLATE 'latin1_swedish_ci',
+  `Status` varchar(8) NOT NULL COLLATE 'latin1_swedish_ci',
   `Inclusao` date NOT NULL,
   `Alteracao` date NOT NULL,
-  `Usuario` varchar(30) NOT NULL,
+  `Usuario` varchar(30) NOT NULL COLLATE 'latin1_swedish_ci',
   PRIMARY KEY (`Codigo`) USING BTREE,
-  UNIQUE KEY `IDXTipProduto` (`TipoProduto`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COMMENT='R2 -> tbProdutosTipo ';
+  UNIQUE KEY `IDXTipProduto` (`TipoProduto`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci COMMENT='R2 -> tbProdutosTipo ';
 
 -- --------------------------------------------------------
 -- Estrutura da tabela `produtos_categorias_api`
