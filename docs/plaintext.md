@@ -4,8 +4,8 @@
 **Atencao:** nao usar `D:\E7TI\PHP\appf` para demandas do Allop.
 
 **Documento-base:** 01/06/2026  
-**Ultima revisao documental:** 31/07/2026  
-**Ultima revisao conferida do codigo:** 31/07/2026  
+**Ultima revisao documental:** 20/08/2026  
+**Ultima revisao conferida do codigo:** 20/08/2026  
 **Ultima revisao conferida do `banco.sql`:** 15/07/2026  
 **Ultima revisao conferida do `banco_fotos.sql`:** 19/06/2026  
 **Escopo conferido:** aplicacao PHP, APIs, telas, assets, seed, banco principal, banco de fotos e documentacao existente.
@@ -231,7 +231,9 @@ cp_compras
        -> cp_compras_itens_rateios
 ```
 
-O frontend apresenta os itens em accordions. Cada item contem tamanhos, cada tamanho contem cores, e o rateio percentual e aplicado por cor no item quando informado.
+O frontend apresenta os itens em accordions. Cada item contem tamanhos, cada tamanho contem cores, e o rateio percentual e aplicado por cor no item quando informado. Ao focar a quantidade total de um tamanho, o bloco de cores do tamanho e expandido para facilitar a edicao da grade.
+
+Na grade de cores, os campos Quantidade, Preco proposto, Franqueado e Loja podem ser editados quando o pedido esta editavel. A edicao em massa do item permite aplicar Quantidade total, Preco proposto, Franqueado e Loja aos tamanhos marcados como Destino; depois da aplicacao, os destinos sao desmarcados e os campos da edicao em massa sao limpos.
 
 O formulario de compra usa layout em duas colunas em desktop:
 
@@ -246,23 +248,23 @@ A lista `cp_compras_lista` usa a mesma ordem de campos do dashboard em `Ultimos 
 Regras de gravacao e validacao:
 
 - CD, empresa, fornecedor e data do pedido sao obrigatorios;
+- a categoria do pedido pode ser informada no cabecalho por Select2, pesquisando `produtos_categorias` em ordem alfabetica por `TipoProduto`;
+- a categoria pode ficar em branco enquanto o pedido estiver em edicao;
+- a categoria pode ser alterada quando o pedido estiver editavel na KidStok;
+- envio de proposta ao fornecedor exige categoria informada;
 - o frontend exige ao menos um item confirmado;
 - uma referencia nao pode aparecer mais de uma vez no mesmo pedido;
 - item ativo deve ter ao menos um tamanho ativo;
 - tamanho ativo deve ter nome, quantidade total maior que zero e ao menos uma cor ativa;
 - tamanho duplicado no mesmo item e bloqueado;
 - cor duplicada no mesmo tamanho e bloqueada;
-- percentual de rateio deve estar entre 0% e 100%;
-- se algum percentual for informado, o total do rateio do tamanho deve fechar 100%;
-- se houver rateio em mais de um tamanho do item, os tamanhos devem ter o mesmo conjunto de cores;
-- o percentual de uma mesma cor deve ser igual em todos os tamanhos que participam do rateio;
-- a soma dos percentuais por item deve fechar 100% quando houver rateio;
-- a soma das quantidades das cores deve bater com `qtde_total` do tamanho;
+- o rateio e um recurso auxiliar para distribuir quantidade entre cores;
+- percentual de rateio, total do rateio, conjunto de cores do rateio e soma das quantidades das cores nao bloqueiam o salvamento do pedido;
 - quantidades zeradas inativam cores automaticamente;
 - tamanho sem cor ativa ou com quantidade total zero e inativado;
 - item sem tamanho ativo e inativado;
 - item ou tamanho inativo zera seus totais de quantidade e valor;
-- somente itens/tamanhos/cores ativos entram nas validacoes de quantidade e rateio;
+- itens/tamanhos/cores inativos nao disparam validacoes de rateio;
 - o total do pedido e recalculado no servidor pela soma dos totais das cores ativas;
 - registros existentes sao atualizados; registros removidos da hierarquia sao excluidos;
 - a data de entrega e informada por item e aplicada em cascata aos tamanhos;
