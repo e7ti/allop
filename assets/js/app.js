@@ -2031,11 +2031,13 @@ function mapCpCompraItemFromApi(row) {
         Sts: cpCompraStatusValue(row.Sts),
         item_confirmado: true,
         _pendingTamanhos: [],
-        tamanhos: tamanhos.map(mapCpCompraTamanhoFromApi)
+        tamanhos: tamanhos.map(function (tamanho) {
+            return mapCpCompraTamanhoFromApi(tamanho, false);
+        })
     };
 }
 
-function mapCpCompraTamanhoFromApi(row) {
+function mapCpCompraTamanhoFromApi(row, aplicarMarkupInicial) {
     return Object.assign(emptyCpCompraTamanho(), {
         id: Number(row.id || row.ID || 0),
         tamanho: row.tamanho || '',
@@ -2068,6 +2070,7 @@ function mapCpCompraTamanhoFromApi(row) {
                 Sts: cpCompraStatusValue(cor.Sts),
                 tem_log_preco_iteracao: Number(cor.tem_log_preco_iteracao || 0),
                 tem_log_qtde_iteracao: Number(cor.tem_log_qtde_iteracao || 0),
+                _aplicar_markup_inicial: aplicarMarkupInicial === true,
                 _preco_franqueado_manual: cpCompraPrecoManualCarregado(cor, 'preco_franqueado'),
                 _preco_loja_manual: cpCompraPrecoManualCarregado(cor, 'preco_loja'),
                 _qtde_manual: true,
@@ -2901,7 +2904,9 @@ function loadCpCompraReferenciaItem(itemIndex, codigoReferencia) {
         const itemData = Object.assign(emptyCpCompraItem(false), response.data || {});
         itemData.entrega = itemData.entrega || previousEntrega;
         itemData.item_confirmado = false;
-        itemData._pendingTamanhos = (itemData.tamanhos || []).map(mapCpCompraTamanhoFromApi);
+        itemData._pendingTamanhos = (itemData.tamanhos || []).map(function (tamanho) {
+            return mapCpCompraTamanhoFromApi(tamanho, true);
+        });
         cascadeCpCompraItemEntrega(itemData, itemData.entrega || '');
         itemData.tamanhos = [];
         cpCompraItens[itemIndex] = itemData;
@@ -4345,12 +4350,10 @@ function recalcCpCompraItem(item) {
                 cor.Qtde = 0;
             } else if (temQtdeManual) {
                 cor.Qtde = Math.max(0, parseInt(Number(cor.Qtde || 0), 10) || 0);
-            } else if (!temRateioItem && coresAtivas.length) {
+            } else if (coresAtivas.length && (!temRateioItem || roundCpPercent(totalPercentual) !== 100)) {
                 cor.Qtde = Math.floor(totalQtde / coresAtivas.length);
             } else {
-                cor.Qtde = roundCpPercent(totalPercentual) === 100
-                    ? Math.floor(totalQtde * Number(cor.percentual || 0) / 100)
-                    : 0;
+                cor.Qtde = Math.floor(totalQtde * Number(cor.percentual || 0) / 100);
             }
             qtdeAplicada += Number(cor.Qtde || 0);
         });
@@ -4368,7 +4371,10 @@ function recalcCpCompraItem(item) {
         }
         let totalTamanho = 0;
         (tamanho.cores || []).forEach(function (cor) {
-            applyCpCompraDetailMarkups(cor, markups);
+            if (cor._aplicar_markup_inicial === true) {
+                applyCpCompraDetailMarkups(cor, markups, true);
+                delete cor._aplicar_markup_inicial;
+            }
             cor.valor_total_produto = (!tamanhoAtivo || String(cor.Sts) === '0')
                 ? 0
                 : roundCpMoney(Number(cor.Qtde || 0) * Number(cor.preco_proposta || 0));
@@ -4388,15 +4394,15 @@ function recalcCpCompraItem(item) {
     item.total_produto = roundCpMoney(totalItem);
 }
 
-function applyCpCompraDetailMarkups(detail, markups) {
+function applyCpCompraDetailMarkups(detail, markups, force) {
     const precoProposta = Number(detail.preco_proposta || 0);
     detail.markup_franquia = roundCpMoney(markups.franquia || 0);
     detail.markup_loja = roundCpMoney(markups.franqueadora || 0);
     detail.markup_total = roundCpMoney(markups.total || 0);
-    if (detail._preco_loja_manual !== true) {
+    if (force === true || detail._preco_loja_manual !== true) {
         detail.preco_loja = roundCpMoney(precoProposta * Number(detail.markup_total || 0));
     }
-    if (detail._preco_franqueado_manual !== true) {
+    if (force === true || detail._preco_franqueado_manual !== true) {
         detail.preco_franqueado = Number(detail.markup_franquia || 0) > 0
             ? roundCpMoney(Number(detail.preco_loja || 0) / Number(detail.markup_franquia || 0))
             : 0;
