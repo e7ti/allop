@@ -4,9 +4,9 @@
 **Atencao:** nao usar `D:\E7TI\PHP\appf` para demandas do Allop.
 
 **Documento-base:** 01/06/2026  
-**Ultima revisao documental:** 20/08/2026  
+**Ultima revisao documental:** 10/09/2026  
 **Ultima revisao conferida do codigo:** 20/08/2026  
-**Ultima revisao conferida do `banco.sql`:** 15/07/2026  
+**Ultima revisao conferida do `banco.sql`:** 10/09/2026  
 **Ultima revisao conferida do `banco_fotos.sql`:** 19/06/2026  
 **Escopo conferido:** aplicacao PHP, APIs, telas, assets, seed, banco principal, banco de fotos e documentacao existente.
 
@@ -420,7 +420,7 @@ IDs de menu previstos pelo seed:
 
 `banco.sql` contem:
 
-- 240 tabelas;
+- 239 tabelas;
 - 67 triggers;
 - dump estrutural, sem dados.
 
@@ -433,7 +433,10 @@ Principais grupos de tabelas:
 | Logs de compras | `cp_compras_itens_log`, `cp_compras_itens_tamanhos_log`, `cp_compras_itens_cores_log` |
 | Configuracoes | `empresas`, `empresas_cd`, `config_email`, `urls_allop`, `situacao` |
 | Portal fornecedor | `pf_colecao`, `pf_usuarios`, `pf_usuarios_copy`, `pf_usuario_fornecedor` |
-| Catalogo/ERP legado | tabelas `produtos*`, `KidStok`, `cfops`, `cests_ncm`, `st_*`, `compras*`, `nfe_*`, `romaneios_*`, `fechamento*`, `provisorios*`, `transportadoras*`, `veiculos*` e auxiliares |
+| Agenda e conferencia de compras legado | `compras_agenda*`, `compras_contagem*`, `compras_recontagem*`, `conferentes`, `entrada_de_mercadorias*` |
+| Etiquetas e pre-cadastro | `etiquetas_cab`, `etiquetas_ite`, `etiquetas_api`, `pre_cadastro*` |
+| Catalogo/ERP legado | tabelas `produtos*`, `KidStok`, `KidStokAntesGCom`, `cfops`, `cests_ncm`, `st_*`, `compras*`, `nfe_*`, `romaneios_*`, `fechamento*`, `provisorios*`, `transportadoras*`, `veiculos*`, `tb*` e auxiliares |
+| Cadastros auxiliares/API | `bancos`, `cargos`, `cidades*`, `estados*`, `franqueados*`, `consultores*`, `ramo_atividades*`, `regioes*`, `responsaveis*`, `configuracoes_*`, `logs`, `log_scripts` |
 
 Triggers relevantes para compras:
 
@@ -483,6 +486,9 @@ Aplicacoes registradas pelo seed:
 - Empresas;
 - E-mail;
 - Pedidos de Compra.
+- Pré Cadastro Produtos.
+
+Observacao: `Pré Cadastro Produtos` esta registrado no menu Compras com rota reservada em `mod/compras/pre_cadastro_produtos_lista.php`; a tela/API ainda serao detalhadas em demanda posterior.
 
 O seed e parcialmente idempotente, mas executa DDL e altera dados de menu/permissoes. Deve ser usado com backup e consciencia do ambiente.
 
@@ -580,7 +586,7 @@ Banco:
 11. **Transacao entre bancos:** operacoes com fotos podem envolver banco principal e banco de fotos sem atomicidade distribuida real.
 12. **Dependencias externas:** ViaCEP e Google Fonts sao dependencias externas atuais.
 13. **`ibge` opcional em Empresas:** a API detecta a coluna; se ausente, ignora a persistencia.
-14. **Referencias legadas ausentes no dump:** foram identificadas referencias para tabelas como `romaneios_tabela_preco`, `tbestados`, `tbgrupos`, `tbmarcas`, `tbmedidas` e `tbmodelos`, que nao aparecem como tabelas base no `banco.sql`.
+14. **Referencias legadas parcialmente fora do dump:** o `banco.sql` atual inclui tabelas `tb*` legadas como `tbcest`, `tbcidades`, `tbfranqueados`, `tbprodutos`, `tbprodutosbarras`, `tbramoatividade`, `tbresponsaveis` e `tbresponsaveisadicionais`, mas ainda ha referencias historicas para nomes como `romaneios_tabela_preco`, `tbestados`, `tbgrupos`, `tbmarcas`, `tbmedidas` e `tbmodelos` que nao aparecem como tabelas base no dump.
 15. **`pf_usuarios_copy`:** tabela presente no dump sem referencia no codigo atual.
 16. **Status autocorrigidos por upsert:** `cp_ensure_status_catalog()` regrava os textos canonicos dos IDs 0 a 3 em `cp_compras_status`; alteracoes manuais nesses IDs podem ser sobrescritas.
 17. **Encoding legado:** varios arquivos PHP e documentos legados ainda exibem acentos quebrados em strings ja versionadas; novos textos deste documento foram gravados em UTF-8/ASCII para reduzir novas quebras.

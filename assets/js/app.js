@@ -1518,9 +1518,14 @@ function enviarCpCompraProposta($form) {
         appAlert('Pedido disponível apenas para visualização conforme status/localização atual.', 'warning');
         return;
     }
-    if (!String($form.find('[name="Categoria"]').val() || '').trim()) {
-        appAlert('A categoria é obrigatória para enviar a proposta ao fornecedor.', 'warning');
-        $form.find('[name="Categoria"]').select2('open');
+    syncCpCompraItensFromDom();
+    const itemSemCategoria = cpCompraItemSemCategoria();
+    if (itemSemCategoria >= 0) {
+        cpCompraItemActiveTabs[itemSemCategoria] = 'dados';
+        renderCpCompraItens();
+        appOkAlert('A categoria é obrigatória nos itens para enviar a proposta ao fornecedor.', appAlertTitle('warning'), function () {
+            $('.cp-compra-categoria-select[data-item-index="' + itemSemCategoria + '"]').select2('open');
+        });
         return;
     }
     salvarCpCompraForm($form, function () {
@@ -1533,12 +1538,27 @@ function enviarCpCompraFornecedorAguardandoFoto($form) {
         appAlert('Esta ação só está disponível para pedido em KidStok com status Aprovado Aguardando Foto Fornecedor.', 'warning');
         return;
     }
-    if (!String($form.find('[name="Categoria"]').val() || '').trim()) {
-        appAlert('A categoria é obrigatória para enviar o pedido ao fornecedor.', 'warning');
-        $form.find('[name="Categoria"]').select2('open');
+    syncCpCompraItensFromDom();
+    const itemSemCategoria = cpCompraItemSemCategoria();
+    if (itemSemCategoria >= 0) {
+        cpCompraItemActiveTabs[itemSemCategoria] = 'dados';
+        renderCpCompraItens();
+        appOkAlert('A categoria é obrigatória nos itens para enviar o pedido ao fornecedor.', appAlertTitle('warning'), function () {
+            $('.cp-compra-categoria-select[data-item-index="' + itemSemCategoria + '"]').select2('open');
+        });
         return;
     }
     executarCpCompraWorkflow($form, 'enviar_proposta', 'Enviar pedido ao fornecedor?');
+}
+
+function cpCompraItemSemCategoria() {
+    for (let index = 0; index < cpCompraItens.length; index++) {
+        const item = cpCompraItens[index];
+        if (item && item.item_confirmado && String(item.Sts) !== '0' && !String(item.Categoria || '').trim()) {
+            return index;
+        }
+    }
+    return -1;
 }
 
 function mostrarPainelRecusa($form) {
@@ -1913,6 +1933,8 @@ function emptyCpCompraItem(confirmado) {
         referencia_fornecedor: '',
         descricao: '',
         composicao: '',
+        Categoria: '',
+        Categoria_text: '',
         ncm: '',
         entrega: '',
         entrega_anterior: '',
@@ -2021,6 +2043,8 @@ function mapCpCompraItemFromApi(row) {
         referencia_fornecedor: row.referencia_fornecedor || '',
         descricao: row.descricao || '',
         composicao: row.composicao || '',
+        Categoria: row.Categoria || '',
+        Categoria_text: row.Categoria_text || '',
         ncm: row.ncm || '',
         entrega: row.entrega || '',
         entrega_anterior: row.entrega_anterior || '',
@@ -2149,6 +2173,7 @@ function renderCpCompraItensLegacy() {
             fieldHtml(index, null, 'descricao', 'Descrição', item.descricao, 'col-12 col-lg-5', 'text', null, true) +
             fieldHtml(index, null, 'entrega', 'Entrega', item.entrega, 'col-12 col-lg-2', 'date') +
             fieldHtml(index, null, 'composicao', 'Composição', item.composicao, 'col-12 col-md-3', 'text', null, true) +
+            itemCategoriaSelectHtml(index, item, 'col-12 col-md-3') +
             fieldHtml(index, null, 'ncm', 'NCM', item.ncm, 'col-12 col-md-2', 'text', null, true) +
             fieldHtml(index, null, 'total_qtde', 'Quantidade total', item.total_qtde, 'col-12 col-md-2', 'number', '1', true) +
             fieldHtml(index, null, 'total_produto', 'Total Item', item.total_produto, 'col-12 col-md-2', 'money', null, true) +
@@ -2171,6 +2196,7 @@ function renderCpCompraItensLegacy() {
     }).join('');
     $('#cp-compras-itens').html(html || '<div class="text-center text-muted py-3">Nenhum item informado.</div>');
     initCpCompraReferenciaSelects();
+    initCpCompraCategoriaSelects();
     initCpCompraNestedFields();
     loadCpCompraItemThumbs();
     updateCpCompraResumoPedido();
@@ -2236,7 +2262,8 @@ function renderCpCompraItens() {
             fieldHtml(index, null, 'descricao', 'Descricao', item.descricao, 'col-12 col-lg-4', 'text', null, true) +
             fieldHtml(index, null, 'entrega', 'Entrega', item.entrega, 'col-12 col-lg-3', 'date') +
             itemStatusSelectHtml(index, item.Sts, 'col-12 col-md-2') +
-            fieldHtml(index, null, 'composicao', 'Composicao', item.composicao, 'col-12 col-lg-5', 'text', null, true) +
+            fieldHtml(index, null, 'composicao', 'Composicao', item.composicao, 'col-12 col-lg-4', 'text', null, true) +
+            itemCategoriaSelectHtml(index, item, 'col-12 col-md-3') +
             fieldHtml(index, null, 'ncm', 'NCM', item.ncm, 'col-12 col-md-3', 'text', null, true) +
             fieldHtml(index, null, 'total_produto', 'Total do item', item.total_produto, 'col-12 col-md-3', 'money', null, true) +
             confirmCpCompraItemButtonHtml(index, item, 'col-12 col-md-2') +
@@ -2258,6 +2285,7 @@ function renderCpCompraItens() {
 
     $('#cp-compras-itens').html(html || '<div class="text-center text-muted py-3">Nenhum item informado.</div>');
     initCpCompraReferenciaSelects();
+    initCpCompraCategoriaSelects();
     initCpCompraNestedFields();
     loadCpCompraItemThumbs();
 }
@@ -2576,6 +2604,19 @@ function referenceSelectHtml(itemIndex, value, colClass, readonly) {
         '</div>';
 }
 
+function itemCategoriaSelectHtml(itemIndex, item, colClass) {
+    const value = item.Categoria || '';
+    const text = item.Categoria_text || value;
+    const selected = value ? '<option value="' + escapeAttr(value) + '" selected>' + escapeHtml(text) + '</option>' : '';
+    const disabledAttr = cpCompraReadonly ? ' disabled' : '';
+    return '<div class="' + colClass + '">' +
+        '<label class="form-label">Categoria</label>' +
+        '<select class="form-select cp-compra-field cp-compra-categoria-select" data-item-index="' + itemIndex + '" data-field="Categoria"' + disabledAttr + '>' +
+        selected +
+        '</select>' +
+        '</div>';
+}
+
 function initCpCompraReferenciaSelects() {
     if (cpCompraReadonly) {
         return;
@@ -2630,6 +2671,42 @@ function initCpCompraReferenciaSelects() {
         }
         loadCpCompraReferenciaItem(itemIndex, codigoReferencia);
     });
+}
+
+function initCpCompraCategoriaSelects() {
+    if (cpCompraReadonly) {
+        return;
+    }
+
+    $('.cp-compra-categoria-select').each(function () {
+        const $select = $(this);
+        if ($select.data('select2')) {
+            return;
+        }
+        $select.select2({
+            width: '100%',
+            placeholder: 'Digite para pesquisar',
+            allowClear: true,
+            ajax: {
+                url: window.cpComprasFormConfig.api,
+                dataType: 'json',
+                delay: 250,
+                data: params => ({ action: 'options', type: 'categorias', q: params.term || '' }),
+                processResults: response => ({ results: response.results || [] })
+            }
+        });
+    });
+
+    $('.cp-compra-categoria-select')
+        .off('select2:select.cpCategoria select2:clear.cpCategoria')
+        .on('select2:select.cpCategoria select2:clear.cpCategoria', function (event) {
+            const itemIndex = Number($(this).data('item-index'));
+            if (!cpCompraItens[itemIndex]) {
+                return;
+            }
+            cpCompraItens[itemIndex].Categoria = $(this).val() || '';
+            cpCompraItens[itemIndex].Categoria_text = event.type === 'select2:select' && event.params?.data?.text ? event.params.data.text : '';
+        });
 }
 
 function cpCompraReferenciasUsadas(ignoreIndex) {

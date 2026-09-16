@@ -778,23 +778,26 @@ CREATE TABLE IF NOT EXISTS `cp_compras_emails` (
 -- --------------------------------------------------------
 -- Estrutura da tabela `cp_compras_itens`
 -- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `cp_compras_itens` (
+CREATE TABLE `cp_compras_itens` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `cp_compras_id` bigint(20) unsigned NOT NULL DEFAULT '0',
-  `referencia_fornecedor` varchar(25) NOT NULL,
-  `descricao` varchar(255) NOT NULL,
-  `composicao` varchar(255) NOT NULL,
-  `ncm` varchar(255) NOT NULL,
+  `referencia_fornecedor` varchar(25) COLLATE latin1_swedish_ci NOT NULL,
+  `descricao` varchar(255) COLLATE latin1_swedish_ci NOT NULL,
+  `composicao` varchar(255) COLLATE latin1_swedish_ci NOT NULL,
+  `ncm` varchar(255) COLLATE latin1_swedish_ci NOT NULL,
   `entrega` date DEFAULT NULL,
   `entrega_anterior` date DEFAULT NULL,
   `total_qtde` double DEFAULT NULL,
   `total_produto` decimal(15,2) DEFAULT NULL,
   `Foto` tinyint(4) NOT NULL DEFAULT '0' COMMENT '0 - Sem foto, 1 - Tem foto',
   `Sts` tinyint(4) NOT NULL DEFAULT '1' COMMENT '0 - inativo, 1 - ativo',
+  `Categoria` varchar(2) COLLATE latin1_swedish_ci DEFAULT NULL COMMENT 'Codigo da tabela produtos_categoria (R2)',
   PRIMARY KEY (`id`) USING BTREE,
-  UNIQUE KEY `Index 3` (`cp_compras_id`,`referencia_fornecedor`),
-  CONSTRAINT `FK_cp_compras_itens_cp_compras` FOREIGN KEY (`cp_compras_id`) REFERENCES `cp_compras` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=222 DEFAULT CHARSET=latin1;
+  UNIQUE KEY `Index 3` (`cp_compras_id`,`referencia_fornecedor`) USING BTREE,
+  KEY `FK_cp_compras_itens_produtos_categorias` (`Categoria`) USING BTREE,
+  CONSTRAINT `FK_cp_compras_itens_cp_compras` FOREIGN KEY (`cp_compras_id`) REFERENCES `cp_compras` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `FK_cp_compras_itens_produtos_categorias` FOREIGN KEY (`Categoria`) REFERENCES `produtos_categorias` (`Codigo`) ON DELETE NO ACTION ON UPDATE NO ACTION
+) ENGINE=InnoDB AUTO_INCREMENT=277 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
 -- Estrutura da tabela `cp_compras_itens_cores`

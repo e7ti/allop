@@ -398,7 +398,6 @@ function cp_header_payload(array $data): array
         'Publicado' => (int) ($data['Publicado'] ?? 0),
         'StsMotivo' => cp_trim($data['StsMotivo'] ?? ''),
         'Localizacao' => cp_trim($data['Localizacao'] ?? 'KidStok') ?: 'KidStok',
-        'Categoria' => cp_trim($data['Categoria'] ?? '') ?: null,
     ];
 }
 
@@ -470,13 +469,6 @@ function cp_load_pedido(int $id): ?array
     $fornecedorText = cp_table_exists('produtos_fornecedor')
         ? "CONCAT(c.Fornecedor_id, ' - ', $fornecedorLabel)"
         : 'c.Fornecedor_id';
-    $categoriaJoin = cp_table_exists('produtos_categorias')
-        ? 'LEFT JOIN produtos_categorias pc ON pc.Codigo = c.Categoria'
-        : '';
-    $categoriaText = cp_table_exists('produtos_categorias')
-        ? "CONCAT(pc.TipoProduto, ' - ', c.Categoria)"
-        : 'c.Categoria';
-
     $stmt = db()->prepare(
         "SELECT c.*,
                 c.id,
@@ -484,7 +476,6 @@ function cp_load_pedido(int $id): ?array
                 cd.NomeCD AS cd_id_text,
                 COALESCE(NULLIF(e.Fantasia, ''), e.Nome) AS empresa_id_text,
                 $fornecedorText AS Fornecedor_id_text,
-                $categoriaText AS Categoria_text,
                 COALESCE(cst.descricao_compras, '') AS descricao_compras,
                 COALESCE(cst.descricao_compras, '') AS Sts
            FROM cp_compras c
@@ -492,7 +483,6 @@ function cp_load_pedido(int $id): ?array
            LEFT JOIN empresas e ON e.Codigo = c.empresa_id
            LEFT JOIN cp_compras_status cst ON cst.id = c.status_id
            $fornecedorJoin
-           $categoriaJoin
           WHERE c.id = :id"
     );
     $stmt->execute(['id' => $id]);
@@ -501,7 +491,20 @@ function cp_load_pedido(int $id): ?array
         return null;
     }
 
-    $stmt = db()->prepare("SELECT *, id AS ID FROM cp_compras_itens WHERE cp_compras_id = :id ORDER BY id");
+    $categoriaItemJoin = cp_table_exists('produtos_categorias')
+        ? 'LEFT JOIN produtos_categorias pc ON pc.Codigo = i.Categoria'
+        : '';
+    $categoriaItemText = cp_table_exists('produtos_categorias')
+        ? "CONCAT(pc.TipoProduto, ' - ', i.Categoria)"
+        : 'i.Categoria';
+
+    $stmt = db()->prepare(
+        "SELECT i.*, i.id AS ID, $categoriaItemText AS Categoria_text
+           FROM cp_compras_itens i
+           $categoriaItemJoin
+          WHERE i.cp_compras_id = :id
+          ORDER BY i.id"
+    );
     $stmt->execute(['id' => $id]);
     $items = $stmt->fetchAll();
 
@@ -658,6 +661,8 @@ function cp_load_referencia_item(string $fornecedorId, string $codigoReferencia)
         'referencia_fornecedor' => (string) ($first['codigo_referencia'] ?? ''),
         'descricao' => cp_fix_text_encoding($first['descricao'] ?? ''),
         'composicao' => cp_fix_text_encoding($first['composicao'] ?? ''),
+        'Categoria' => '',
+        'Categoria_text' => '',
         'ncm' => (string) ($first['ncm'] ?? ''),
         'entrega' => '',
         'total_qtde' => 0,
@@ -1335,15 +1340,16 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
 {
     $itemInsertStmt = db()->prepare(
         "INSERT INTO cp_compras_itens
-            (cp_compras_id, referencia_fornecedor, descricao, composicao, ncm, entrega, entrega_anterior, total_qtde, total_produto, Foto, Sts)
+            (cp_compras_id, referencia_fornecedor, descricao, composicao, Categoria, ncm, entrega, entrega_anterior, total_qtde, total_produto, Foto, Sts)
          VALUES
-            (:cp_compras_id, :referencia_fornecedor, :descricao, :composicao, :ncm, :entrega, :entrega_anterior, :total_qtde, :total_produto, :Foto, :Sts)"
+            (:cp_compras_id, :referencia_fornecedor, :descricao, :composicao, :Categoria, :ncm, :entrega, :entrega_anterior, :total_qtde, :total_produto, :Foto, :Sts)"
     );
     $itemUpdateStmt = db()->prepare(
         "UPDATE cp_compras_itens
             SET referencia_fornecedor = :referencia_fornecedor,
                 descricao = :descricao,
                 composicao = :composicao,
+                Categoria = :Categoria,
                 ncm = :ncm,
                 entrega = :entrega,
                 entrega_anterior = :entrega_anterior,
@@ -1426,6 +1432,7 @@ function cp_save_items(int $pedidoId, array $items, string $fornecedorId, string
             'referencia_fornecedor' => $referencia,
             'descricao' => cp_trim($item['descricao'] ?? ''),
             'composicao' => cp_trim($item['composicao'] ?? ''),
+            'Categoria' => cp_trim($item['Categoria'] ?? '') ?: null,
             'ncm' => cp_trim($item['ncm'] ?? ''),
             'entrega' => $itemEntrega ?: null,
             'entrega_anterior' => $itemEntregaAnterior ?: null,
@@ -1674,7 +1681,7 @@ function cp_workflow_update(int $id, string $workflowAction): void
     }
 
     $stmt = db()->prepare(
-        "SELECT c.id, c.id AS ID, c.Localizacao, c.Publicado, c.status_id, c.Iteracao, c.Categoria
+        "SELECT c.id, c.id AS ID, c.Localizacao, c.Publicado, c.status_id, c.Iteracao
            FROM cp_compras c
           WHERE c.id = :id"
     );
@@ -1697,8 +1704,16 @@ function cp_workflow_update(int $id, string $workflowAction): void
 
     $usuario = cp_current_user_name();
     if ($workflowAction === 'enviar_proposta') {
-        if (cp_trim($pedido['Categoria'] ?? '') === '') {
-            api_response(false, ['message' => 'A categoria é obrigatória para enviar a proposta ao fornecedor.'], 422);
+        $stmtCategorias = db()->prepare(
+            "SELECT COUNT(*)
+               FROM cp_compras_itens
+              WHERE cp_compras_id = :id
+                AND Sts <> 0
+                AND (Categoria IS NULL OR Categoria = '')"
+        );
+        $stmtCategorias->execute(['id' => $id]);
+        if ((int) $stmtCategorias->fetchColumn() > 0) {
+            api_response(false, ['message' => 'A categoria é obrigatória nos itens para enviar a proposta ao fornecedor.'], 422);
         }
         $recipientCount = cp_send_proposta_email($id);
         $stmt = db()->prepare(
@@ -2026,7 +2041,6 @@ try {
                         Publicado = :Publicado,
                         StsMotivo = :StsMotivo,
                         Localizacao = :Localizacao,
-                        Categoria = :Categoria,
                         Alteracao = :Alteracao,
                         Usuario = :Usuario
                   WHERE id = :id"
@@ -2042,10 +2056,10 @@ try {
         $stmt = db()->prepare(
             "INSERT INTO cp_compras
                 (cd_id, empresa_id, Fornecedor_id, DataPedido, MarkupFranqueadora, MarkupFranquia, MarkupTotal,
-                 ValorTotalPedido, status_id, TemFotos, Publicado, StsMotivo, Localizacao, Categoria, Inclusao, Alteracao, Usuario)
+                 ValorTotalPedido, status_id, TemFotos, Publicado, StsMotivo, Localizacao, Inclusao, Alteracao, Usuario)
              VALUES
                 (:cd_id, :empresa_id, :Fornecedor_id, :DataPedido, :MarkupFranqueadora, :MarkupFranquia, :MarkupTotal,
-                 :ValorTotalPedido, :status_id, :TemFotos, :Publicado, :StsMotivo, :Localizacao, :Categoria, :Inclusao, :Alteracao, :Usuario)"
+                 :ValorTotalPedido, :status_id, :TemFotos, :Publicado, :StsMotivo, :Localizacao, :Inclusao, :Alteracao, :Usuario)"
         );
         $stmt->execute($payload);
         $newId = (int) db()->lastInsertId();
