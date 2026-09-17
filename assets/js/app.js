@@ -1254,6 +1254,31 @@ function initPreCadastroProdutos() {
 
     $('#btn-pre-cadastro-preview').on('click', loadPreCadastroPreview);
     $('#btn-pre-cadastro-save').on('click', savePreCadastroProdutos);
+
+    if (Number(cfg.preCadastroId || 0) > 0) {
+        preparePreCadastroEditToolbar();
+        loadPreCadastroEdit(Number(cfg.preCadastroId));
+    }
+}
+
+function preparePreCadastroEditToolbar() {
+    $('#pre-cadastro-pedido').closest('.col-12').addClass('d-none');
+    $('#btn-pre-cadastro-preview').addClass('d-none');
+    $('#btn-pre-cadastro-save').text('Salvar alterações').closest('section').removeClass('d-none');
+}
+
+function loadPreCadastroEdit(id) {
+    $('#btn-pre-cadastro-save').prop('disabled', true);
+    $.getJSON(window.preCadastroProdutosConfig.api, {
+        action: 'get',
+        id: id
+    }).done(function (response) {
+        preCadastroGroups = response.groups || [];
+        renderPreCadastroPreview(response);
+        $('#btn-pre-cadastro-save').prop('disabled', preCadastroGroups.length === 0);
+    }).fail(function (xhr) {
+        appAlert(xhr.responseJSON?.message || 'Não foi possível carregar o pré-cadastro.', 'danger');
+    });
 }
 
 function loadPreCadastroPreview() {
@@ -1308,13 +1333,18 @@ function renderPreCadastroPreview(response) {
         '<div class="text-center text-muted py-3">Nenhum dado gerado.</div>');
     initPreCadastroSelects();
     bindPreCadastroFields();
-    focusFirstPreCadastroR3();
+    if (!preCadastroIsEditMode()) {
+        focusFirstPreCadastroR3();
+    }
 }
 
 function renderPreCadastroGroup(group, groupIndex) {
+    var consolidado = Number(group.consolidado || 0) === 1;
+    var statusBadge = '<span class="badge ' + (consolidado ? 'bg-success' : 'bg-secondary') + '">' +
+        (consolidado ? 'Consolidado' : 'Nao consolidado') + '</span>';
     return '<section class="card card-slim mb-3 pre-cadastro-group" data-group-index="' + groupIndex + '">' +
         '<div class="card-header d-flex flex-wrap justify-content-between gap-2">' +
-        '<strong>Grupo ' + (groupIndex + 1) + ' - Categoria <span data-group-categoria-index="' + groupIndex + '">' + escapeHtml(group.Categoria || '-') + '</span></strong>' +
+        '<strong>Grupo ' + (groupIndex + 1) + ' - Categoria <span data-group-categoria-index="' + groupIndex + '">' + escapeHtml(group.Categoria || '-') + '</span> ' + statusBadge + '</strong>' +
         '<span>Entrega: ' + escapeHtml(formatDateBr(group.data_entrega || '') || '-') + ' | Valor: R$ ' + escapeHtml(formatMoneyBr(group.valor_total || 0)) + '</span>' +
         '</div>' +
         '<div class="card-body">' +
@@ -1339,9 +1369,10 @@ function renderPreCadastroItem(item, groupIndex, itemIndex) {
     const itemId = 'pre-cadastro-item-' + groupIndex + '-' + itemIndex;
     const dadosTabId = itemId + '-dados';
     const tributosTabId = itemId + '-tributos';
-    const collapseClass = itemIndex === 0 ? 'accordion-collapse collapse show' : 'accordion-collapse collapse';
-    const buttonClass = itemIndex === 0 ? 'accordion-button' : 'accordion-button collapsed';
-    const expanded = itemIndex === 0 ? 'true' : 'false';
+    const expandedByDefault = !preCadastroIsEditMode() && itemIndex === 0;
+    const collapseClass = expandedByDefault ? 'accordion-collapse collapse show' : 'accordion-collapse collapse';
+    const buttonClass = expandedByDefault ? 'accordion-button' : 'accordion-button collapsed';
+    const expanded = expandedByDefault ? 'true' : 'false';
     const itemMetrics = preCadastroItemMetrics(item);
     const r2Select = String(item.r2 || '').trim() === ''
         ? preCadastroSelect(path, 'r2', 'Categoria (R2)', 'categorias', item.r2 || '', item.r2_text || '', 'col-12 col-md-2')
@@ -1349,7 +1380,7 @@ function renderPreCadastroItem(item, groupIndex, itemIndex) {
     return '<div class="accordion-item pre-cadastro-item" ' + path + '>' +
         '<h2 class="accordion-header" id="' + itemId + '-heading">' +
         '<button class="' + buttonClass + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + itemId + '-collapse" aria-expanded="' + expanded + '" aria-controls="' + itemId + '-collapse">' +
-        '<span><strong>' + escapeHtml(item.referencia_fornecedor || '') + '</strong><span class="text-muted ms-2">' + escapeHtml(item.descricao || '') + '</span></span>' +
+        '<span><strong class="pre-cadastro-item-codigo">' + escapeHtml(item.referencia_fornecedor || '') + '</strong><span class="pre-cadastro-item-descricao ms-2">' + escapeHtml(item.descricao || '') + '</span></span>' +
         '<span class="pre-cadastro-metric-badges ms-auto me-3">' +
         preCadastroMetricBadge('Tamanhos', itemMetrics.tamanhos) +
         preCadastroMetricBadge('Cores', itemMetrics.cores) +
@@ -1420,6 +1451,10 @@ function renderPreCadastroItem(item, groupIndex, itemIndex) {
         '</div>' +
         '</div>' +
         '</div>';
+}
+
+function preCadastroIsEditMode() {
+    return Number(window.preCadastroProdutosConfig?.preCadastroId || 0) > 0;
 }
 
 function preCadastroItemMetrics(item) {
@@ -1854,7 +1889,10 @@ function savePreCadastroProdutos() {
         return;
     }
     $('#btn-pre-cadastro-save').prop('disabled', true);
-    $.post(window.preCadastroProdutosConfig.api + '?action=save', {
+    const preCadastroId = Number(window.preCadastroProdutosConfig.preCadastroId || 0);
+    const action = preCadastroId > 0 ? 'update' : 'save';
+    $.post(window.preCadastroProdutosConfig.api + '?action=' + action, {
+        id: preCadastroId,
         groups_json: JSON.stringify(preCadastroGroups)
     }, function (response) {
         const created = response.created || {};

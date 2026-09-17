@@ -10,6 +10,40 @@ $aplicacao_descricao = "Insere aplicacoes ausentes, perfil Administrador, permis
 
 require_once __DIR__ . '/../config/database.php';
 
+function tableExists(string $table): bool
+{
+    $stmt = db()->prepare(
+        "SELECT COUNT(*)
+           FROM INFORMATION_SCHEMA.TABLES
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = :table"
+    );
+    $stmt->execute(['table' => $table]);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function columnExists(string $table, string $column): bool
+{
+    $stmt = db()->prepare(
+        "SELECT COUNT(*)
+           FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = :table
+            AND COLUMN_NAME = :column"
+    );
+    $stmt->execute(['table' => $table, 'column' => $column]);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function ensureColumn(string $table, string $column, string $definition): void
+{
+    if (!tableExists($table) || columnExists($table, $column)) {
+        return;
+    }
+
+    db()->exec("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
+}
+
 function findId(string $table, string $column, string $value): ?int
 {
     $stmt = db()->prepare("SELECT id FROM $table WHERE $column = :value LIMIT 1");
@@ -105,6 +139,12 @@ function renameMenuIfExists(string $from, string $to): void
 
 function saveAplicacao(array $app): int
 {
+    $appData = [
+        'nome' => $app['nome'],
+        'rota' => $app['rota'],
+        'menu_id' => $app['menu_id'],
+        'ordem' => $app['ordem'],
+    ];
     $id = findId('seg_aplicacoes', 'rota', $app['rota']);
     if ($id) {
         $stmt = db()->prepare(
@@ -115,9 +155,9 @@ function saveAplicacao(array $app): int
               WHERE id = :id"
         );
         $stmt->execute([
-            'nome' => $app['nome'],
-            'menu_id' => $app['menu_id'],
-            'ordem' => $app['ordem'],
+            'nome' => $appData['nome'],
+            'menu_id' => $appData['menu_id'],
+            'ordem' => $appData['ordem'],
             'id' => $id,
         ]);
         return $id;
@@ -127,11 +167,11 @@ function saveAplicacao(array $app): int
         "INSERT INTO seg_aplicacoes (nome, rota, menu_id, ordem)
          VALUES (:nome, :rota, :menu_id, :ordem)"
     );
-    $stmt->execute($app);
+    $stmt->execute($appData);
     return (int) db()->lastInsertId();
 }
 
-function ensurePerfilPermissao(int $perfilId, int $aplicacaoId): void
+function ensurePerfilPermissao(int $perfilId, int $aplicacaoId, int $visualizar = 1): void
 {
     $stmt = db()->prepare(
         "SELECT id
@@ -142,7 +182,10 @@ function ensurePerfilPermissao(int $perfilId, int $aplicacaoId): void
     );
     $stmt->execute(['perfil_id' => $perfilId, 'aplicacao_id' => $aplicacaoId]);
 
-    if ($stmt->fetchColumn()) {
+    $permissaoId = $stmt->fetchColumn();
+    if ($permissaoId) {
+        $stmt = db()->prepare("UPDATE seg_perfil_permissoes SET visualizar = :visualizar WHERE id = :id");
+        $stmt->execute(['visualizar' => $visualizar, 'id' => $permissaoId]);
         return;
     }
 
@@ -150,9 +193,9 @@ function ensurePerfilPermissao(int $perfilId, int $aplicacaoId): void
         "INSERT INTO seg_perfil_permissoes
             (aplicacao_id, perfil_id, visualizar, inserir, editar, excluir, imprimir, exportar, processar)
          VALUES
-            (:aplicacao_id, :perfil_id, 1, 1, 1, 1, 1, 1, 1)"
+            (:aplicacao_id, :perfil_id, :visualizar, 1, 1, 1, 1, 1, 1)"
     );
-    $stmt->execute(['aplicacao_id' => $aplicacaoId, 'perfil_id' => $perfilId]);
+    $stmt->execute(['aplicacao_id' => $aplicacaoId, 'perfil_id' => $perfilId, 'visualizar' => $visualizar]);
 }
 
 $perfilId = findId('seg_perfil', 'nome', 'Administrador');
@@ -166,6 +209,8 @@ deleteAplicacaoByRoute('dashboard.php');
 deleteMenuByName('Principal');
 deleteMenuByName('Sair');
 renameMenuIfExists('Seguranca', 'Segurança');
+
+ensureColumn('pre_cadastro', 'consolidado', "tinyint(1) NOT NULL DEFAULT '0' COMMENT '0 - nao consolidado, 1 - consolidado' AFTER `QtdeCores`");
 
 $menuConfiguracoesId = saveMenu('Configurações', 10);
 $menuProdutosId = saveMenu('Produtos', 20);
@@ -181,6 +226,7 @@ $empresasCdRoute = 'mod/configuracoes/empresas_cd/empresas_cd_lista.php';
 $emailRoute = 'mod/configuracoes/configuracoes_email/configuracoes_email_lista.php';
 $cpComprasRoute = 'mod/compras/cp_compras_lista.php';
 $preCadastroProdutosRoute = 'mod/compras/pre_cadastro_produtos_lista.php';
+$preCadastroProdutosFormRoute = 'mod/compras/pre_cadastro_produtos_form.php';
 $cpComprasEmailsRoute = 'mod/seguranca/cp_compras_emails_lista.php';
 $oldEmailRoutes = [
     'mod/configuracoes_email/email_lista.php',
@@ -223,11 +269,12 @@ $aplicacoes = [
     ['nome' => 'E-mails de Compras', 'rota' => $cpComprasEmailsRoute, 'menu_id' => $menuConfiguracoesId, 'ordem' => 20],
     ['nome' => 'Pedidos de Compra', 'rota' => $cpComprasRoute, 'menu_id' => $menuComprasId, 'ordem' => 10],
     ['nome' => 'Pré Cadastro Produtos', 'rota' => $preCadastroProdutosRoute, 'menu_id' => $menuComprasId, 'ordem' => 20],
+    ['nome' => 'Gerar Pre Cadastro Produtos', 'rota' => $preCadastroProdutosFormRoute, 'menu_id' => $menuComprasId, 'ordem' => 21, 'visualizar' => 0],
 ];
 
 foreach ($aplicacoes as $app) {
     $appId = saveAplicacao($app);
-    ensurePerfilPermissao($perfilId, $appId);
+    ensurePerfilPermissao($perfilId, $appId, (int) ($app['visualizar'] ?? 1));
 }
 
 if (!findId('seg_usuarios', 'login', 'admin')) {

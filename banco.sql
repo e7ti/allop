@@ -1660,6 +1660,7 @@ CREATE TABLE IF NOT EXISTS `pre_cadastro` (
   `QtdeTamanhos` int(11) NOT NULL DEFAULT '0',
   `Cores` int(11) NOT NULL DEFAULT '0',
   `QtdeCores` int(11) NOT NULL DEFAULT '0',
+  `consolidado` tinyint(1) NOT NULL DEFAULT '0' COMMENT '0 - nao consolidado, 1 - consolidado',
   PRIMARY KEY (`id`),
   KEY `FK_pre_cadastro_cp_compras` (`cp_compras_id`),
   KEY `FK_pre_cadastro_empresas_cd` (`cd_id`),

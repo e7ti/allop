@@ -52,6 +52,22 @@ function pc_exists(string $table, string $column, $value): bool
     return (int) $stmt->fetchColumn() > 0;
 }
 
+function pc_reference_exists(string $referencia, int $excludePreCadastroId = 0): bool
+{
+    $sql = "SELECT COUNT(*)
+              FROM pre_cadastro_item_pro pro
+              INNER JOIN pre_cadastro_item item ON item.id = pro.pre_cadastro_item_id
+             WHERE pro.referencia = :referencia";
+    $params = ['referencia' => $referencia];
+    if ($excludePreCadastroId > 0) {
+        $sql .= " AND item.pre_cadastro_id <> :pre_cadastro_id";
+        $params['pre_cadastro_id'] = $excludePreCadastroId;
+    }
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
 function pc_fix_text_encoding($value): string
 {
     $text = (string) ($value ?? '');
@@ -97,6 +113,11 @@ function pc_domain_options(string $type, string $q, string $grupo = '', string $
                        FROM cp_compras c
                         LEFT JOIN produtos_fornecedor f ON f.Codigo = c.Fornecedor_id
                        WHERE c.status_id = 2
+                         AND NOT EXISTS (
+                             SELECT 1
+                               FROM pre_cadastro pc
+                              WHERE pc.cp_compras_id = c.id
+                         )
                          AND (
                               CAST(c.id AS CHAR) LIKE :q_id
                               OR c.Fornecedor_id LIKE :q_fornecedor
@@ -225,6 +246,8 @@ function pc_load_pedido_rows(int $pedidoId): array
 {
     $deparaSelect = pc_table_exists('cp_depara_cor') ? ', dc.codigo_ks AS cor_codigo_ks' : ", NULL AS cor_codigo_ks";
     $deparaJoin = pc_table_exists('cp_depara_cor') ? 'LEFT JOIN cp_depara_cor dc ON dc.cor_fornecedor = co.cor' : '';
+    $colecaoSelect = pc_table_exists('pf_colecao') ? ', pfc.colecao_id AS pf_colecao_id' : ', NULL AS pf_colecao_id';
+    $colecaoJoin = pc_table_exists('pf_colecao') ? 'LEFT JOIN pf_colecao pfc ON pfc.id_fornecedor = c.Fornecedor_id AND pfc.sku = co.sku' : '';
     $stmt = db()->prepare(
         "SELECT c.id AS pedido_id, c.cd_id, c.empresa_id, c.Fornecedor_id, c.MarkupFranqueadora,
                 c.MarkupFranquia, c.MarkupTotal, c.ValorTotalPedido, c.status_id,
@@ -252,10 +275,13 @@ function pc_load_pedido_rows(int $pedidoId): array
                 t.id AS tamanho_id, t.tamanho, t.entrega AS tamanho_entrega, t.Sts AS tamanho_sts,
                 co.id AS cor_id, co.sku, co.cor, co.Qtde, co.preco_fornecedor, co.preco_proposta,
                 co.preco_franqueado, co.preco_loja, co.valor_total_produto, co.Sts AS cor_sts
+                $colecaoSelect
                 $deparaSelect
            FROM cp_compras_itens i
+           INNER JOIN cp_compras c ON c.id = i.cp_compras_id
            INNER JOIN cp_compras_itens_tamanhos t ON t.compras_itens_id = i.id
            INNER JOIN cp_compras_itens_cores co ON co.compras_itens_tamanho_id = t.id
+           $colecaoJoin
            $deparaJoin
           WHERE i.cp_compras_id = :id
             AND i.Sts = 1
@@ -314,6 +340,8 @@ function pc_build_preview(int $pedidoId): array
             ];
         }
         $itemKey = (string) $row['item_id'];
+        $colecaoId = pc_trim($row['pf_colecao_id'] ?? '');
+        $colecaoOption = $colecaoId !== '' ? pc_domain_value('produtos_colecao', 'Codigo', ['Colecao', 'Codigo'], $colecaoId) : null;
         if (!isset($groups[$key]['items'][$itemKey])) {
             $descricao = pc_fix_text_encoding($row['descricao'] ?? '');
             $ncmOption = pc_domain_value('cests_ncm', 'ncm', ['ncm', 'descricao'], pc_trim($row['ncm'] ?? ''));
@@ -326,6 +354,8 @@ function pc_build_preview(int $pedidoId): array
                 'referencia_master' => '',
                 'codigo_fornecdor' => (string) $row['referencia_fornecedor'],
                 'composicao' => pc_fix_text_encoding($row['composicao'] ?? ''),
+                'colecao_id' => $colecaoOption['id'] ?? '',
+                'colecao_id_text' => $colecaoOption['text'] ?? '',
                 'descricao' => pc_cut($descricao, 0, 50),
                 'descricao_complementar' => pc_text_len($descricao) > 50 ? pc_cut($descricao, 50, 70) : '',
                 'Unidade' => 'PC',
@@ -341,6 +371,10 @@ function pc_build_preview(int $pedidoId): array
                 'fields' => [],
                 'products' => [],
             ];
+        }
+        if ($colecaoOption && pc_trim($groups[$key]['items'][$itemKey]['colecao_id'] ?? '') === '') {
+            $groups[$key]['items'][$itemKey]['colecao_id'] = $colecaoOption['id'];
+            $groups[$key]['items'][$itemKey]['colecao_id_text'] = $colecaoOption['text'];
         }
         $tamanhoOrigem = pc_trim($row['tamanho'] ?? '');
         $tamanhoOption = pc_domain_value('produtos_tamanho', 'Codigo', ['Codigo', 'Nome'], $tamanhoOrigem);
@@ -388,6 +422,199 @@ function pc_build_preview(int $pedidoId): array
     ];
 }
 
+function pc_load_pre_cadastro(int $preCadastroId): array
+{
+    $stmt = db()->prepare(
+        "SELECT pc.*,
+                cd.NomeCD AS cd_nome,
+                COALESCE(NULLIF(e.Fantasia, ''), e.Nome) AS empresa_nome,
+                COALESCE(NULLIF(f.NomeFornecedor, ''), pc.fornecedor_id) AS fornecedor_nome,
+                c.ValorTotalPedido
+           FROM pre_cadastro pc
+           LEFT JOIN cp_compras c ON c.id = pc.cp_compras_id
+           LEFT JOIN empresas_cd cd ON cd.Codigo = pc.cd_id
+           LEFT JOIN empresas e ON e.Codigo = pc.empresa_id
+           LEFT JOIN produtos_fornecedor f ON f.Codigo = pc.fornecedor_id
+          WHERE pc.id = :id
+          LIMIT 1"
+    );
+    $stmt->execute(['id' => $preCadastroId]);
+    $header = $stmt->fetch();
+    if (!$header) {
+        api_response(false, ['message' => 'Pre-cadastro nao encontrado.'], 404);
+    }
+
+    $stmt = db()->prepare(
+        "SELECT *
+           FROM pre_cadastro_item
+          WHERE pre_cadastro_id = :id
+          ORDER BY id"
+    );
+    $stmt->execute(['id' => $preCadastroId]);
+    $itemsRows = $stmt->fetchAll();
+
+    $productsByItem = [];
+    if ($itemsRows) {
+        $itemIds = array_map(static fn(array $row): int => (int) $row['id'], $itemsRows);
+        $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
+        $stmt = db()->prepare(
+            "SELECT *
+               FROM pre_cadastro_item_pro
+              WHERE pre_cadastro_item_id IN ($placeholders)
+              ORDER BY id"
+        );
+        $stmt->execute($itemIds);
+        foreach ($stmt->fetchAll() as $product) {
+            $productsByItem[(int) $product['pre_cadastro_item_id']][] = $product;
+        }
+    }
+
+    $group = [
+        'id' => (int) $header['id'],
+        'cp_compras_id' => (int) $header['cp_compras_id'],
+        'cd_id' => (int) $header['cd_id'],
+        'empresa_id' => (int) $header['empresa_id'],
+        'fornecedor_id' => (string) $header['fornecedor_id'],
+        'Categoria' => (string) $header['Categoria'],
+        'data_entrega' => (string) ($header['data_entrega'] ?? ''),
+        'markup_franqueadora' => (float) $header['markup_franqueadora'],
+        'markup_franquia' => (float) $header['markup_franquia'],
+        'markup_total' => (float) $header['markup_total'],
+        'valor_total' => (float) $header['valor_total'],
+        'Itens' => (int) $header['Itens'],
+        'QtdeItens' => (int) $header['QtdeItens'],
+        'Tamanhos' => (int) $header['Tamanhos'],
+        'QtdeTamanhos' => (int) $header['QtdeTamanhos'],
+        'Cores' => (int) $header['Cores'],
+        'QtdeCores' => (int) $header['QtdeCores'],
+        'consolidado' => (int) ($header['consolidado'] ?? 0),
+        'items' => [],
+    ];
+
+    foreach ($itemsRows as $itemRow) {
+        $unidadeOption = pc_domain_value('produtos_medidas', 'Sigla', ['Sigla', 'Unidade'], $itemRow['Unidade'] ?? '');
+        $ncmOption = pc_domain_value('cests_ncm', 'ncm', ['ncm', 'descricao'], $itemRow['ncm'] ?? '');
+        $cfopOption = pc_domain_value('cfops', 'CFOP', ['CFOP', 'Descricao'], $itemRow['cfop'] ?? '');
+        $cfopPropriaOption = pc_domain_value('cfops', 'CFOP', ['CFOP', 'Descricao'], $itemRow['cfop_propria'] ?? '');
+        $origemOption = pc_domain_value('st_origem', 'Codigo', ['Codigo', 'Descricao'], $itemRow['origem'] ?? '');
+        $icmsOption = pc_domain_value('st_icms', 'Codigo', ['Codigo', 'Descricao'], $itemRow['cst_icms'] ?? '');
+        $pisOption = pc_domain_value('st_pis', 'Codigo', ['Codigo', 'Descricao'], $itemRow['cst_pis'] ?? '');
+        $cofinsOption = pc_domain_value('st_cofins', 'Codigo', ['Codigo', 'Descricao'], $itemRow['cst_cofins'] ?? '');
+        $ipiOption = pc_domain_value('st_ipi', 'Codigo', ['Codigo', 'Descricao'], $itemRow['cst_ipi'] ?? '');
+        $colecaoOption = pc_domain_value('produtos_colecao', 'Codigo', ['Colecao', 'Codigo'], $itemRow['colecao_id'] ?? '');
+        $linhaOption = pc_domain_value('produtos_linhas', 'Codigo', ['Linha', 'Codigo'], $itemRow['linha'] ?? '');
+        $generoOption = pc_domain_value('produtos_generos', 'Codigo', ['Genero', 'Codigo'], $itemRow['genero_id'] ?? '');
+        $composicaoOption = pc_domain_value('produtos_composicoes', 'Codigo', ['Composicao', 'Codigo'], $itemRow['composicao_id'] ?? '');
+        $caracteristicaOption = pc_domain_value('produtos_caracteristicas', 'Codigo', ['Caracteristica', 'Codigo'], $itemRow['caracteristica_id'] ?? '');
+        $estiloOption = pc_domain_value('produtos_estilos', 'Codigo', ['Descricao', 'Codigo'], $itemRow['estilo'] ?? '');
+
+        $item = [
+            'pre_cadastro_item_id' => (int) $itemRow['id'],
+            'cp_compras_itens_id' => (int) $itemRow['cp_compras_itens_id'],
+            'referencia_fornecedor' => (string) $itemRow['referencia_fornecedor'],
+            'r1' => (string) ($itemRow['r1'] ?? ''),
+            'r2' => (string) ($itemRow['r2'] ?? ''),
+            'r3' => (string) ($itemRow['r3'] ?? ''),
+            'referencia_master' => (string) ($itemRow['referencia_master'] ?? ''),
+            'codigo_fornecdor' => (string) $itemRow['codigo_fornecdor'],
+            'composicao' => (string) $itemRow['composicao'],
+            'colecao_id' => (string) ($itemRow['colecao_id'] ?? ''),
+            'colecao_id_text' => $colecaoOption['text'] ?? '',
+            'linha' => (string) ($itemRow['linha'] ?? ''),
+            'linha_text' => $linhaOption['text'] ?? '',
+            'peso' => (float) $itemRow['peso'],
+            'descricao' => (string) $itemRow['descricao'],
+            'descricao_complementar' => (string) $itemRow['descricao_complementar'],
+            'Unidade' => (string) $itemRow['Unidade'],
+            'Unidade_text' => $unidadeOption['text'] ?? (string) $itemRow['Unidade'],
+            'Grupo' => (string) ($itemRow['Grupo'] ?? ''),
+            'Grupo_text' => (string) ($itemRow['Grupo'] ?? ''),
+            'grupo_categoria' => (string) ($itemRow['grupo_categoria'] ?? ''),
+            'grupo_categoria_text' => (string) ($itemRow['grupo_categoria'] ?? ''),
+            'genero_id' => (string) ($itemRow['genero_id'] ?? ''),
+            'genero_id_text' => $generoOption['text'] ?? '',
+            'composicao_id' => (string) ($itemRow['composicao_id'] ?? ''),
+            'composicao_id_text' => $composicaoOption['text'] ?? '',
+            'caracteristica_id' => (string) ($itemRow['caracteristica_id'] ?? ''),
+            'caracteristica_id_text' => $caracteristicaOption['text'] ?? '',
+            'setor_laranja' => (string) $itemRow['setor_laranja'],
+            'preco_cheio' => (string) $itemRow['preco_cheio'],
+            'encomenda' => (string) $itemRow['encomenda'],
+            'estilo' => (string) ($itemRow['estilo'] ?? ''),
+            'estilo_text' => $estiloOption['text'] ?? '',
+            'preco_compra' => (float) $itemRow['preco_compra'],
+            'preco_compra_tabela' => (float) $itemRow['preco_compra_tabela'],
+            'preco_venda_tabela' => (float) $itemRow['preco_venda_tabela'],
+            'ncm' => (string) ($itemRow['ncm'] ?? ''),
+            'ncm_text' => $ncmOption['text'] ?? '',
+            'origem' => (string) ($itemRow['origem'] ?? ''),
+            'origem_text' => $origemOption['text'] ?? '',
+            'cst_icms' => (string) $itemRow['cst_icms'],
+            'cst_icms_text' => $icmsOption['text'] ?? '',
+            'aliquota_icms' => (float) $itemRow['aliquota_icms'],
+            'reducao_icms' => (float) $itemRow['reducao_icms'],
+            'cst_pis' => (string) $itemRow['cst_pis'],
+            'cst_pis_text' => $pisOption['text'] ?? '',
+            'aliquota_pis' => (float) $itemRow['aliquota_pis'],
+            'aliquota_cofins' => (float) $itemRow['aliquota_cofins'],
+            'cst_cofins' => (string) $itemRow['cst_cofins'],
+            'cst_cofins_text' => $cofinsOption['text'] ?? '',
+            'cst_ipi' => (string) $itemRow['cst_ipi'],
+            'cst_ipi_text' => $ipiOption['text'] ?? '',
+            'aliquota_ipi' => (float) $itemRow['aliquota_ipi'],
+            'cfop' => (string) $itemRow['cfop'],
+            'cfop_text' => $cfopOption['text'] ?? (string) $itemRow['cfop'],
+            'cfop_propria' => (string) $itemRow['cfop_propria'],
+            'cfop_propria_text' => $cfopPropriaOption['text'] ?? '',
+            'sts' => (int) $itemRow['sts'],
+            'products' => [],
+        ];
+
+        foreach ($productsByItem[(int) $itemRow['id']] ?? [] as $productRow) {
+            $tamanhoOption = pc_domain_value('produtos_tamanho', 'Codigo', ['Codigo', 'Nome'], $productRow['tamanho'] ?? '');
+            $corOption = pc_domain_value('produtos_cor', 'Codigo', ['Codigo', 'Nome'], $productRow['cor'] ?? '');
+            $item['products'][] = [
+                'pre_cadastro_item_pro_id' => (int) $productRow['id'],
+                'compras_itens_tamanho_id' => (string) $productRow['tamanho'],
+                'compras_itens_cor_id' => (string) $productRow['cor'],
+                'referencia_master' => (string) $productRow['referencia_master'],
+                'tamanho' => (string) $productRow['tamanho'],
+                'tamanho_text' => $tamanhoOption['text'] ?? (string) $productRow['tamanho'],
+                'tamanho_origem' => (string) $productRow['tamanho'],
+                'cor' => (string) $productRow['cor'],
+                'cor_text' => $corOption['text'] ?? (string) $productRow['cor'],
+                'cor_origem' => (string) $productRow['cor'],
+                'referencia' => (string) $productRow['referencia'],
+                'sku' => (string) $productRow['sku'],
+                'qtde' => (float) $productRow['qtde'],
+                'preco_fornecedor' => (float) $productRow['preco_fornecedor'],
+                'preco_compra' => (float) $productRow['preco_compra'],
+                'preco_atacado' => (float) $productRow['preco_atacado'],
+                'preco_varejo' => (float) $productRow['preco_varejo'],
+                'setor_laranja' => (string) $itemRow['setor_laranja'],
+                'preco_cheio' => (string) $itemRow['preco_cheio'],
+                'valor_total_produto' => (float) $productRow['qtde'] * (float) $productRow['preco_compra'],
+            ];
+        }
+
+        $group['items'][] = $item;
+    }
+
+    pc_recalc_group($group);
+
+    return [
+        'pedido' => [
+            'id' => (int) $header['cp_compras_id'],
+            'cd' => $header['cd_nome'],
+            'empresa' => $header['empresa_nome'],
+            'fornecedor' => $header['fornecedor_nome'],
+            'valor_total' => (float) ($header['ValorTotalPedido'] ?? $header['valor_total']),
+        ],
+        'groups' => [$group],
+        'warnings' => [],
+    ];
+}
+
 function pc_recalc_group(array &$group): void
 {
     $itemIds = [];
@@ -426,7 +653,7 @@ function pc_recalc_group(array &$group): void
     $group['valor_total'] = round($valor, 2);
 }
 
-function pc_validate_payload(array $groups): array
+function pc_validate_payload(array $groups, int $excludePreCadastroId = 0): array
 {
     $errors = [];
     $pedidoStmt = db()->prepare("SELECT status_id FROM cp_compras WHERE id = :id LIMIT 1");
@@ -480,7 +707,7 @@ function pc_validate_payload(array $groups): array
                 if (strlen($referencia) > 15) {
                     $errors[] = "$produtoLabel: referencia maior que 15 caracteres.";
                 }
-                if (pc_exists('pre_cadastro_item_pro', 'referencia', $referencia)) {
+                if (pc_reference_exists($referencia, $excludePreCadastroId)) {
                     $errors[] = "$produtoLabel: referencia $referencia ja existe.";
                 }
             }
@@ -521,11 +748,11 @@ function pc_insert_all(array $groups): array
             "INSERT INTO pre_cadastro
                 (cp_compras_id, cd_id, empresa_id, fornecedor_id, Categoria, data_entrega,
                  markup_franqueadora, markup_franquia, markup_total, valor_total,
-                 Itens, QtdeItens, Tamanhos, QtdeTamanhos, Cores, QtdeCores)
+                 Itens, QtdeItens, Tamanhos, QtdeTamanhos, Cores, QtdeCores, consolidado)
              VALUES
                 (:cp_compras_id, :cd_id, :empresa_id, :fornecedor_id, :Categoria, :data_entrega,
                  :markup_franqueadora, :markup_franquia, :markup_total, :valor_total,
-                 :Itens, :QtdeItens, :Tamanhos, :QtdeTamanhos, :Cores, :QtdeCores)"
+                 :Itens, :QtdeItens, :Tamanhos, :QtdeTamanhos, :Cores, :QtdeCores, 0)"
         );
         $itemStmt = db()->prepare(
             "INSERT INTO pre_cadastro_item
@@ -653,6 +880,177 @@ function pc_insert_all(array $groups): array
     return $created;
 }
 
+function pc_update_all(int $preCadastroId, array $groups): array
+{
+    pc_normalize_groups_categories($groups);
+    $errors = pc_validate_payload($groups, $preCadastroId);
+    if ($errors) {
+        api_response(false, ['message' => 'Corrija as inconsistencias antes de gravar.', 'errors' => $errors], 422);
+    }
+    if (!$groups) {
+        api_response(false, ['message' => 'Nenhum dado de pre-cadastro informado.'], 422);
+    }
+
+    $group = $groups[0];
+    $created = ['pre_cadastro_ids' => [$preCadastroId], 'items' => 0, 'products' => 0];
+
+    db()->beginTransaction();
+    try {
+        $stmt = db()->prepare("SELECT id FROM pre_cadastro WHERE id = :id LIMIT 1");
+        $stmt->execute(['id' => $preCadastroId]);
+        if (!$stmt->fetchColumn()) {
+            db()->rollBack();
+            api_response(false, ['message' => 'Pre-cadastro nao encontrado.'], 404);
+        }
+
+        pc_recalc_group($group);
+
+        $headerStmt = db()->prepare(
+            "UPDATE pre_cadastro
+                SET cp_compras_id = :cp_compras_id,
+                    cd_id = :cd_id,
+                    empresa_id = :empresa_id,
+                    fornecedor_id = :fornecedor_id,
+                    Categoria = :Categoria,
+                    data_entrega = :data_entrega,
+                    markup_franqueadora = :markup_franqueadora,
+                    markup_franquia = :markup_franquia,
+                    markup_total = :markup_total,
+                    valor_total = :valor_total,
+                    Itens = :Itens,
+                    QtdeItens = :QtdeItens,
+                    Tamanhos = :Tamanhos,
+                    QtdeTamanhos = :QtdeTamanhos,
+                    Cores = :Cores,
+                    QtdeCores = :QtdeCores
+              WHERE id = :id"
+        );
+        $headerStmt->execute([
+            'id' => $preCadastroId,
+            'cp_compras_id' => (int) $group['cp_compras_id'],
+            'cd_id' => (int) $group['cd_id'],
+            'empresa_id' => (int) $group['empresa_id'],
+            'fornecedor_id' => pc_trim($group['fornecedor_id']),
+            'Categoria' => pc_trim($group['Categoria']),
+            'data_entrega' => pc_trim($group['data_entrega'] ?? '') ?: null,
+            'markup_franqueadora' => pc_decimal($group['markup_franqueadora'] ?? 0),
+            'markup_franquia' => pc_decimal($group['markup_franquia'] ?? 0),
+            'markup_total' => pc_decimal($group['markup_total'] ?? 0),
+            'valor_total' => pc_decimal($group['valor_total'] ?? 0),
+            'Itens' => (int) $group['Itens'],
+            'QtdeItens' => (int) $group['QtdeItens'],
+            'Tamanhos' => (int) $group['Tamanhos'],
+            'QtdeTamanhos' => (int) $group['QtdeTamanhos'],
+            'Cores' => (int) $group['Cores'],
+            'QtdeCores' => (int) $group['QtdeCores'],
+        ]);
+
+        $stmt = db()->prepare("DELETE FROM pre_cadastro_item WHERE pre_cadastro_id = :id");
+        $stmt->execute(['id' => $preCadastroId]);
+
+        $itemStmt = db()->prepare(
+            "INSERT INTO pre_cadastro_item
+                (pre_cadastro_id, cp_compras_itens_id, referencia_fornecedor, r1, r2, r3, referencia_master,
+                 codigo_fornecdor, composicao, colecao_id, linha, peso, descricao, descricao_complementar,
+                 Unidade, Grupo, grupo_categoria, genero_id, composicao_id, caracteristica_id, setor_laranja,
+                 preco_cheio, encomenda, estilo, preco_compra, preco_compra_tabela, preco_venda_tabela,
+                 ncm, origem, cst_icms, aliquota_icms, reducao_icms, cst_pis, aliquota_pis,
+                 aliquota_cofins, cst_cofins, cst_ipi, aliquota_ipi, cfop, cfop_propria, sts)
+             VALUES
+                (:pre_cadastro_id, :cp_compras_itens_id, :referencia_fornecedor, :r1, :r2, :r3, :referencia_master,
+                 :codigo_fornecdor, :composicao, :colecao_id, :linha, :peso, :descricao, :descricao_complementar,
+                 :Unidade, :Grupo, :grupo_categoria, :genero_id, :composicao_id, :caracteristica_id, :setor_laranja,
+                 :preco_cheio, :encomenda, :estilo, :preco_compra, :preco_compra_tabela, :preco_venda_tabela,
+                 :ncm, :origem, :cst_icms, :aliquota_icms, :reducao_icms, :cst_pis, :aliquota_pis,
+                 :aliquota_cofins, :cst_cofins, :cst_ipi, :aliquota_ipi, :cfop, :cfop_propria, :sts)"
+        );
+        $proStmt = db()->prepare(
+            "INSERT INTO pre_cadastro_item_pro
+                (pre_cadastro_item_id, referencia_master, tamanho, cor, referencia, sku, qtde, preco_fornecedor,
+                 preco_compra, preco_atacado, preco_varejo)
+             VALUES
+                (:pre_cadastro_item_id, :referencia_master, :tamanho, :cor, :referencia, :sku, :qtde, :preco_fornecedor,
+                 :preco_compra, :preco_atacado, :preco_varejo)"
+        );
+
+        foreach ($group['items'] as $item) {
+            $refMaster = pc_trim($item['r1']) . pc_trim($item['r2']) . pc_trim($item['r3']);
+            $itemStmt->execute([
+                'pre_cadastro_id' => $preCadastroId,
+                'cp_compras_itens_id' => (int) $item['cp_compras_itens_id'],
+                'referencia_fornecedor' => pc_trim($item['referencia_fornecedor']),
+                'r1' => pc_trim($item['r1']) ?: null,
+                'r2' => pc_trim($item['r2']) ?: null,
+                'r3' => pc_trim($item['r3']) ?: null,
+                'referencia_master' => $refMaster,
+                'codigo_fornecdor' => pc_trim($item['codigo_fornecdor'] ?? $item['referencia_fornecedor']),
+                'composicao' => pc_trim($item['composicao'] ?? ''),
+                'colecao_id' => pc_trim($item['colecao_id'] ?? '') ?: null,
+                'linha' => pc_trim($item['linha'] ?? '') ?: null,
+                'peso' => pc_decimal($item['peso'] ?? 0),
+                'descricao' => pc_trim($item['descricao']),
+                'descricao_complementar' => pc_trim($item['descricao_complementar'] ?? ''),
+                'Unidade' => pc_trim($item['Unidade'] ?? 'PC'),
+                'Grupo' => pc_trim($item['Grupo'] ?? '') ?: null,
+                'grupo_categoria' => pc_trim($item['grupo_categoria'] ?? '') ?: null,
+                'genero_id' => pc_trim($item['genero_id'] ?? '') ?: null,
+                'composicao_id' => pc_trim($item['composicao_id'] ?? '') ?: null,
+                'caracteristica_id' => pc_trim($item['caracteristica_id'] ?? '') ?: null,
+                'setor_laranja' => pc_trim($item['setor_laranja'] ?? 'N') ?: 'N',
+                'preco_cheio' => pc_trim($item['preco_cheio'] ?? 'N') ?: 'N',
+                'encomenda' => pc_trim($item['encomenda'] ?? 'N') ?: 'N',
+                'estilo' => pc_trim($item['estilo'] ?? '') ?: null,
+                'preco_compra' => pc_decimal($item['preco_compra'] ?? 0),
+                'preco_compra_tabela' => pc_decimal($item['preco_compra_tabela'] ?? 0),
+                'preco_venda_tabela' => pc_decimal($item['preco_venda_tabela'] ?? 0),
+                'ncm' => pc_trim($item['ncm'] ?? '') ?: null,
+                'origem' => pc_trim($item['origem'] ?? '') ?: null,
+                'cst_icms' => pc_trim($item['cst_icms']),
+                'aliquota_icms' => pc_decimal($item['aliquota_icms'] ?? 0),
+                'reducao_icms' => pc_decimal($item['reducao_icms'] ?? 0),
+                'cst_pis' => pc_trim($item['cst_pis']),
+                'aliquota_pis' => pc_decimal($item['aliquota_pis'] ?? 0),
+                'aliquota_cofins' => pc_decimal($item['aliquota_cofins'] ?? 0),
+                'cst_cofins' => pc_trim($item['cst_cofins']),
+                'cst_ipi' => pc_trim($item['cst_ipi']),
+                'aliquota_ipi' => pc_decimal($item['aliquota_ipi'] ?? 0),
+                'cfop' => pc_trim($item['cfop']),
+                'cfop_propria' => pc_trim($item['cfop_propria']),
+                'sts' => (int) ($item['sts'] ?? 1),
+            ]);
+            $preCadastroItemId = (int) db()->lastInsertId();
+            $created['items']++;
+
+            foreach ($item['products'] as $product) {
+                $referencia = $refMaster . pc_trim($product['tamanho']) . pc_trim($product['cor']);
+                $proStmt->execute([
+                    'pre_cadastro_item_id' => $preCadastroItemId,
+                    'referencia_master' => $refMaster,
+                    'tamanho' => pc_trim($product['tamanho']),
+                    'cor' => pc_trim($product['cor']),
+                    'referencia' => $referencia,
+                    'sku' => pc_trim($product['sku'] ?? ''),
+                    'qtde' => pc_decimal($product['qtde'] ?? 0),
+                    'preco_fornecedor' => pc_decimal($product['preco_fornecedor'] ?? 0),
+                    'preco_compra' => pc_decimal($product['preco_compra'] ?? 0),
+                    'preco_atacado' => pc_decimal($product['preco_atacado'] ?? 0),
+                    'preco_varejo' => pc_decimal($product['preco_varejo'] ?? 0),
+                ]);
+                $created['products']++;
+            }
+        }
+
+        db()->commit();
+    } catch (Throwable $e) {
+        if (db()->inTransaction()) {
+            db()->rollBack();
+        }
+        api_response(false, ['message' => 'Nao foi possivel atualizar o pre-cadastro: ' . $e->getMessage()], 500);
+    }
+
+    return $created;
+}
+
 try {
     if ($action === 'options') {
         pc_domain_options(
@@ -665,6 +1063,9 @@ try {
     if ($action === 'preview') {
         api_response(true, pc_build_preview((int) ($data['pedido_id'] ?? 0)));
     }
+    if ($action === 'get') {
+        api_response(true, pc_load_pre_cadastro((int) ($data['id'] ?? $_GET['id'] ?? 0)));
+    }
     if ($action === 'save') {
         $groups = json_decode((string) ($data['groups_json'] ?? '[]'), true);
         if (!is_array($groups) || !$groups) {
@@ -672,6 +1073,14 @@ try {
         }
         $created = pc_insert_all($groups);
         api_response(true, ['message' => 'Pre-cadastro gerado com sucesso.', 'created' => $created]);
+    }
+    if ($action === 'update') {
+        $groups = json_decode((string) ($data['groups_json'] ?? '[]'), true);
+        if (!is_array($groups) || !$groups) {
+            api_response(false, ['message' => 'Nenhum dado de pre-cadastro informado.'], 422);
+        }
+        $created = pc_update_all((int) ($data['id'] ?? 0), $groups);
+        api_response(true, ['message' => 'Pre-cadastro atualizado com sucesso.', 'created' => $created]);
     }
     api_response(false, ['message' => 'Acao invalida.'], 404);
 } catch (Throwable $e) {
