@@ -776,6 +776,17 @@ CREATE TABLE IF NOT EXISTS `cp_compras_emails` (
 ) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
+-- Estrutura da tabela `cp_depara_cor`
+-- --------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `cp_depara_cor` (
+  `cor_fornecedor` varchar(50) COLLATE latin1_swedish_ci NOT NULL,
+  `codigo_ks` varchar(2) COLLATE latin1_swedish_ci NOT NULL,
+  PRIMARY KEY (`cor_fornecedor`) USING BTREE,
+  KEY `FK_cp_depara_cor_produtos_cor` (`codigo_ks`) USING BTREE,
+  CONSTRAINT `FK_cp_depara_cor_produtos_cor` FOREIGN KEY (`codigo_ks`) REFERENCES `produtos_cor` (`Codigo`) ON DELETE RESTRICT ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
+
+-- --------------------------------------------------------
 -- Estrutura da tabela `cp_compras_itens`
 -- --------------------------------------------------------
 CREATE TABLE `cp_compras_itens` (
@@ -1632,172 +1643,152 @@ CREATE TABLE IF NOT EXISTS `pf_usuarios_copy` (
 -- Estrutura da tabela `pre_cadastro`
 -- --------------------------------------------------------
 CREATE TABLE IF NOT EXISTS `pre_cadastro` (
-  `Codigo` bigint(20) unsigned NOT NULL,
-  `Situacao` int(3) NOT NULL DEFAULT '10' COMMENT 'O estado atual do cadastro, ele dirá quem acessará e o que poderá alterar',
-  `CD` int(11) NOT NULL,
-  `Empresa` int(11) NOT NULL,
-  `R1` varchar(2) NOT NULL,
-  `R2` varchar(2) NOT NULL,
-  `R3` varchar(4) NOT NULL,
-  `CodFornecedor` varchar(200) NOT NULL DEFAULT '',
-  `Genero` int(11) NOT NULL,
-  `ReferenciaMaster` varchar(8) NOT NULL DEFAULT '',
-  `Data` date DEFAULT NULL,
-  `Hora` time DEFAULT NULL,
-  `DescricaoComplementar` varchar(70) NOT NULL DEFAULT '',
-  `MarkUpCompra` double NOT NULL DEFAULT '0' COMMENT 'Vem do fornecedor R1; Mark-up*Custo = Sugestão Venda PDV',
-  `DataConsolidacaoProdutos` date DEFAULT NULL COMMENT 'Data que foi criado ao cadastro de produtos',
-  `HoraConsolidacaoProdutos` time DEFAULT NULL COMMENT 'Hora que foi criado ao cadastro de produtos',
-  `DataConsolidacaoCompras` date DEFAULT NULL COMMENT 'Data que foi criado ao cadastro de compras',
-  `HoraConsolidacaoCompras` time DEFAULT NULL COMMENT 'hora que foi criado ao cadastro de compras',
-  `Usuario` varchar(30) CHARACTER SET utf8 NOT NULL DEFAULT '',
-  `Inclusao` date DEFAULT NULL,
-  `Alteracao` date DEFAULT NULL,
-  `ncm` varchar(10) NOT NULL DEFAULT '',
-  PRIMARY KEY (`Codigo`) USING BTREE,
-  KEY `FK_pre_cadastro_empresas_cd` (`CD`) USING BTREE,
-  KEY `FK_pre_cadastro_empresas` (`Empresa`) USING BTREE,
-  KEY `FK_pre_cadastro_produtos_fornecedor` (`R1`) USING BTREE,
-  KEY `FK_pre_cadastro_produtos_categorias` (`R2`) USING BTREE,
-  KEY `FK_pre_cadastro_allop_devel.produtos_generos` (`Genero`),
-  CONSTRAINT `FK_pre_cadastro_allop_devel.produtos_generos` FOREIGN KEY (`Genero`) REFERENCES `produtos_generos` (`Codigo`) ON UPDATE NO ACTION,
-  CONSTRAINT `FK_pre_cadastro_empresas` FOREIGN KEY (`Empresa`) REFERENCES `empresas` (`Codigo`) ON UPDATE NO ACTION,
-  CONSTRAINT `FK_pre_cadastro_empresas_cd` FOREIGN KEY (`CD`) REFERENCES `empresas_cd` (`Codigo`) ON UPDATE NO ACTION,
-  CONSTRAINT `FK_pre_cadastro_produtos_categorias` FOREIGN KEY (`R2`) REFERENCES `produtos_categorias` (`Codigo`) ON UPDATE NO ACTION,
-  CONSTRAINT `FK_pre_cadastro_produtos_fornecedor` FOREIGN KEY (`R1`) REFERENCES `produtos_fornecedor` (`Codigo`) ON UPDATE NO ACTION
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'Auto incremento',
+  `cp_compras_id` bigint(20) unsigned NOT NULL COMMENT 'Pedido de Compra',
+  `cd_id` int(10) NOT NULL,
+  `empresa_id` int(10) NOT NULL,
+  `fornecedor_id` varchar(2) NOT NULL COMMENT 'R1',
+  `Categoria` varchar(2) NOT NULL COMMENT 'R2',
+  `data_entrega` date DEFAULT NULL COMMENT 'Data Entrega',
+  `markup_franqueadora` decimal(15,2) NOT NULL DEFAULT '0.00' COMMENT 'Markup da Franqueadora',
+  `markup_franquia` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `markup_total` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `valor_total` decimal(15,2) NOT NULL DEFAULT '0.00',
+  `Itens` int(11) NOT NULL DEFAULT '0',
+  `QtdeItens` int(11) NOT NULL DEFAULT '0',
+  `Tamanhos` int(11) NOT NULL DEFAULT '0',
+  `QtdeTamanhos` int(11) NOT NULL DEFAULT '0',
+  `Cores` int(11) NOT NULL DEFAULT '0',
+  `QtdeCores` int(11) NOT NULL DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `FK_pre_cadastro_cp_compras` (`cp_compras_id`),
+  KEY `FK_pre_cadastro_empresas_cd` (`cd_id`),
+  KEY `FK_pre_cadastro_empresas` (`empresa_id`),
+  KEY `FK_pre_cadastro_produtos_fornecedor` (`fornecedor_id`),
+  KEY `FK_pre_cadastro_produtos_categorias` (`Categoria`),
+  CONSTRAINT `FK_pre_cadastro_cp_compras` FOREIGN KEY (`cp_compras_id`) REFERENCES `cp_compras` (`id`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_empresas` FOREIGN KEY (`empresa_id`) REFERENCES `empresas` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_empresas_cd` FOREIGN KEY (`cd_id`) REFERENCES `empresas_cd` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_produtos_categorias` FOREIGN KEY (`Categoria`) REFERENCES `produtos_categorias` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_produtos_fornecedor` FOREIGN KEY (`fornecedor_id`) REFERENCES `produtos_fornecedor` (`Codigo`) ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
--- Estrutura da tabela `pre_cadastro_grupos`
+-- Estrutura da tabela `pre_cadastro_item`
 -- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `pre_cadastro_grupos` (
-  `HashCode` varchar(60) NOT NULL,
-  `PreCadastro` bigint(20) unsigned NOT NULL,
-  `Grupo` varchar(40) NOT NULL,
-  `Referencia` varchar(15) NOT NULL,
-  `GrupoCategoria` varchar(40) NOT NULL,
-  `Composicao` int(11) NOT NULL DEFAULT '0',
-  `Caracteristica` int(11) NOT NULL DEFAULT '0',
-  `DataDeCriacao` date DEFAULT NULL,
-  PRIMARY KEY (`HashCode`,`PreCadastro`,`Grupo`) USING BTREE,
-  KEY `FK_pre_cadastro_grupos_pre_cadastro` (`PreCadastro`) USING BTREE,
-  KEY `FK_pre_cadastro_grupos_produtos_grupos` (`Grupo`,`GrupoCategoria`) USING BTREE,
-  CONSTRAINT `FK_pre_cadastro_grupos_pre_cadastro` FOREIGN KEY (`PreCadastro`) REFERENCES `pre_cadastro` (`Codigo`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 ROW_FORMAT=DYNAMIC;
-
--- --------------------------------------------------------
--- Estrutura da tabela `pre_cadastro_hst`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `pre_cadastro_hst` (
-  `Codigo` bigint(20) unsigned NOT NULL,
-  `Situacao` int(3) NOT NULL DEFAULT '10' COMMENT 'O estado atual do cadastro, ele dirá quem acessará e o que poderá alterar',
-  `CD` int(11) NOT NULL,
-  `Empresa` int(11) NOT NULL,
-  `R1` varchar(2) NOT NULL,
-  `R2` varchar(2) NOT NULL,
-  `R3` varchar(4) NOT NULL,
-  `CodFornecedor` varchar(200) NOT NULL DEFAULT '',
-  `Genero` int(11) NOT NULL DEFAULT '1',
-  `ReferenciaMaster` varchar(8) NOT NULL DEFAULT '',
-  `Data` date DEFAULT NULL,
-  `Hora` time DEFAULT NULL,
-  `DescricaoComplementar` varchar(70) NOT NULL DEFAULT '' COMMENT 'Descrição do Pré Cadastro',
-  `MarkUpCompra` double NOT NULL DEFAULT '0' COMMENT 'Vem do fornecedor R1; Mark-up*Custo = Sugestão Venda PDV',
-  `DataConsolidacaoProdutos` date DEFAULT NULL COMMENT 'Data que foi criado ao cadastro de produtos',
-  `HoraConsolidacaoProdutos` time DEFAULT NULL COMMENT 'Hora que foi criado ao cadastro de produtos',
-  `DataConsolidacaoCompras` date DEFAULT NULL COMMENT 'Data que foi criado ao cadastro de compras',
-  `HoraConsolidacaoCompras` time DEFAULT NULL COMMENT 'hora que foi criado ao cadastro de compras',
-  `Usuario` varchar(30) CHARACTER SET utf8 NOT NULL DEFAULT '',
-  `Inclusao` date DEFAULT NULL,
-  `Alteracao` date DEFAULT NULL,
-  `ncm` varchar(10) NOT NULL DEFAULT '',
-  PRIMARY KEY (`Codigo`) USING BTREE,
-  KEY `FK_pre_cadastro_empresas_cd` (`CD`) USING BTREE,
-  KEY `FK_pre_cadastro_empresas` (`Empresa`) USING BTREE,
-  KEY `FK_pre_cadastro_produtos_fornecedor` (`R1`) USING BTREE,
-  KEY `FK_pre_cadastro_produtos_categorias` (`R2`) USING BTREE,
-  KEY `FK_pre_cadastro_allop_devel.produtos_generos` (`Genero`) USING BTREE,
-  CONSTRAINT `pre_cadastro_hst_ibfk_1` FOREIGN KEY (`Genero`) REFERENCES `produtos_generos` (`Codigo`) ON UPDATE NO ACTION,
-  CONSTRAINT `pre_cadastro_hst_ibfk_2` FOREIGN KEY (`Empresa`) REFERENCES `empresas` (`Codigo`) ON UPDATE NO ACTION,
-  CONSTRAINT `pre_cadastro_hst_ibfk_3` FOREIGN KEY (`CD`) REFERENCES `empresas_cd` (`Codigo`) ON UPDATE NO ACTION,
-  CONSTRAINT `pre_cadastro_hst_ibfk_4` FOREIGN KEY (`R2`) REFERENCES `produtos_categorias` (`Codigo`) ON UPDATE NO ACTION,
-  CONSTRAINT `pre_cadastro_hst_ibfk_5` FOREIGN KEY (`R1`) REFERENCES `produtos_fornecedor` (`Codigo`) ON UPDATE NO ACTION
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 ROW_FORMAT=DYNAMIC;
-
--- --------------------------------------------------------
--- Estrutura da tabela `pre_cadastro_itens`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `pre_cadastro_itens` (
-  `Codigo` bigint(20) unsigned NOT NULL,
-  `PreCadastro` bigint(20) unsigned NOT NULL,
-  `GrupoLivre` varchar(40) NOT NULL,
-  `Tamanho` varchar(2) NOT NULL,
-  `Cor` varchar(2) NOT NULL,
-  `Quantidade` double NOT NULL DEFAULT '0',
-  `CustoCompra` double NOT NULL DEFAULT '0',
-  `Markup` double NOT NULL DEFAULT '0',
-  `Varejo` double NOT NULL DEFAULT '0' COMMENT 'Calculado pelo Markup',
-  `PrecoFinal` double NOT NULL DEFAULT '0' COMMENT 'Preco de Venda no PDV (Venda PDV)',
-  `DataEntrega` date DEFAULT NULL,
-  `Observacao` varchar(150) NOT NULL,
-  `CFOPP` varchar(4) NOT NULL,
-  `ncm` varchar(10) NOT NULL DEFAULT '',
-  `ReferenciaMaster` varchar(8) NOT NULL,
-  `Referencia` varchar(15) NOT NULL,
-  PRIMARY KEY (`Codigo`) USING BTREE,
-  UNIQUE KEY `IDXPreCadastroGrupoTamCor` (`PreCadastro`,`GrupoLivre`,`Tamanho`,`Cor`) USING BTREE,
-  KEY `FK_pre_cadastro_itens_produtos_tamanho` (`Tamanho`) USING BTREE,
-  KEY `FK_pre_cadastro_itens_produtos_cor` (`Cor`) USING BTREE,
-  KEY `IDXrefMasterRef` (`ReferenciaMaster`,`Referencia`) USING BTREE,
-  KEY `IDXReferencia` (`Referencia`) USING BTREE,
-  KEY `FK_pre_cadastro_itens_produtos_grupos` (`GrupoLivre`) USING BTREE,
-  CONSTRAINT `FK_pre_cadastro_itens_pre_cadastro` FOREIGN KEY (`PreCadastro`) REFERENCES `pre_cadastro` (`Codigo`) ON DELETE CASCADE ON UPDATE NO ACTION,
-  CONSTRAINT `FK_pre_cadastro_itens_produtos_cor` FOREIGN KEY (`Cor`) REFERENCES `produtos_cor` (`Codigo`),
-  CONSTRAINT `FK_pre_cadastro_itens_produtos_grupos_livre` FOREIGN KEY (`GrupoLivre`) REFERENCES `produtos_grupos_livre` (`GrupoLivre`),
-  CONSTRAINT `FK_pre_cadastro_itens_produtos_tamanho` FOREIGN KEY (`Tamanho`) REFERENCES `produtos_tamanho` (`Codigo`)
+CREATE TABLE IF NOT EXISTS `pre_cadastro_item` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `pre_cadastro_id` bigint(20) unsigned NOT NULL,
+  `cp_compras_itens_id` bigint(20) unsigned NOT NULL,
+  `referencia_fornecedor` varchar(25) NOT NULL COMMENT 'referencia do fornecedor',
+  `r1` varchar(2) DEFAULT NULL COMMENT 'Codigo do fornecedor',
+  `r2` varchar(2) DEFAULT NULL COMMENT 'Codigo da categoria',
+  `r3` varchar(4) DEFAULT NULL COMMENT 'Codigo do fornecedor',
+  `referencia_master` varchar(8) DEFAULT NULL COMMENT 'Combinacao de R1+R2+R3',
+  `codigo_fornecdor` varchar(200) NOT NULL DEFAULT '' COMMENT 'codigo do fornecedor',
+  `composicao` varchar(255) NOT NULL DEFAULT '',
+  `colecao_id` int(10) unsigned DEFAULT NULL COMMENT 'Colecao do item. tabela produtos_colecao',
+  `linha` int(11) unsigned DEFAULT NULL COMMENT 'Marca',
+  `peso` double NOT NULL DEFAULT '0',
+  `descricao` varchar(50) NOT NULL COMMENT 'descricao do produto 50 caracteres pas uso do NFC-e',
+  `descricao_complementar` varchar(70) NOT NULL DEFAULT '',
+  `Unidade` varchar(2) NOT NULL DEFAULT 'PC',
+  `Grupo` varchar(40) DEFAULT NULL COMMENT 'Grupo',
+  `grupo_categoria` varchar(40) DEFAULT NULL COMMENT 'Grupo / Categoria',
+  `genero_id` int(11) DEFAULT NULL COMMENT 'Masculino, feminino, unisex',
+  `composicao_id` int(11) DEFAULT NULL COMMENT 'Composicao ',
+  `caracteristica_id` int(11) DEFAULT NULL COMMENT 'Caracteristica',
+  `setor_laranja` varchar(1) NOT NULL DEFAULT 'N' COMMENT 'S-sim,N-nao',
+  `preco_cheio` varchar(1) NOT NULL DEFAULT 'N',
+  `encomenda` varchar(1) NOT NULL DEFAULT 'N',
+  `estilo` int(11) DEFAULT NULL,
+  `preco_compra` double NOT NULL DEFAULT '0' COMMENT 'Preco de Compta',
+  `preco_compra_tabela` double NOT NULL DEFAULT '0' COMMENT 'Atacado - preco franqueado',
+  `preco_venda_tabela` double NOT NULL DEFAULT '0' COMMENT 'Varejo - preco de venda do franqueado',
+  `ncm` varchar(10) DEFAULT NULL,
+  `origem` varchar(1) DEFAULT NULL,
+  `cst_icms` varchar(3) NOT NULL DEFAULT '',
+  `aliquota_icms` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `reducao_icms` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `cst_pis` varchar(2) NOT NULL DEFAULT '',
+  `aliquota_pis` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `aliquota_cofins` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `cst_cofins` varchar(2) NOT NULL DEFAULT '',
+  `cst_ipi` varchar(2) NOT NULL DEFAULT '',
+  `aliquota_ipi` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `cfop` varchar(4) NOT NULL DEFAULT '5102',
+  `cfop_propria` varchar(4) NOT NULL DEFAULT '',
+  `sts` tinyint(1) NOT NULL DEFAULT '1' COMMENT '1 - ativo, 0 - inativo',
+  PRIMARY KEY (`id`),
+  KEY `FK_pre_cadastro_item_pre_cadastro` (`pre_cadastro_id`),
+  KEY `FK_pre_cadastro_item_cp_compras_itens` (`cp_compras_itens_id`),
+  KEY `FK_pre_cadastro_item_produtos_fornecedor` (`r1`),
+  KEY `FK_pre_cadastro_item_produtos_categorias` (`r2`),
+  KEY `FK_pre_cadastro_item_produtos_colecao` (`colecao_id`),
+  KEY `FK_pre_cadastro_item_produtos_linhas` (`linha`),
+  KEY `FK_pre_cadastro_item_produtos_medidas` (`Unidade`),
+  KEY `FK_pre_cadastro_item_produtos_grupos` (`Grupo`),
+  KEY `FK_pre_cadastro_item_produtos_grupos_2` (`grupo_categoria`),
+  KEY `FK_pre_cadastro_item_produtos_generos` (`genero_id`),
+  KEY `FK_pre_cadastro_item_produtos_composicoes` (`composicao_id`),
+  KEY `FK_pre_cadastro_item_produtos_caracteristicas` (`caracteristica_id`),
+  KEY `FK_pre_cadastro_item_produtos_estilos` (`estilo`),
+  KEY `FK_pre_cadastro_item_cests_ncm` (`ncm`),
+  KEY `FK_pre_cadastro_item_st_origem` (`origem`),
+  KEY `FK_pre_cadastro_item_st_icms` (`cst_icms`),
+  KEY `FK_pre_cadastro_item_st_pis` (`cst_pis`),
+  KEY `FK_pre_cadastro_item_st_cofins` (`cst_cofins`),
+  KEY `FK_pre_cadastro_item_st_ipi` (`cst_ipi`),
+  KEY `FK_pre_cadastro_item_cfops` (`cfop`),
+  KEY `FK_pre_cadastro_item_cfops_2` (`cfop_propria`),
+  CONSTRAINT `FK_pre_cadastro_item_cests_ncm` FOREIGN KEY (`ncm`) REFERENCES `cests_ncm` (`ncm`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_cfops` FOREIGN KEY (`cfop`) REFERENCES `cfops` (`CFOP`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_cfops_2` FOREIGN KEY (`cfop_propria`) REFERENCES `cfops` (`CFOP`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_cp_compras_itens` FOREIGN KEY (`cp_compras_itens_id`) REFERENCES `cp_compras_itens` (`id`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_pre_cadastro` FOREIGN KEY (`pre_cadastro_id`) REFERENCES `pre_cadastro` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_produtos_caracteristicas` FOREIGN KEY (`caracteristica_id`) REFERENCES `produtos_caracteristicas` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_produtos_categorias` FOREIGN KEY (`r2`) REFERENCES `produtos_categorias` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_produtos_colecao` FOREIGN KEY (`colecao_id`) REFERENCES `produtos_colecao` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_produtos_composicoes` FOREIGN KEY (`composicao_id`) REFERENCES `produtos_composicoes` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_produtos_estilos` FOREIGN KEY (`estilo`) REFERENCES `produtos_estilos` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_produtos_fornecedor` FOREIGN KEY (`r1`) REFERENCES `produtos_fornecedor` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_produtos_generos` FOREIGN KEY (`genero_id`) REFERENCES `produtos_generos` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_produtos_grupos` FOREIGN KEY (`Grupo`) REFERENCES `produtos_grupos` (`Grupo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_produtos_grupos_2` FOREIGN KEY (`grupo_categoria`) REFERENCES `produtos_grupos` (`SubGrupo`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_produtos_linhas` FOREIGN KEY (`linha`) REFERENCES `produtos_linhas` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_produtos_medidas` FOREIGN KEY (`Unidade`) REFERENCES `produtos_medidas` (`Sigla`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_st_cofins` FOREIGN KEY (`cst_cofins`) REFERENCES `st_cofins` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_st_icms` FOREIGN KEY (`cst_icms`) REFERENCES `st_icms` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_st_ipi` FOREIGN KEY (`cst_ipi`) REFERENCES `st_ipi` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_st_origem` FOREIGN KEY (`origem`) REFERENCES `st_origem` (`Codigo`) ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_st_pis` FOREIGN KEY (`cst_pis`) REFERENCES `st_pis` (`Codigo`) ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
--- Estrutura da tabela `pre_cadastro_itens_hst`
+-- Estrutura da tabela `pre_cadastro_item_pro`
 -- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `pre_cadastro_itens_hst` (
-  `Codigo` bigint(20) unsigned NOT NULL,
-  `PreCadastro` bigint(20) unsigned NOT NULL,
-  `GrupoLivre` varchar(40) NOT NULL,
-  `Tamanho` varchar(2) NOT NULL,
-  `Cor` varchar(2) NOT NULL,
-  `Quantidade` double NOT NULL DEFAULT '0',
-  `CustoCompra` double NOT NULL DEFAULT '0',
-  `Markup` double NOT NULL DEFAULT '0',
-  `Varejo` double NOT NULL DEFAULT '0' COMMENT 'Calculado pelo Markup',
-  `PrecoFinal` double NOT NULL DEFAULT '0' COMMENT 'Preco de Venda no PDV (Venda PDV)',
-  `DataEntrega` date DEFAULT NULL,
-  `Observacao` varchar(150) NOT NULL,
-  `CFOPP` varchar(4) NOT NULL,
-  `ncm` varchar(10) NOT NULL DEFAULT '',
-  `ReferenciaMaster` varchar(8) NOT NULL,
-  `Referencia` varchar(15) NOT NULL,
-  PRIMARY KEY (`Codigo`) USING BTREE,
-  UNIQUE KEY `IDXPreCadastroGrupoTamCor` (`PreCadastro`,`GrupoLivre`,`Tamanho`,`Cor`) USING BTREE,
-  KEY `FK_pre_cadastro_itens_produtos_tamanho` (`Tamanho`) USING BTREE,
-  KEY `FK_pre_cadastro_itens_produtos_cor` (`Cor`) USING BTREE,
-  KEY `IDXrefMasterRef` (`ReferenciaMaster`,`Referencia`) USING BTREE,
-  KEY `IDXReferencia` (`Referencia`) USING BTREE,
-  KEY `FK_pre_cadastro_itens_produtos_grupos` (`GrupoLivre`) USING BTREE,
-  CONSTRAINT `FK_pre_cadastro_itens_hst_pre_cadastro_hst` FOREIGN KEY (`PreCadastro`) REFERENCES `pre_cadastro_hst` (`Codigo`) ON DELETE CASCADE ON UPDATE NO ACTION,
-  CONSTRAINT `pre_cadastro_itens_hst_ibfk_2` FOREIGN KEY (`Cor`) REFERENCES `produtos_cor` (`Codigo`),
-  CONSTRAINT `pre_cadastro_itens_hst_ibfk_3` FOREIGN KEY (`GrupoLivre`) REFERENCES `produtos_grupos_livre` (`GrupoLivre`),
-  CONSTRAINT `pre_cadastro_itens_hst_ibfk_4` FOREIGN KEY (`Tamanho`) REFERENCES `produtos_tamanho` (`Codigo`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 ROW_FORMAT=DYNAMIC;
-
--- --------------------------------------------------------
--- Estrutura da tabela `pre_cadastro_situacao`
--- --------------------------------------------------------
-CREATE TABLE IF NOT EXISTS `pre_cadastro_situacao` (
-  `Codigo` int(11) NOT NULL,
-  `Descricao` varchar(30) DEFAULT '',
-  PRIMARY KEY (`Codigo`) USING BTREE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+CREATE TABLE IF NOT EXISTS `pre_cadastro_item_pro` (
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `pre_cadastro_item_id` bigint(20) unsigned NOT NULL COMMENT 'Id do item do pre cadastro',
+  `referencia_master` varchar(8) NOT NULL COLLATE 'latin1_swedish_ci',
+  `tamanho` varchar(2) NOT NULL COLLATE 'latin1_swedish_ci',
+  `cor` varchar(2) NOT NULL COLLATE 'latin1_swedish_ci',
+  `referencia` varchar(15) NOT NULL COMMENT 'referencia = referencia_master + tamanho e cor' COLLATE 'latin1_swedish_ci',
+  `sku` varchar(100) NOT NULL DEFAULT '' COLLATE 'latin1_swedish_ci',
+  `qtde` double NOT NULL DEFAULT '0',
+  `preco_fornecedor` double NOT NULL DEFAULT '0',
+  `preco_compra` double NOT NULL DEFAULT '0' COMMENT 'Preco de Compra',
+  `preco_atacado` double NOT NULL DEFAULT '0' COMMENT 'Preco Compra Tabela',
+  `preco_varejo` double NOT NULL DEFAULT '0' COMMENT 'Preco Venda Tabela',
+  PRIMARY KEY (`id`) USING BTREE,
+  UNIQUE KEY `IDXReferencia` (`referencia`) USING BTREE,
+  KEY `FK_pre_cadastro_item_pro_pre_cadastro_item` (`pre_cadastro_item_id`) USING BTREE,
+  KEY `FK_pre_cadastro_item_pro_produtos_tamanho` (`tamanho`) USING BTREE,
+  KEY `FK_pre_cadastro_item_pro_produtos_cor_2` (`cor`) USING BTREE,
+  CONSTRAINT `FK_pre_cadastro_item_pro_pre_cadastro_item` FOREIGN KEY (`pre_cadastro_item_id`) REFERENCES `pre_cadastro_item` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_pro_produtos_cor_2` FOREIGN KEY (`cor`) REFERENCES `produtos_cor` (`Codigo`) ON DELETE RESTRICT ON UPDATE NO ACTION,
+  CONSTRAINT `FK_pre_cadastro_item_pro_produtos_tamanho` FOREIGN KEY (`tamanho`) REFERENCES `produtos_tamanho` (`Codigo`) ON DELETE RESTRICT ON UPDATE NO ACTION
+) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 
 -- --------------------------------------------------------
 -- Estrutura da tabela `prm_sistema`

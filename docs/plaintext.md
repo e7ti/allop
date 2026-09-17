@@ -4,9 +4,9 @@
 **Atencao:** nao usar `D:\E7TI\PHP\appf` para demandas do Allop.
 
 **Documento-base:** 01/06/2026  
-**Ultima revisao documental:** 10/09/2026  
-**Ultima revisao conferida do codigo:** 20/08/2026  
-**Ultima revisao conferida do `banco.sql`:** 10/09/2026  
+**Ultima revisao documental:** 17/09/2026  
+**Ultima revisao conferida do codigo:** 17/09/2026  
+**Ultima revisao conferida do `banco.sql`:** 17/09/2026  
 **Ultima revisao conferida do `banco_fotos.sql`:** 19/06/2026  
 **Escopo conferido:** aplicacao PHP, APIs, telas, assets, seed, banco principal, banco de fotos e documentacao existente.
 
@@ -196,8 +196,10 @@ Configuracoes de e-mail:
 | --- | --- |
 | `mod/compras/cp_compras_lista.php` | Pesquisa e lista pedidos de compra. |
 | `mod/compras/cp_compras_form.php` | Cabecalho, itens, tamanhos, cores, rateio, fotos, logs e workflow. |
+| `mod/compras/pre_cadastro_produtos_lista.php` | Seleciona pedido de compra, gera a pre-visualizacao do pre-cadastro e permite completar dados obrigatorios. |
 | `api/compras/cp_compras.php` | API principal de compras. |
 | `api/compras/cp_compras_pdf.php` | Gera PDF completo do pedido em A4 paisagem. |
+| `api/compras/pre_cadastro_produtos.php` | API para preview, Select2 e gravacao do pre-cadastro de produtos. |
 
 #### Acoes da API de Compras
 
@@ -218,6 +220,27 @@ Configuracoes de e-mail:
 | `enviar_proposta` | Envia e-mail, publica o pedido, muda localizacao para `Fornecedor` e incrementa `Iteracao`. |
 | `aprovar` | Aprova pedido publicado; se ainda nao ha foto do fornecedor, muda para `Aprovado Aguardando Foto Fornecedor`, envia e-mail e devolve ao fornecedor. |
 | `recusar` | Recusa pedido publicado, exige motivo e devolve para `KidStok`. |
+
+#### Pre Cadastro Produtos
+
+`mod/compras/pre_cadastro_produtos_lista.php` usa a rota cadastrada no menu Compras pelo seed. A tela permite selecionar um pedido aprovado via Select2, carregar a hierarquia ativa de compras e montar os dados que serao gravados em `pre_cadastro`, `pre_cadastro_item` e `pre_cadastro_item_pro`.
+
+Regras atuais:
+
+- somente pedidos com `status_id = 2` (`Aprovado`) entram na pesquisa e podem gerar pre-cadastro;
+- `pre_cadastro` agrupa por pedido, categoria do item e data de entrega efetiva do tamanho ou do item;
+- campos vindos do pedido e dos itens de compra sao preenchidos automaticamente quando existem;
+- a descricao do item e ajustada em `descricao` com ate 50 caracteres e `descricao_complementar` com o restante usado pela tela;
+- `r3` inicia em branco e deve ser informado pelo usuario antes de gravar;
+- `r3` aceita apenas 4 numeros;
+- `referencia_master` e `referencia` sao calculadas na tela a partir de `r1`, `r2`, `r3`, tamanho e cor;
+- quando a tabela `cp_depara_cor` existe, a API usa o de/para entre cor do fornecedor e `produtos_cor.Codigo` para sugerir a cor KidStok;
+- tamanho e cor tambem podem ser selecionados por Select2 a partir de `produtos_tamanho` e `produtos_cor`;
+- campos sem origem em compras e campos com relacionamento usam Select2 remoto na propria API;
+- os campos `setor_laranja` e `preco_cheio` usam toggles Sim/Nao por item, tamanho ou cor;
+- campos tributarios obrigatorios incluem `cfop`, `cfop_propria`, `cst_icms`, `cst_pis`, `cst_cofins` e `cst_ipi`;
+- a gravacao valida campos obrigatorios, pedido aprovado, categoria, R2, R3, tamanho, cor, NCM e duplicidade de referencia antes de inserir;
+- a gravacao usa transacao unica no banco principal e faz rollback em erro.
 
 #### Estrutura Funcional do Pedido
 
@@ -420,7 +443,7 @@ IDs de menu previstos pelo seed:
 
 `banco.sql` contem:
 
-- 239 tabelas;
+- 238 tabelas;
 - 67 triggers;
 - dump estrutural, sem dados.
 
@@ -429,12 +452,12 @@ Principais grupos de tabelas:
 | Dominio | Tabelas principais |
 | --- | --- |
 | Seguranca | `seg_menu`, `seg_aplicacoes`, `seg_perfil`, `seg_perfil_permissoes`, `seg_usuarios`, `seg_usuarios_permissoes` |
-| Compras | `cp_compras`, `cp_compras_status`, `cp_compras_emails`, `cp_compras_itens`, `cp_compras_itens_tamanhos`, `cp_compras_itens_cores`, `cp_compras_itens_rateios` |
+| Compras | `cp_compras`, `cp_compras_status`, `cp_compras_emails`, `cp_depara_cor`, `cp_compras_itens`, `cp_compras_itens_tamanhos`, `cp_compras_itens_cores`, `cp_compras_itens_rateios` |
 | Logs de compras | `cp_compras_itens_log`, `cp_compras_itens_tamanhos_log`, `cp_compras_itens_cores_log` |
 | Configuracoes | `empresas`, `empresas_cd`, `config_email`, `urls_allop`, `situacao` |
 | Portal fornecedor | `pf_colecao`, `pf_usuarios`, `pf_usuarios_copy`, `pf_usuario_fornecedor` |
 | Agenda e conferencia de compras legado | `compras_agenda*`, `compras_contagem*`, `compras_recontagem*`, `conferentes`, `entrada_de_mercadorias*` |
-| Etiquetas e pre-cadastro | `etiquetas_cab`, `etiquetas_ite`, `etiquetas_api`, `pre_cadastro*` |
+| Etiquetas e pre-cadastro | `etiquetas_cab`, `etiquetas_ite`, `etiquetas_api`, `pre_cadastro`, `pre_cadastro_item`, `pre_cadastro_item_pro` |
 | Catalogo/ERP legado | tabelas `produtos*`, `KidStok`, `KidStokAntesGCom`, `cfops`, `cests_ncm`, `st_*`, `compras*`, `nfe_*`, `romaneios_*`, `fechamento*`, `provisorios*`, `transportadoras*`, `veiculos*`, `tb*` e auxiliares |
 | Cadastros auxiliares/API | `bancos`, `cargos`, `cidades*`, `estados*`, `franqueados*`, `consultores*`, `ramo_atividades*`, `regioes*`, `responsaveis*`, `configuracoes_*`, `logs`, `log_scripts` |
 
@@ -487,8 +510,6 @@ Aplicacoes registradas pelo seed:
 - E-mail;
 - Pedidos de Compra.
 - Pré Cadastro Produtos.
-
-Observacao: `Pré Cadastro Produtos` esta registrado no menu Compras com rota reservada em `mod/compras/pre_cadastro_produtos_lista.php`; a tela/API ainda serao detalhadas em demanda posterior.
 
 O seed e parcialmente idempotente, mas executa DDL e altera dados de menu/permissoes. Deve ser usado com backup e consciencia do ambiente.
 
@@ -570,6 +591,7 @@ Banco:
 | Fotos | `#cp-fotos-modal`, `.cp-item-fotos-panels`, `.cp-foto-dropzone`, `.cp-fotos-grid`, `.cp-foto-card`, `.cp-foto-preview-img` | Paineis de fotos, upload, exclusao e preview de imagens. |
 | Log de cor | `#cp-cor-log-modal`, `.cp-preco-alterado-*`, `.btn-price-log` | Comparacao de preco com ultimo log. |
 | Login | `.login-page`, `.login-shell`, `.login-card`, `.login-showcase` | Tela de acesso com logos e alternancia de visibilidade da senha. |
+| Pre-cadastro | `.pre-cadastro-ref-badges`, `.pre-cadastro-metric-badges`, `.pre-cadastro-toggle`, `.pre-cadastro-tamanhos-accordion` | Badges de referencias e metricas, toggles Sim/Nao, accordions de itens/tamanhos e grade de produtos gerados. |
 
 ## 12. Pontos de Atencao Conhecidos
 
@@ -592,6 +614,8 @@ Banco:
 17. **Encoding legado:** varios arquivos PHP e documentos legados ainda exibem acentos quebrados em strings ja versionadas; novos textos deste documento foram gravados em UTF-8/ASCII para reduzir novas quebras.
 18. **Contrato de fotos do fornecedor:** a acao `fotos_upload` aceita `origem=fornecedor`, mas `cp_require_foto_mutavel()` bloqueia qualquer insercao ou exclusao em `cp_compras_fotos` pela tela interna.
 19. **Workflow depende de snapshot no frontend:** o bloqueio de `Aprovar` e `Recusar` apos alteracoes locais de preco, valor ou entrega compara a grade atual com o estado carregado em `cpCompraWorkflowSnapshot`. Alteracoes feitas por fora da tela dependem do estado persistido e das regras da API.
+20. **Pre-cadastro sem permissao propria por acao:** `pre_cadastro_produtos.php` exige sessao, mas nao confere permissao especifica de processar/gravar antes de gerar ou inserir o pre-cadastro.
+21. **De/para de cores opcional:** a sugestao automatica de cor KidStok no pre-cadastro depende da existencia e preenchimento de `cp_depara_cor`; sem esse mapa, a cor precisa ser completada manualmente.
 
 ## 13. Como Recriar o Projeto do Zero
 

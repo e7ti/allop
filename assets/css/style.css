@@ -2978,3 +2978,147 @@ body {
         flex: 1 1 auto;
     }
 }
+
+.pre-cadastro-ref-badges {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.pre-cadastro-ref-badge {
+    align-items: center;
+    background: #f8fbff;
+    border: 1px solid rgba(13, 110, 253, 0.34);
+    border-radius: 999px;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.12);
+    color: #0b3f79;
+    display: inline-flex;
+    gap: 0.4rem;
+    line-height: 1;
+    padding: 0.48rem 0.82rem;
+}
+
+.pre-cadastro-ref-badge small {
+    color: #365f8c;
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.pre-cadastro-ref-badge strong {
+    font-size: 1rem;
+    font-weight: 800;
+}
+
+.pre-cadastro-metric-badges {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+}
+
+.pre-cadastro-metric-badge {
+    align-items: center;
+    background: #eef6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    color: #123f73;
+    display: inline-flex;
+    gap: 0.35rem;
+    line-height: 1;
+    padding: 0.42rem 0.58rem;
+}
+
+.pre-cadastro-metric-badge small {
+    color: #55708f;
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.pre-cadastro-metric-badge strong {
+    font-size: 0.86rem;
+    font-weight: 800;
+}
+
+.pre-cadastro-toggle {
+    align-items: center;
+    cursor: pointer;
+    display: inline-flex;
+    gap: 0.45rem;
+    min-height: 38px;
+    min-width: 5.6rem;
+    user-select: none;
+}
+
+.pre-cadastro-toggle .form-label {
+    margin-bottom: 0;
+}
+
+.pre-cadastro-toggle-input {
+    opacity: 0;
+    position: absolute;
+    pointer-events: none;
+}
+
+.pre-cadastro-toggle-control {
+    background: #cbd5e1;
+    border-radius: 999px;
+    box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.18);
+    flex: 0 0 auto;
+    height: 1.45rem;
+    position: relative;
+    transition: background-color 0.18s ease, box-shadow 0.18s ease;
+    width: 2.7rem;
+}
+
+.pre-cadastro-toggle-control::after {
+    background: #ffffff;
+    border-radius: 50%;
+    box-shadow: 0 1px 4px rgba(15, 23, 42, 0.24);
+    content: "";
+    height: 1.08rem;
+    left: 0.18rem;
+    position: absolute;
+    top: 0.18rem;
+    transition: transform 0.18s ease;
+    width: 1.08rem;
+}
+
+.pre-cadastro-toggle.is-active .pre-cadastro-toggle-control {
+    background: #198754;
+    box-shadow: inset 0 1px 2px rgba(12, 86, 46, 0.28);
+}
+
+.pre-cadastro-toggle.is-active .pre-cadastro-toggle-control::after {
+    transform: translateX(1.25rem);
+}
+
+.pre-cadastro-toggle-text {
+    color: #475569;
+    font-size: 0.82rem;
+    font-weight: 700;
+    min-width: 2.1rem;
+}
+
+.pre-cadastro-toggle.is-active .pre-cadastro-toggle-text {
+    color: #146c43;
+}
+
+.pre-cadastro-toggle-input:focus + .pre-cadastro-toggle-control {
+    box-shadow: 0 0 0 0.18rem rgba(25, 135, 84, 0.18);
+}
+
+@media (max-width: 767.98px) {
+    .pre-cadastro-ref-badges {
+        margin-left: 0 !important;
+        margin-top: 0.5rem;
+        width: 100%;
+    }
+
+    .pre-cadastro-metric-badges {
+        margin-left: 0 !important;
+        margin-top: 0.5rem;
+        width: 100%;
+    }
+}

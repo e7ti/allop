@@ -80,6 +80,10 @@
         initCpComprasForm();
     }
 
+    if (window.preCadastroProdutosConfig) {
+        initPreCadastroProdutos();
+    }
+
     const $form = $('#entity-form');
     if ($form.length) {
         const id = Number($form.data('id'));
@@ -1229,6 +1233,499 @@ function deleteCpCompra(id) {
             appAlert(xhr.responseJSON?.message || 'Não foi possível excluir.', 'danger');
         });
     });
+}
+
+let preCadastroGroups = [];
+
+function initPreCadastroProdutos() {
+    const cfg = window.preCadastroProdutosConfig;
+    $('#pre-cadastro-pedido').select2({
+        width: '100%',
+        placeholder: 'Digite para pesquisar o pedido',
+        allowClear: true,
+        ajax: {
+            url: cfg.api,
+            dataType: 'json',
+            delay: 250,
+            data: params => ({ action: 'options', type: 'pedidos', q: params.term || '' }),
+            processResults: response => ({ results: response.results || [] })
+        }
+    });
+
+    $('#btn-pre-cadastro-preview').on('click', loadPreCadastroPreview);
+    $('#btn-pre-cadastro-save').on('click', savePreCadastroProdutos);
+}
+
+function loadPreCadastroPreview() {
+    const selected = $('#pre-cadastro-pedido').select2('data')[0] || null;
+    if (!selected || !selected.id) {
+        appAlert('Selecione um pedido de compra.', 'warning');
+        return;
+    }
+    $('#btn-pre-cadastro-preview').prop('disabled', true);
+    $.getJSON(window.preCadastroProdutosConfig.api, {
+        action: 'preview',
+        pedido_id: selected.id
+    }).done(function (response) {
+        preCadastroGroups = response.groups || [];
+        renderPreCadastroPreview(response);
+        $('#btn-pre-cadastro-save').prop('disabled', preCadastroGroups.length === 0);
+    }).fail(function (xhr) {
+        appAlert(xhr.responseJSON?.message || 'Não foi possível gerar os dados do pré-cadastro.', 'danger');
+    }).always(function () {
+        $('#btn-pre-cadastro-preview').prop('disabled', false);
+    });
+}
+
+function renderPreCadastroPreview(response) {
+    const pedido = response.pedido || {};
+    $('#pre-cadastro-resumo-card').removeClass('d-none');
+    $('#pre-cadastro-pedido-resumo').html(
+        '<div class="col-12 col-md-3"><strong>Pedido</strong><div>' + escapeHtml(pedido.id || '') + '</div></div>' +
+        '<div class="col-12 col-md-3"><strong>CD</strong><div>' + escapeHtml(pedido.cd || '') + '</div></div>' +
+        '<div class="col-12 col-md-3"><strong>Empresa</strong><div>' + escapeHtml(pedido.empresa || '') + '</div></div>' +
+        '<div class="col-12 col-md-3"><strong>Fornecedor</strong><div>' + escapeHtml(pedido.fornecedor || '') + '</div></div>'
+    );
+    const warnings = response.warnings || [];
+    $('#pre-cadastro-warnings')
+        .toggleClass('d-none', warnings.length === 0)
+        .html(warnings.map(escapeHtml).join('<br>'));
+
+    $('#pre-cadastro-groups').html(preCadastroGroups.map(renderPreCadastroGroup).join('') ||
+        '<div class="text-center text-muted py-3">Nenhum dado gerado.</div>');
+    initPreCadastroSelects();
+    bindPreCadastroFields();
+}
+
+function renderPreCadastroGroup(group, groupIndex) {
+    return '<section class="card card-slim mb-3 pre-cadastro-group" data-group-index="' + groupIndex + '">' +
+        '<div class="card-header d-flex flex-wrap justify-content-between gap-2">' +
+        '<strong>Grupo ' + (groupIndex + 1) + ' - Categoria <span data-group-categoria-index="' + groupIndex + '">' + escapeHtml(group.Categoria || '-') + '</span></strong>' +
+        '<span>Entrega: ' + escapeHtml(formatDateBr(group.data_entrega || '') || '-') + ' | Valor: R$ ' + escapeHtml(formatMoneyBr(group.valor_total || 0)) + '</span>' +
+        '</div>' +
+        '<div class="card-body">' +
+        '<div class="row g-3 mb-3">' +
+        '<div class="col-12 col-md-2"><label class="form-label">Itens</label><input class="form-control" value="' + escapeAttr(group.Itens || 0) + '" readonly></div>' +
+        '<div class="col-12 col-md-2"><label class="form-label">Tamanhos</label><input class="form-control" value="' + escapeAttr(group.Tamanhos || 0) + '" readonly></div>' +
+        '<div class="col-12 col-md-2"><label class="form-label">Cores</label><input class="form-control" value="' + escapeAttr(group.Cores || 0) + '" readonly></div>' +
+        '<div class="col-12 col-md-2"><label class="form-label">Qtde</label><input class="form-control" value="' + escapeAttr(group.QtdeCores || 0) + '" readonly></div>' +
+        '<div class="col-12 col-md-4"><label class="form-label">Valor total</label><input class="form-control" value="R$ ' + escapeAttr(formatMoneyBr(group.valor_total || 0)) + '" readonly></div>' +
+        '</div>' +
+        '<div class="accordion" id="pre-cadastro-accordion-' + groupIndex + '">' +
+        (group.items || []).map(function (item, itemIndex) {
+            return renderPreCadastroItem(item, groupIndex, itemIndex);
+        }).join('') +
+        '</div>' +
+        '</div>' +
+        '</section>';
+}
+
+function renderPreCadastroItem(item, groupIndex, itemIndex) {
+    const path = 'data-group-index="' + groupIndex + '" data-item-index="' + itemIndex + '"';
+    const itemId = 'pre-cadastro-item-' + groupIndex + '-' + itemIndex;
+    const dadosTabId = itemId + '-dados';
+    const tributosTabId = itemId + '-tributos';
+    const collapseClass = itemIndex === 0 ? 'accordion-collapse collapse show' : 'accordion-collapse collapse';
+    const buttonClass = itemIndex === 0 ? 'accordion-button' : 'accordion-button collapsed';
+    const expanded = itemIndex === 0 ? 'true' : 'false';
+    const itemMetrics = preCadastroItemMetrics(item);
+    const r2Select = String(item.r2 || '').trim() === ''
+        ? preCadastroSelect(path, 'r2', 'Categoria (R2)', 'categorias', item.r2 || '', item.r2_text || '', 'col-12 col-md-2')
+        : '';
+    return '<div class="accordion-item pre-cadastro-item" ' + path + '>' +
+        '<h2 class="accordion-header" id="' + itemId + '-heading">' +
+        '<button class="' + buttonClass + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + itemId + '-collapse" aria-expanded="' + expanded + '" aria-controls="' + itemId + '-collapse">' +
+        '<span><strong>' + escapeHtml(item.referencia_fornecedor || '') + '</strong><span class="text-muted ms-2">' + escapeHtml(item.descricao || '') + '</span></span>' +
+        '<span class="pre-cadastro-metric-badges ms-auto me-3">' +
+        preCadastroMetricBadge('Tamanhos', itemMetrics.tamanhos) +
+        preCadastroMetricBadge('Cores', itemMetrics.cores) +
+        preCadastroMetricBadge('Qtde', itemMetrics.qtde.toLocaleString('pt-BR')) +
+        preCadastroMetricBadge('Total', 'R$ ' + formatMoneyBr(itemMetrics.valor)) +
+        '</span>' +
+        '<span class="pre-cadastro-ref-badges me-3">' +
+        '<span class="pre-cadastro-ref-badge"><small>R1</small><strong>' + escapeHtml(item.r1 || '-') + '</strong></span>' +
+        '<span class="pre-cadastro-ref-badge"><small>R2</small><strong data-ref-field="r2" data-group-index="' + groupIndex + '" data-item-index="' + itemIndex + '">' + escapeHtml(item.r2 || '-') + '</strong></span>' +
+        '</span>' +
+        '</button>' +
+        '</h2>' +
+        '<div id="' + itemId + '-collapse" class="' + collapseClass + '" aria-labelledby="' + itemId + '-heading" data-bs-parent="#pre-cadastro-accordion-' + groupIndex + '">' +
+        '<div class="accordion-body">' +
+        '<div class="card card-slim mb-3">' +
+        '<div class="card-body">' +
+        '<ul class="nav nav-tabs mb-3" role="tablist">' +
+        '<li class="nav-item" role="presentation"><button class="nav-link active" id="' + dadosTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + dadosTabId + '" type="button" role="tab" aria-controls="' + dadosTabId + '" aria-selected="true">Dados</button></li>' +
+        '<li class="nav-item" role="presentation"><button class="nav-link" id="' + tributosTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + tributosTabId + '" type="button" role="tab" aria-controls="' + tributosTabId + '" aria-selected="false">Tributos</button></li>' +
+        '</ul>' +
+        '<div class="tab-content">' +
+        '<div class="tab-pane fade show active" id="' + dadosTabId + '" role="tabpanel" aria-labelledby="' + dadosTabId + '-tab">' +
+        '<div class="row g-3">' +
+        r2Select +
+        preCadastroInput(path, 'r3', 'R3 (Código fornecedor)', item.r3 || '', 'col-12 col-md-2', 'text') +
+        preCadastroInput(path, 'referencia_master', 'Referência master', item.referencia_master || '', 'col-12 col-md-2', 'text', true) +
+        preCadastroInput(path, 'descricao', 'Descrição', item.descricao || '', 'col-12 col-md-4', 'text') +
+        preCadastroInput(path, 'descricao_complementar', 'Descrição complementar', item.descricao_complementar || '', 'col-12 col-md-4', 'text') +
+        preCadastroInput(path, 'codigo_fornecdor', 'Código fornecedor', item.codigo_fornecdor || '', 'col-12 col-md-3', 'text') +
+        preCadastroInput(path, 'composicao', 'Composição texto', item.composicao || '', 'col-12 col-md-3', 'text') +
+        preCadastroSelect(path, 'Unidade', 'Unidade', 'medidas', item.Unidade || 'PC', item.Unidade_text || 'PC - Peça', 'col-12 col-md-2') +
+        preCadastroSelect(path, 'ncm', 'NCM', 'ncm', item.ncm || '', item.ncm_text || '', 'col-12 col-md-4') +
+        preCadastroSelect(path, 'colecao_id', 'Coleção', 'colecoes', item.colecao_id || '', item.colecao_id_text || '', 'col-12 col-md-3') +
+        preCadastroSelect(path, 'linha', 'Linha', 'linhas', item.linha || '', item.linha_text || '', 'col-12 col-md-3') +
+        preCadastroSelect(path, 'Grupo', 'Grupo', 'grupos', item.Grupo || '', item.Grupo_text || '', 'col-12 col-md-3') +
+        preCadastroSelect(path, 'grupo_categoria', 'Grupo/Categoria', 'subgrupos', item.grupo_categoria || '', item.grupo_categoria_text || '', 'col-12 col-md-3') +
+        preCadastroSelect(path, 'genero_id', 'Gênero', 'generos', item.genero_id || '', item.genero_id_text || '', 'col-12 col-md-3') +
+        preCadastroSelect(path, 'composicao_id', 'Composição', 'composicoes', item.composicao_id || '', item.composicao_id_text || '', 'col-12 col-md-3') +
+        preCadastroSelect(path, 'caracteristica_id', 'Característica', 'caracteristicas', item.caracteristica_id || '', item.caracteristica_id_text || '', 'col-12 col-md-3') +
+        preCadastroSelect(path, 'estilo', 'Estilo', 'estilos', item.estilo || '', item.estilo_text || '', 'col-12 col-md-3') +
+        '</div>' +
+        '</div>' +
+        '<div class="tab-pane fade" id="' + tributosTabId + '" role="tabpanel" aria-labelledby="' + tributosTabId + '-tab">' +
+        '<div class="row g-3">' +
+        preCadastroSelect(path, 'origem', 'Origem', 'origens', item.origem || '', item.origem_text || '', 'col-12 col-md-2') +
+        preCadastroSelect(path, 'cst_icms', 'CST ICMS', 'st_icms', item.cst_icms || '', item.cst_icms_text || '', 'col-12 col-md-2') +
+        preCadastroSelect(path, 'cst_pis', 'CST PIS', 'st_pis', item.cst_pis || '', item.cst_pis_text || '', 'col-12 col-md-2') +
+        preCadastroSelect(path, 'cst_cofins', 'CST COFINS', 'st_cofins', item.cst_cofins || '', item.cst_cofins_text || '', 'col-12 col-md-2') +
+        preCadastroSelect(path, 'cst_ipi', 'CST IPI', 'st_ipi', item.cst_ipi || '', item.cst_ipi_text || '', 'col-12 col-md-2') +
+        preCadastroSelect(path, 'cfop', 'CFOP', 'cfops', item.cfop || '5102', item.cfop_text || '5102', 'col-12 col-md-2') +
+        preCadastroSelect(path, 'cfop_propria', 'CFOP própria', 'cfops', item.cfop_propria || '', item.cfop_propria_text || '', 'col-12 col-md-2') +
+        preCadastroInput(path, 'aliquota_icms', 'Alíquota ICMS', item.aliquota_icms || 0, 'col-12 col-md-2', 'number') +
+        preCadastroInput(path, 'reducao_icms', 'Redução ICMS', item.reducao_icms || 0, 'col-12 col-md-2', 'number') +
+        preCadastroInput(path, 'aliquota_pis', 'Alíquota PIS', item.aliquota_pis || 0, 'col-12 col-md-2', 'number') +
+        preCadastroInput(path, 'aliquota_cofins', 'Alíquota COFINS', item.aliquota_cofins || 0, 'col-12 col-md-2', 'number') +
+        preCadastroInput(path, 'aliquota_ipi', 'Alíquota IPI', item.aliquota_ipi || 0, 'col-12 col-md-2', 'number') +
+        '</div>' +
+        '</div>' +
+        '</div>' +
+        '</div>' +
+        '</div>' +
+        '<div class="card card-slim grid-shell">' +
+        '<div class="card-header"><strong>Produtos</strong></div>' +
+        '<div class="card-body">' +
+        renderPreCadastroTamanhos(item, groupIndex, itemIndex) +
+        '</div>' +
+        '</div>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
+}
+
+function preCadastroItemMetrics(item) {
+    const tamanhos = {};
+    let cores = 0;
+    let qtde = 0;
+    let valor = 0;
+    (item.products || []).forEach(function (product) {
+        const tamanhoKey = product.compras_itens_tamanho_id || product.tamanho || product.tamanho_origem || '';
+        if (tamanhoKey !== '') {
+            tamanhos[tamanhoKey] = true;
+        }
+        cores += 1;
+        qtde += Number(product.qtde || 0);
+        valor += Number(product.valor_total_produto || 0);
+    });
+    return {
+        tamanhos: Object.keys(tamanhos).length,
+        cores: cores,
+        qtde: qtde,
+        valor: valor
+    };
+}
+
+function preCadastroMetricBadge(label, value) {
+    return '<span class="pre-cadastro-metric-badge"><small>' + escapeHtml(label) + '</small><strong>' + escapeHtml(value) + '</strong></span>';
+}
+
+function renderPreCadastroTamanhos(item, groupIndex, itemIndex) {
+    const tamanhos = [];
+    const tamanhoMap = {};
+    (item.products || []).forEach(function (product, productIndex) {
+        const key = product.compras_itens_tamanho_id || product.tamanho || product.tamanho_origem || productIndex;
+        if (!tamanhoMap[key]) {
+            tamanhoMap[key] = {
+                label: product.tamanho_origem || product.tamanho || '',
+                tamanho: product.tamanho || product.tamanho_origem || '',
+                products: []
+            };
+            tamanhos.push(tamanhoMap[key]);
+        }
+        tamanhoMap[key].products.push({ product: product, productIndex: productIndex });
+    });
+    if (!tamanhos.length) {
+        return '<div class="text-center text-muted py-3">Nenhum produto gerado.</div>';
+    }
+    return '<div class="accordion pre-cadastro-tamanhos-accordion" id="pre-cadastro-tamanhos-' + groupIndex + '-' + itemIndex + '">' +
+        tamanhos.map(function (tamanho, tamanhoIndex) {
+            return renderPreCadastroTamanho(tamanho, item, groupIndex, itemIndex, tamanhoIndex);
+        }).join('') +
+        '</div>';
+}
+
+function renderPreCadastroTamanho(tamanho, item, groupIndex, itemIndex, tamanhoIndex) {
+    const collapseId = 'pre-cadastro-tamanho-' + groupIndex + '-' + itemIndex + '-' + tamanhoIndex;
+    const path = 'data-group-index="' + groupIndex + '" data-item-index="' + itemIndex + '"';
+    const productIndexes = tamanho.products.map(function (row) {
+        return row.productIndex;
+    }).join(',');
+    const tamanhoAttrs = ' data-size-product-indexes="' + escapeAttr(productIndexes) + '"';
+    const totalQtde = tamanho.products.reduce(function (sum, row) {
+        return sum + Number(row.product.qtde || 0);
+    }, 0);
+    const totalValor = tamanho.products.reduce(function (sum, row) {
+        return sum + Number(row.product.valor_total_produto || 0);
+    }, 0);
+    const show = tamanhoIndex === 0 ? ' show' : '';
+    const collapsed = tamanhoIndex === 0 ? '' : ' collapsed';
+    return '<div class="accordion-item">' +
+        '<h2 class="accordion-header">' +
+        '<button class="accordion-button' + collapsed + '" type="button" data-bs-toggle="collapse" data-bs-target="#' + collapseId + '" aria-expanded="' + (tamanhoIndex === 0 ? 'true' : 'false') + '" aria-controls="' + collapseId + '">' +
+        '<span><strong>Tamanho ' + escapeHtml(tamanho.label || '-') + '</strong></span>' +
+        '<span class="pre-cadastro-metric-badges ms-auto me-3">' +
+        preCadastroMetricBadge('Cores', tamanho.products.length) +
+        preCadastroMetricBadge('Qtde', totalQtde.toLocaleString('pt-BR')) +
+        preCadastroMetricBadge('Total', 'R$ ' + formatMoneyBr(totalValor)) +
+        '</span>' +
+        '</button>' +
+        '</h2>' +
+        '<div id="' + collapseId + '" class="accordion-collapse collapse' + show + '" data-bs-parent="#pre-cadastro-tamanhos-' + groupIndex + '-' + itemIndex + '">' +
+        '<div class="accordion-body">' +
+        '<div class="row g-3 mb-3">' +
+        preCadastroSimNaoSelect(path, 'setor_laranja', 'Setor laranja', item.setor_laranja || 'N', 'col-12 col-md-2', tamanhoAttrs) +
+        preCadastroSimNaoSelect(path, 'preco_cheio', 'Preço cheio', item.preco_cheio || 'N', 'col-12 col-md-2', tamanhoAttrs) +
+        '</div>' +
+        '<div class="table-responsive">' +
+        '<table class="table table-custom align-middle mb-0"><thead><tr><th>Cor origem</th><th>Cor</th><th>Setor laranja</th><th>Preço cheio</th><th>Referência</th><th class="text-end">Qtde</th><th class="text-end">Compra</th><th class="text-end">Atacado</th><th class="text-end">Varejo</th></tr></thead>' +
+        '<tbody>' + tamanho.products.map(function (row) {
+            return renderPreCadastroProduct(row.product, groupIndex, itemIndex, row.productIndex);
+        }).join('') + '</tbody></table>' +
+        '</div>' +
+        '</div>' +
+        '</div>' +
+        '</div>';
+}
+
+function renderPreCadastroProduct(product, groupIndex, itemIndex, productIndex) {
+    const path = 'data-group-index="' + groupIndex + '" data-item-index="' + itemIndex + '" data-product-index="' + productIndex + '"';
+    const tamanho = product.tamanho || product.tamanho_origem || '';
+    return '<tr class="pre-cadastro-product" ' + path + '>' +
+        '<td data-label="Cor origem">' + escapeHtml(product.cor_origem || '') + '<input type="hidden" class="pre-cadastro-field" data-field="tamanho" value="' + escapeAttr(tamanho) + '" ' + path + '></td>' +
+        '<td data-label="Cor">' + preCadastroSelect(path, 'cor', '', 'cores', product.cor || '', product.cor_text || '', '') + '</td>' +
+        '<td data-label="Setor laranja">' + preCadastroSimNaoSelect(path, 'setor_laranja', '', product.setor_laranja || 'N', '') + '</td>' +
+        '<td data-label="Preço cheio">' + preCadastroSimNaoSelect(path, 'preco_cheio', '', product.preco_cheio || 'N', '') + '</td>' +
+        '<td data-label="Referência"><input class="form-control form-control-sm pre-cadastro-field" data-field="referencia" value="' + escapeAttr(product.referencia || '') + '" readonly ' + path + '></td>' +
+        '<td data-label="Qtde" class="text-end">' + escapeHtml(Number(product.qtde || 0).toLocaleString('pt-BR')) + '</td>' +
+        '<td data-label="Compra" class="text-end">R$ ' + escapeHtml(formatMoneyBr(product.preco_compra || 0)) + '</td>' +
+        '<td data-label="Atacado" class="text-end">R$ ' + escapeHtml(formatMoneyBr(product.preco_atacado || 0)) + '</td>' +
+        '<td data-label="Varejo" class="text-end">R$ ' + escapeHtml(formatMoneyBr(product.preco_varejo || 0)) + '</td>' +
+        '</tr>';
+}
+
+function preCadastroInput(path, field, label, value, colClass, type, readonly) {
+    const r3Attrs = field === 'r3' ? ' inputmode="numeric" pattern="[0-9]{4}" maxlength="4"' : '';
+    const input = '<input class="form-control pre-cadastro-field" data-field="' + field + '" type="' + (type || 'text') + '" value="' + escapeAttr(value) + '"' + r3Attrs + (readonly ? ' readonly' : '') + ' ' + path + '>';
+    return '<div class="' + colClass + '"><label class="form-label">' + label + '</label>' + input + '</div>';
+}
+
+function preCadastroSelect(path, field, label, type, value, text, colClass) {
+    const selected = value ? '<option value="' + escapeAttr(value) + '" selected>' + escapeHtml(text || value) + '</option>' : '';
+    const html = (label ? '<label class="form-label">' + label + '</label>' : '') +
+        '<select class="form-select pre-cadastro-field pre-cadastro-select" data-field="' + field + '" data-type="' + type + '" ' + path + '>' +
+        selected +
+        '</select>';
+    return colClass ? '<div class="' + colClass + '">' + html + '</div>' : html;
+}
+
+function preCadastroSimNaoSelect(path, field, label, value, colClass, extraAttrs) {
+    const selected = String(value || 'N');
+    const active = selected === 'S';
+    const control = (label ? '<label class="form-label d-block">' + label + '</label>' : '') +
+        '<label class="pre-cadastro-toggle' + (active ? ' is-active' : '') + '">' +
+        '<input type="hidden" class="pre-cadastro-field pre-cadastro-toggle-value" data-field="' + field + '" value="' + selected + '" ' + path + (extraAttrs || '') + '>' +
+        '<input class="pre-cadastro-toggle-input" type="checkbox"' + (active ? ' checked' : '') + '>' +
+        '<span class="pre-cadastro-toggle-control" aria-hidden="true"></span>' +
+        '<span class="pre-cadastro-toggle-text">' + (active ? 'Sim' : 'Não') + '</span>' +
+        '</label>';
+    if (!colClass) {
+        return control;
+    }
+    return '<div class="' + colClass + '">' +
+        control +
+        '</div>';
+}
+
+function initPreCadastroSelects() {
+    $('.pre-cadastro-select').each(function () {
+        const $select = $(this);
+        if ($select.data('select2')) {
+            return;
+        }
+        $select.select2({
+            width: '100%',
+            placeholder: 'Pesquisar',
+            allowClear: true,
+            ajax: {
+                url: window.preCadastroProdutosConfig.api,
+                dataType: 'json',
+                delay: 250,
+                data: params => ({ action: 'options', type: $select.data('type'), q: params.term || '' }),
+                processResults: response => ({ results: response.results || [] })
+            }
+        });
+    });
+}
+
+function bindPreCadastroFields() {
+    $('.pre-cadastro-toggle-input')
+        .off('change.preCadastroToggle')
+        .on('change.preCadastroToggle', function () {
+            const $input = $(this);
+            const $toggle = $input.closest('.pre-cadastro-toggle');
+            const $value = $toggle.find('.pre-cadastro-toggle-value');
+            $value.val($input.is(':checked') ? 'S' : 'N');
+            updatePreCadastroToggleVisual($value);
+            updatePreCadastroField($value, { type: 'change' });
+        });
+    $('.pre-cadastro-field')
+        .off('input.preCadastro change.preCadastro select2:select.preCadastro select2:clear.preCadastro')
+        .on('input.preCadastro change.preCadastro select2:select.preCadastro select2:clear.preCadastro', function (event) {
+            updatePreCadastroField($(this), event);
+        });
+    recalcPreCadastroReferences();
+}
+
+function updatePreCadastroToggleVisual($field) {
+    const $toggle = $field.closest('.pre-cadastro-toggle');
+    if (!$toggle.length) {
+        return;
+    }
+    const active = String($field.val() || 'N') === 'S';
+    $toggle.toggleClass('is-active', active);
+    $toggle.find('.pre-cadastro-toggle-input').prop('checked', active);
+    $toggle.find('.pre-cadastro-toggle-text').text(active ? 'Sim' : 'Não');
+}
+
+function updatePreCadastroField($field, event) {
+    const group = preCadastroGroups[Number($field.data('group-index'))];
+    const item = group?.items?.[Number($field.data('item-index'))];
+    if (!item) {
+        return;
+    }
+    const productIndexRaw = $field.attr('data-product-index');
+    const field = $field.data('field');
+    let value = $field.val() || '';
+    if (field === 'r3') {
+        value = String(value).replace(/\D/g, '').slice(0, 4);
+        $field.val(value);
+    }
+    if (productIndexRaw !== undefined) {
+        const product = item.products[Number(productIndexRaw)];
+        if (product) {
+            product[field] = value;
+            if ($field.hasClass('pre-cadastro-select')) {
+                product[field + '_text'] = event.type === 'select2:select' && event.params?.data?.text ? event.params.data.text : '';
+            }
+        }
+    } else {
+        item[field] = value;
+        if ($field.hasClass('pre-cadastro-select')) {
+            item[field + '_text'] = event.type === 'select2:select' && event.params?.data?.text ? event.params.data.text : '';
+        }
+        if (field === 'r2') {
+            if (!String(group.Categoria || '').trim()) {
+                group.Categoria = value;
+                $('[data-group-categoria-index="' + $field.data('group-index') + '"]').text(value || '-');
+            }
+            $('.pre-cadastro-ref-badge [data-ref-field="r2"][data-group-index="' + $field.data('group-index') + '"][data-item-index="' + $field.data('item-index') + '"]').text(value || '-');
+        }
+        if (field === 'setor_laranja' || field === 'preco_cheio') {
+            const sizeProductIndexes = String($field.attr('data-size-product-indexes') || '').split(',').filter(Boolean);
+            if (sizeProductIndexes.length) {
+                sizeProductIndexes.forEach(function (productIndex) {
+                    const product = item.products[Number(productIndex)];
+                    if (product) {
+                        product[field] = value;
+                    }
+                    const $productField = $('.pre-cadastro-field[data-group-index="' + $field.data('group-index') + '"][data-item-index="' + $field.data('item-index') + '"][data-product-index="' + productIndex + '"][data-field="' + field + '"]');
+                    $productField.val(value);
+                    updatePreCadastroToggleVisual($productField);
+                });
+            } else {
+                const $itemFields = $('.pre-cadastro-field[data-group-index="' + $field.data('group-index') + '"][data-item-index="' + $field.data('item-index') + '"][data-field="' + field + '"]');
+                $itemFields.val(value);
+                $itemFields.each(function () {
+                    updatePreCadastroToggleVisual($(this));
+                });
+            }
+        }
+    }
+    recalcPreCadastroReferences();
+}
+
+function recalcPreCadastroReferences() {
+    preCadastroGroups.forEach(function (group, groupIndex) {
+        (group.items || []).forEach(function (item, itemIndex) {
+            const refMaster = String(item.r1 || '') + String(item.r2 || '') + String(item.r3 || '');
+            item.referencia_master = refMaster;
+            $('.pre-cadastro-field[data-group-index="' + groupIndex + '"][data-item-index="' + itemIndex + '"][data-field="referencia_master"]').val(refMaster);
+            (item.products || []).forEach(function (product, productIndex) {
+                const referencia = refMaster + String(product.tamanho || '') + String(product.cor || '');
+                product.referencia_master = refMaster;
+                product.referencia = referencia;
+                $('.pre-cadastro-field[data-group-index="' + groupIndex + '"][data-item-index="' + itemIndex + '"][data-product-index="' + productIndex + '"][data-field="referencia"]').val(referencia);
+            });
+        });
+    });
+}
+
+function savePreCadastroProdutos() {
+    syncPreCadastroFields();
+    const missing = preCadastroMissingFields();
+    if (missing.length) {
+        appOkAlert('Preencha os campos obrigatórios antes de gravar:\n' + missing.slice(0, 10).join('\n'), appAlertTitle('warning'));
+        return;
+    }
+    $('#btn-pre-cadastro-save').prop('disabled', true);
+    $.post(window.preCadastroProdutosConfig.api + '?action=save', {
+        groups_json: JSON.stringify(preCadastroGroups)
+    }, function (response) {
+        const created = response.created || {};
+        appOkAlert((response.message || 'Pré-cadastro gravado.') +
+            '\nCabeçalhos: ' + (created.pre_cadastro_ids || []).join(', ') +
+            '\nItens: ' + (created.items || 0) +
+            '\nProdutos: ' + (created.products || 0), 'Pré Cadastro Produtos');
+    }, 'json').fail(function (xhr) {
+        const errors = xhr.responseJSON?.errors || [];
+        appOkAlert((xhr.responseJSON?.message || 'Não foi possível gravar o pré-cadastro.') +
+            (errors.length ? '\n' + errors.slice(0, 12).join('\n') : ''), appAlertTitle('danger'));
+    }).always(function () {
+        $('#btn-pre-cadastro-save').prop('disabled', false);
+    });
+}
+
+function syncPreCadastroFields() {
+    $('.pre-cadastro-field').each(function () {
+        updatePreCadastroField($(this), { type: 'sync' });
+    });
+}
+
+function preCadastroMissingFields() {
+    const missing = [];
+    preCadastroGroups.forEach(function (group, groupIndex) {
+        (group.items || []).forEach(function (item, itemIndex) {
+            const label = 'Grupo ' + (groupIndex + 1) + ', item ' + (itemIndex + 1);
+            ['r2', 'r3', 'descricao', 'Unidade', 'cfop', 'cfop_propria', 'cst_icms', 'cst_pis', 'cst_cofins', 'cst_ipi'].forEach(function (field) {
+                if (!String(item[field] || '').trim()) {
+                    missing.push(label + ': ' + field);
+                }
+            });
+            (item.products || []).forEach(function (product, productIndex) {
+                ['tamanho', 'cor'].forEach(function (field) {
+                    if (!String(product[field] || '').trim()) {
+                        missing.push(label + ', produto ' + (productIndex + 1) + ': ' + field);
+                    }
+                });
+            });
+        });
+    });
+    return missing;
 }
 
 function initCpComprasForm() {
