@@ -3010,6 +3010,28 @@ body {
     font-weight: 800;
 }
 
+.pre-cadastro-r3-wrap {
+    position: relative;
+}
+
+.pre-cadastro-r3-wrap .form-label {
+    color: var(--appf-orange);
+    font-weight: 800;
+}
+
+.pre-cadastro-r3-input {
+    background: #fff8f1;
+    border-color: var(--appf-orange);
+    box-shadow: 0 0 0 .18rem rgba(255, 69, 0, .12);
+    font-weight: 800;
+}
+
+.pre-cadastro-r3-input:focus {
+    background: #fff;
+    border-color: var(--ks-orange-dark);
+    box-shadow: 0 0 0 .25rem rgba(255, 69, 0, .24);
+}
+
 .pre-cadastro-metric-badges {
     display: inline-flex;
     flex-wrap: wrap;

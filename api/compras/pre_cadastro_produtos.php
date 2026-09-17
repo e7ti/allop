@@ -88,7 +88,7 @@ function pc_option_text(array $row, array $columns): string
     return implode(' - ', array_unique($parts));
 }
 
-function pc_domain_options(string $type, string $q): void
+function pc_domain_options(string $type, string $q, string $grupo = '', string $categoria = ''): void
 {
     $term = '%' . $q . '%';
     $map = [
@@ -110,7 +110,13 @@ function pc_domain_options(string $type, string $q): void
         'colecoes' => ['table' => 'produtos_colecao', 'id' => 'Codigo', 'text' => ['Colecao', 'Codigo']],
         'linhas' => ['table' => 'produtos_linhas', 'id' => 'Codigo', 'text' => ['Linha', 'Codigo']],
         'medidas' => ['table' => 'produtos_medidas', 'id' => 'Sigla', 'text' => ['Sigla', 'Unidade']],
-        'grupos' => ['table' => 'produtos_grupos', 'id' => 'Grupo', 'text' => ['Grupo']],
+        'grupos' => [
+            'sql' => "SELECT DISTINCT Grupo AS id, Grupo AS text
+                       FROM produtos_grupos
+                      WHERE Grupo LIKE :q
+                      ORDER BY Grupo
+                      LIMIT 30",
+        ],
         'subgrupos' => ['table' => 'produtos_grupos', 'id' => 'SubGrupo', 'text' => ['SubGrupo', 'Grupo']],
         'generos' => ['table' => 'produtos_generos', 'id' => 'Codigo', 'text' => ['Genero', 'Codigo']],
         'composicoes' => ['table' => 'produtos_composicoes', 'id' => 'Codigo', 'text' => ['Composicao', 'Codigo']],
@@ -128,6 +134,46 @@ function pc_domain_options(string $type, string $q): void
     ];
     if (!isset($map[$type])) {
         api_response(false, ['message' => 'Tipo invalido.'], 404);
+    }
+    if ($type === 'subgrupos' && $grupo === '') {
+        api_response(true, ['results' => []]);
+    }
+    if (($type === 'composicoes' || $type === 'caracteristicas') && $categoria === '') {
+        api_response(true, ['results' => []]);
+    }
+    if ($type === 'composicoes') {
+        $stmt = db()->prepare(
+            "SELECT c.Codigo AS id,
+                    CONCAT(c.Composicao, ' - ', c.Codigo) AS text
+               FROM produtos_categoria_composicao cc
+               INNER JOIN produtos_categorias_livre cl ON cl.Codigo = cc.Categoria
+               INNER JOIN produtos_composicoes c ON c.Codigo = cc.Composicao
+              WHERE cl.CategoriaLivre = :categoria
+                AND (CAST(c.Codigo AS CHAR) LIKE :q_codigo OR c.Composicao LIKE :q_nome)
+              ORDER BY c.Composicao
+              LIMIT 30"
+        );
+        $stmt->execute(['categoria' => $categoria, 'q_codigo' => $term, 'q_nome' => $term]);
+        api_response(true, ['results' => array_map(static function (array $row): array {
+            return ['id' => (string) $row['id'], 'text' => (string) $row['text']];
+        }, $stmt->fetchAll())]);
+    }
+    if ($type === 'caracteristicas') {
+        $stmt = db()->prepare(
+            "SELECT c.Codigo AS id,
+                    CONCAT(c.Caracteristica, ' - ', c.Codigo) AS text
+               FROM produtos_categoria_caracteristicas cc
+               INNER JOIN produtos_categorias_livre cl ON cl.Codigo = cc.Categoria
+               INNER JOIN produtos_caracteristicas c ON c.Codigo = cc.Caracteristica
+              WHERE cl.CategoriaLivre = :categoria
+                AND (CAST(c.Codigo AS CHAR) LIKE :q_codigo OR c.Caracteristica LIKE :q_nome)
+              ORDER BY c.Caracteristica
+              LIMIT 30"
+        );
+        $stmt->execute(['categoria' => $categoria, 'q_codigo' => $term, 'q_nome' => $term]);
+        api_response(true, ['results' => array_map(static function (array $row): array {
+            return ['id' => (string) $row['id'], 'text' => (string) $row['text']];
+        }, $stmt->fetchAll())]);
     }
     if (isset($map[$type]['sql'])) {
         $stmt = db()->prepare($map[$type]['sql']);
@@ -153,10 +199,15 @@ function pc_domain_options(string $type, string $q): void
         $where[] = "CAST(`$column` AS CHAR) LIKE :$param";
         $params[$param] = $term;
     }
+    $whereSql = implode(' OR ', $where);
+    if ($type === 'subgrupos') {
+        $whereSql = '`Grupo` = :grupo AND (' . $whereSql . ')';
+        $params['grupo'] = $grupo;
+    }
     $stmt = db()->prepare(
         "SELECT *
            FROM `{$cfg['table']}`
-          WHERE " . implode(' OR ', $where) . "
+          WHERE $whereSql
           ORDER BY `{$cfg['id']}`
           LIMIT 30"
     );
@@ -604,7 +655,12 @@ function pc_insert_all(array $groups): array
 
 try {
     if ($action === 'options') {
-        pc_domain_options((string) ($_GET['type'] ?? ''), pc_trim($_GET['q'] ?? ''));
+        pc_domain_options(
+            (string) ($_GET['type'] ?? ''),
+            pc_trim($_GET['q'] ?? ''),
+            pc_trim($_GET['grupo'] ?? ''),
+            pc_trim($_GET['categoria'] ?? '')
+        );
     }
     if ($action === 'preview') {
         api_response(true, pc_build_preview((int) ($data['pedido_id'] ?? 0)));
