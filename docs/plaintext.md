@@ -116,6 +116,7 @@ Regra geral: manter bibliotecas locais. As excecoes atuais sao ViaCEP no navegad
 | `mod/seguranca/aplicacoes_lista.php` / `aplicacoes_form.php` | `api/seguranca/crud.php?entity=aplicacoes` |
 | `mod/seguranca/perfil_aplicacoes_lista.php` / `perfil_aplicacoes_form.php` | `api/seguranca/perfil_aplicacoes.php` |
 | `mod/seguranca/usuarios_permissoes_lista.php` / `usuarios_permissoes_form.php` | `api/seguranca/crud.php?entity=usuarios_permissoes` |
+| `mod/seguranca/cp_compras_emails_lista.php` / `cp_compras_emails_form.php` | `api/seguranca/crud.php?entity=cp_compras_emails` |
 
 APIs auxiliares:
 
@@ -134,7 +135,16 @@ Entidades aceitas pelo CRUD generico:
 - `aplicacoes`;
 - `perfil_aplicacoes`;
 - `usuarios_permissoes`;
+- `cp_compras_emails`;
 - `menus`.
+
+E-mails de compras:
+
+- usa o CRUD generico com a entidade `cp_compras_emails`;
+- persiste `config_email_id`, `Nome`, `email` e `status` na tabela `cp_compras_emails`;
+- a listagem mostra a conta vinculada de `config_email`, nome, e-mail e status textual;
+- o campo `config_email_id` usa Select2 remoto do tipo `config_email`, fornecido por `api/seguranca/options.php`;
+- os arquivos ficam em `mod/seguranca`, mas o seed cadastra a aplicacao no menu `Configuracoes`.
 
 Acoes de `api/seguranca/perfil_aplicacoes.php`:
 
@@ -218,7 +228,7 @@ Configuracoes de e-mail:
 | `fotos_upload` | Recebe upload de imagens. Origem padrao `kidstok` grava em `cp_compras_fotos_ks`; origem `fornecedor` existe no contrato, mas e bloqueada pela regra interna. |
 | `fotos_delete` | Exclui foto KidStok. Fotos do fornecedor sao bloqueadas para exclusao pela tela interna. |
 | `cor_log_ultimo` | Retorna o ultimo log de preco da cor do pedido. |
-| `enviar_proposta` | Envia e-mail, publica o pedido, muda localizacao para `Fornecedor` e incrementa `Iteracao`. |
+| `enviar_proposta` | Envia e-mail, publica o pedido, muda localizacao para `Fornecedor` e incrementa `Iteracao`. Tambem e a acao usada pelo botao `Enviar Fornecedor` quando o pedido esta em `Aprovado Aguardando Foto Fornecedor` e localizado em `KidStok`. |
 | `aprovar` | Aprova pedido publicado; se ainda nao ha foto do fornecedor, muda para `Aprovado Aguardando Foto Fornecedor`, envia e-mail e devolve ao fornecedor. |
 | `recusar` | Recusa pedido publicado, exige motivo e devolve para `KidStok`. |
 
@@ -346,7 +356,7 @@ Regras de status, localizacao e workflow:
 - pedido localizado em `Fornecedor` nao permite edicao, exclusao, aprovacao ou recusa pela tela interna;
 - pedido `Aprovado` ou `Recusado` fica somente para visualizacao e impressao;
 - pedido `Aprovado Aguardando Foto Fornecedor` nao permite edicao do pedido;
-- se `Aprovado Aguardando Foto Fornecedor` estiver em `KidStok`, o formulario pode exibir `Enviar Fornecedor`;
+- se `Aprovado Aguardando Foto Fornecedor` estiver em `KidStok`, o formulario pode exibir `Enviar Fornecedor`, que chama `enviar_proposta` para publicar novamente e devolver o pedido ao fornecedor;
 - aprovacao exige pedido publicado;
 - se a KidStok alterar preco, valor ou data de entrega em relacao ao pedido carregado, `Aprovar` e `Recusar` ficam bloqueados/ocultos; o caminho correto passa a ser `Enviar Proposta`;
 - ao salvar alteracoes locais de preco, valor ou data de entrega, o pedido e marcado como `Publicado = 0` para exigir nova proposta ao fornecedor;
@@ -543,8 +553,10 @@ Aplicacoes registradas pelo seed:
 - Empresas CD;
 - Empresas;
 - E-mail;
-- Pedidos de Compra.
-- Pre Cadastro Produtos.
+- E-mails de Compras;
+- Pedidos de Compra;
+- Pre Cadastro Produtos;
+- Gerar Pre Cadastro Produtos, cadastrado com `visualizar = 0` para apoiar o formulario sem aparecer no menu.
 
 O seed e parcialmente idempotente, mas executa DDL e altera dados de menu/permissoes. Deve ser usado com backup e consciencia do ambiente.
 
