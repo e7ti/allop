@@ -272,16 +272,23 @@ Acoes de `api/compras/pre_cadastro_produtos.php`:
 | `save` | Insere `pre_cadastro`, `pre_cadastro_item` e `pre_cadastro_item_pro`. |
 | `update` | Atualiza um pre-cadastro ainda nao consolidado, recriando os filhos dentro da transacao. |
 | `consolidate` | Gera `produtos_cab` a partir de `pre_cadastro_item`, gera `produtos_cab_grade` a partir de `pre_cadastro_item_pro` usando campos do item, grava `Consolidado = 'N'` nos produtos gerados e marca `pre_cadastro.consolidado = 1`. |
+| `generate_purchase` | Gera pedidos na tabela `compras` e itens em `compras_itens` a partir de pre-cadastro consolidado. |
 | `history` | Move registros consolidados para `pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst`, criando ou alinhando colunas historicas antes da copia. |
 
 Regras da listagem:
 
 - `consolidado = 0` aparece como `Nao consolidado` em cor de alerta e exibe `Consolidar` e `Editar`;
 - `consolidado = 1` aparece como `Consolidado` em verde e nao permite edicao;
-- o botao `Gerar compra` aparece apenas quando `consolidado = 1` e `compra = 0`; por enquanto, ele e apenas visual e possui tooltip `Gera Pedido de Compra`;
+- o botao `Gerar compra` aparece apenas quando `consolidado = 1` e `compra = 0`;
 - o botao `Historico` aparece apenas quando `consolidado = 1` e possui tooltip `Move pre cadastro para historico`;
-- o processo de gerar compra ainda nao esta implementado;
-- `pre_cadastro_item.compra_nro` guarda o numero do pedido de compra quando o processo de compra for implementado.
+- ao gerar compra, cada registro de `pre_cadastro_item` gera um pedido novo em `compras`;
+- cada registro de `pre_cadastro_item_pro` do item gera uma linha em `compras_itens`;
+- `pre_cadastro_item_pro.referencia` e validada contra `produtos.Distribuidora`;
+- `compras_itens.Produto` recebe o `produtos.Codigo` localizado pela `Distribuidora`, para preservar a chave estrangeira;
+- `compras_itens.Distribuidora` recebe a referencia completa de `pre_cadastro_item_pro.referencia`;
+- `pre_cadastro_item.compra_nro` e `pre_cadastro_item_pro.compra_nro` guardam o numero do pedido gerado;
+- no final do processo, `pre_cadastro.compra` e marcado como `1`;
+- a geracao roda em transacao e bloqueia pre-cadastro nao consolidado, compra ja gerada, itens/grades sem quantidade ou referencias nao cadastradas em `produtos.Distribuidora`.
 
 #### Estrutura Funcional do Pedido
 
@@ -538,7 +545,7 @@ As tabelas tem estrutura equivalente para armazenar fotos em Base64, com campos 
 - cria o usuario `admin` apenas se ele ainda nao existir;
 - cria tabelas auxiliares com `CREATE TABLE IF NOT EXISTS`;
 - cria ou ajusta estruturas ligadas a `config_email`, `urls_allop` e compras;
-- garante `pre_cadastro.consolidado`, `pre_cadastro.compra` e `pre_cadastro_item.compra_nro`;
+- garante `pre_cadastro.consolidado`, `pre_cadastro.compra`, `pre_cadastro_item.compra_nro` e `pre_cadastro_item_pro.compra_nro`;
 - cria ou alinha `pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst` com as tabelas origem;
 - recria triggers de log de compras com `DROP TRIGGER IF EXISTS` + `CREATE TRIGGER`;
 - imprime `Seed executado com sucesso.`.
