@@ -30,6 +30,12 @@ function pc_decimal($value): float
     return (float) $value;
 }
 
+function pc_null_if_empty($value)
+{
+    $value = pc_trim($value);
+    return $value === '' ? null : $value;
+}
+
 function pc_table_exists(string $table): bool
 {
     $stmt = db()->prepare(
@@ -40,6 +46,85 @@ function pc_table_exists(string $table): bool
     );
     $stmt->execute(['table_name' => $table]);
     return (int) $stmt->fetchColumn() > 0;
+}
+
+function pc_column_exists(string $table, string $column): bool
+{
+    $stmt = db()->prepare(
+        'SELECT COUNT(*)
+           FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = :table_name
+            AND COLUMN_NAME = :column_name'
+    );
+    $stmt->execute(['table_name' => $table, 'column_name' => $column]);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function pc_column_sql_definition(array $column): string
+{
+    $sql = $column['COLUMN_TYPE'];
+    $sql .= ($column['IS_NULLABLE'] ?? 'YES') === 'NO' ? ' NOT NULL' : ' NULL';
+    if ($column['COLUMN_DEFAULT'] !== null) {
+        $sql .= ' DEFAULT ' . db()->quote((string) $column['COLUMN_DEFAULT']);
+    }
+    if (pc_trim($column['EXTRA'] ?? '') !== '') {
+        $sql .= ' ' . $column['EXTRA'];
+    }
+    if (pc_trim($column['COLUMN_COMMENT'] ?? '') !== '') {
+        $sql .= ' COMMENT ' . db()->quote((string) $column['COLUMN_COMMENT']);
+    }
+    return $sql;
+}
+
+function pc_table_columns(string $table): array
+{
+    $stmt = db()->prepare(
+        'SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, COLUMN_COMMENT
+           FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = :table_name
+          ORDER BY ORDINAL_POSITION'
+    );
+    $stmt->execute(['table_name' => $table]);
+    return $stmt->fetchAll();
+}
+
+function pc_ensure_history_table(string $sourceTable, string $historyTable): void
+{
+    if (!pc_table_exists($sourceTable)) {
+        api_response(false, ['message' => "Tabela $sourceTable nao encontrada."], 500);
+    }
+    if (!pc_table_exists($historyTable)) {
+        db()->exec("CREATE TABLE `$historyTable` LIKE `$sourceTable`");
+    }
+
+    $historyColumns = array_flip(array_map(static fn(array $column): string => $column['COLUMN_NAME'], pc_table_columns($historyTable)));
+    foreach (pc_table_columns($sourceTable) as $column) {
+        $columnName = $column['COLUMN_NAME'];
+        if (isset($historyColumns[$columnName])) {
+            continue;
+        }
+        db()->exec("ALTER TABLE `$historyTable` ADD COLUMN `$columnName` " . pc_column_sql_definition($column));
+    }
+}
+
+function pc_common_columns(string $sourceTable, string $historyTable): array
+{
+    $historyColumns = array_flip(array_map(static fn(array $column): string => $column['COLUMN_NAME'], pc_table_columns($historyTable)));
+    $common = [];
+    foreach (pc_table_columns($sourceTable) as $column) {
+        $columnName = $column['COLUMN_NAME'];
+        if (isset($historyColumns[$columnName])) {
+            $common[] = $columnName;
+        }
+    }
+    return $common;
+}
+
+function pc_column_list(array $columns): string
+{
+    return implode(', ', array_map(static fn(string $column): string => "`$column`", $columns));
 }
 
 function pc_exists(string $table, string $column, $value): bool
@@ -66,6 +151,29 @@ function pc_reference_exists(string $referencia, int $excludePreCadastroId = 0):
     $stmt = db()->prepare($sql);
     $stmt->execute($params);
     return (int) $stmt->fetchColumn() > 0;
+}
+
+function pc_product_master_exists(string $referenciaMaster): bool
+{
+    if ($referenciaMaster === '' || !pc_table_exists('produtos_cab')) {
+        return false;
+    }
+
+    $stmt = db()->prepare("SELECT COUNT(*) FROM produtos_cab WHERE Referencia = :referencia");
+    $stmt->execute(['referencia' => $referenciaMaster]);
+    return (int) $stmt->fetchColumn() > 0;
+}
+
+function pc_pre_cadastro_consolidado(int $preCadastroId): bool
+{
+    if ($preCadastroId <= 0) {
+        return false;
+    }
+
+    $stmt = db()->prepare("SELECT consolidado FROM pre_cadastro WHERE id = :id LIMIT 1");
+    $stmt->execute(['id' => $preCadastroId]);
+    $value = $stmt->fetchColumn();
+    return $value !== false && (int) $value === 1;
 }
 
 function pc_fix_text_encoding($value): string
@@ -693,6 +801,9 @@ function pc_validate_payload(array $groups, int $excludePreCadastroId = 0): arra
             if (strlen($refMaster) > 8) {
                 $errors[] = "$itemLabel: referencia master maior que 8 caracteres.";
             }
+            if (pc_trim($item['r1'] ?? '') !== '' && pc_trim($item['r2'] ?? '') !== '' && pc_trim($item['r3'] ?? '') !== '' && pc_product_master_exists($refMaster)) {
+                $errors[] = "$itemLabel: referencia master $refMaster ja existe no cadastro de produtos.";
+            }
             if (pc_trim($item['ncm'] ?? '') !== '' && !pc_exists('cests_ncm', 'ncm', $item['ncm'])) {
                 $errors[] = "$itemLabel: NCM invalido.";
             }
@@ -828,12 +939,12 @@ function pc_insert_all(array $groups): array
                     'setor_laranja' => pc_trim($item['setor_laranja'] ?? 'N') ?: 'N',
                     'preco_cheio' => pc_trim($item['preco_cheio'] ?? 'N') ?: 'N',
                     'encomenda' => pc_trim($item['encomenda'] ?? 'N') ?: 'N',
-                    'estilo' => pc_trim($item['estilo'] ?? '') ?: null,
+                    'estilo' => pc_null_if_empty($item['estilo'] ?? ''),
                     'preco_compra' => pc_decimal($item['preco_compra'] ?? 0),
                     'preco_compra_tabela' => pc_decimal($item['preco_compra_tabela'] ?? 0),
                     'preco_venda_tabela' => pc_decimal($item['preco_venda_tabela'] ?? 0),
                     'ncm' => pc_trim($item['ncm'] ?? '') ?: null,
-                    'origem' => pc_trim($item['origem'] ?? '') ?: null,
+                    'origem' => pc_null_if_empty($item['origem'] ?? ''),
                     'cst_icms' => pc_trim($item['cst_icms']),
                     'aliquota_icms' => pc_decimal($item['aliquota_icms'] ?? 0),
                     'reducao_icms' => pc_decimal($item['reducao_icms'] ?? 0),
@@ -882,6 +993,10 @@ function pc_insert_all(array $groups): array
 
 function pc_update_all(int $preCadastroId, array $groups): array
 {
+    if (pc_pre_cadastro_consolidado($preCadastroId)) {
+        api_response(false, ['message' => 'Pre-cadastro consolidado nao pode ser editado.'], 422);
+    }
+
     pc_normalize_groups_categories($groups);
     $errors = pc_validate_payload($groups, $preCadastroId);
     if ($errors) {
@@ -999,12 +1114,12 @@ function pc_update_all(int $preCadastroId, array $groups): array
                 'setor_laranja' => pc_trim($item['setor_laranja'] ?? 'N') ?: 'N',
                 'preco_cheio' => pc_trim($item['preco_cheio'] ?? 'N') ?: 'N',
                 'encomenda' => pc_trim($item['encomenda'] ?? 'N') ?: 'N',
-                'estilo' => pc_trim($item['estilo'] ?? '') ?: null,
+                'estilo' => pc_null_if_empty($item['estilo'] ?? ''),
                 'preco_compra' => pc_decimal($item['preco_compra'] ?? 0),
                 'preco_compra_tabela' => pc_decimal($item['preco_compra_tabela'] ?? 0),
                 'preco_venda_tabela' => pc_decimal($item['preco_venda_tabela'] ?? 0),
                 'ncm' => pc_trim($item['ncm'] ?? '') ?: null,
-                'origem' => pc_trim($item['origem'] ?? '') ?: null,
+                'origem' => pc_null_if_empty($item['origem'] ?? ''),
                 'cst_icms' => pc_trim($item['cst_icms']),
                 'aliquota_icms' => pc_decimal($item['aliquota_icms'] ?? 0),
                 'reducao_icms' => pc_decimal($item['reducao_icms'] ?? 0),
@@ -1051,6 +1166,355 @@ function pc_update_all(int $preCadastroId, array $groups): array
     return $created;
 }
 
+function pc_required_value(array $row, string $field, string $label, array &$errors, string $prefix): void
+{
+    if (pc_trim($row[$field] ?? '') === '') {
+        $errors[] = "$prefix: informe $label.";
+    }
+}
+
+function pc_validate_consolidacao(array $header, array $items, array $productsByItem): array
+{
+    $errors = [];
+    if ((int) ($header['consolidado'] ?? 0) === 1) {
+        $errors[] = 'Pre-cadastro ja esta consolidado.';
+    }
+    if (!$items) {
+        $errors[] = 'Pre-cadastro sem itens para consolidar.';
+    }
+
+    $gradeRefs = [];
+    foreach ($items as $index => $item) {
+        $prefix = 'Item ' . ($index + 1) . ' (' . pc_trim($item['referencia_fornecedor'] ?? '') . ')';
+        foreach ([
+            'referencia_master' => 'referencia master',
+            'r1' => 'fornecedor',
+            'r2' => 'categoria',
+            'r3' => 'R3',
+            'codigo_fornecdor' => 'codigo fornecedor',
+            'colecao_id' => 'colecao',
+            'linha' => 'linha',
+            'Grupo' => 'grupo',
+            'grupo_categoria' => 'grupo/categoria',
+            'composicao_id' => 'composicao',
+            'caracteristica_id' => 'caracteristica',
+            'genero_id' => 'genero',
+            'descricao' => 'descricao',
+            'Unidade' => 'unidade',
+            'ncm' => 'NCM',
+            'origem' => 'origem',
+            'cst_icms' => 'CST ICMS',
+            'cst_pis' => 'CST PIS',
+            'cst_cofins' => 'CST COFINS',
+            'cst_ipi' => 'CST IPI',
+            'cfop' => 'CFOP',
+        ] as $field => $label) {
+            pc_required_value($item, $field, $label, $errors, $prefix);
+        }
+
+        $refMaster = pc_trim($item['referencia_master'] ?? '');
+        if ($refMaster !== '' && pc_product_master_exists($refMaster)) {
+            $errors[] = "$prefix: referencia master $refMaster ja existe no cadastro de produtos.";
+        }
+
+        $products = $productsByItem[(int) $item['id']] ?? [];
+        if (!$products) {
+            $errors[] = "$prefix: nao possui grade para consolidar.";
+        }
+        foreach ($products as $productIndex => $product) {
+            $gradePrefix = $prefix . ', grade ' . ($productIndex + 1);
+            foreach ([
+                'referencia' => 'referencia',
+                'tamanho' => 'tamanho',
+                'cor' => 'cor',
+            ] as $field => $label) {
+                pc_required_value($product, $field, $label, $errors, $gradePrefix);
+            }
+            $referencia = pc_trim($product['referencia'] ?? '');
+            if ($referencia !== '') {
+                if (isset($gradeRefs[$referencia])) {
+                    $errors[] = "$gradePrefix: referencia $referencia duplicada no pre-cadastro.";
+                }
+                $gradeRefs[$referencia] = true;
+                if (pc_exists('produtos_cab_grade', 'Distribuidora', $referencia)) {
+                    $errors[] = "$gradePrefix: referencia $referencia ja existe na grade de produtos.";
+                }
+            }
+        }
+    }
+
+    return $errors;
+}
+
+function pc_load_consolidacao_data(int $preCadastroId): array
+{
+    $stmt = db()->prepare("SELECT * FROM pre_cadastro WHERE id = :id LIMIT 1 FOR UPDATE");
+    $stmt->execute(['id' => $preCadastroId]);
+    $header = $stmt->fetch();
+    if (!$header) {
+        api_response(false, ['message' => 'Pre-cadastro nao encontrado.'], 404);
+    }
+
+    $stmt = db()->prepare(
+        "SELECT *
+           FROM pre_cadastro_item
+          WHERE pre_cadastro_id = :id
+          ORDER BY id"
+    );
+    $stmt->execute(['id' => $preCadastroId]);
+    $items = $stmt->fetchAll();
+
+    $productsByItem = [];
+    if ($items) {
+        $itemIds = array_map(static fn(array $item): int => (int) $item['id'], $items);
+        $placeholders = implode(',', array_fill(0, count($itemIds), '?'));
+        $stmt = db()->prepare(
+            "SELECT *
+               FROM pre_cadastro_item_pro
+              WHERE pre_cadastro_item_id IN ($placeholders)
+              ORDER BY id"
+        );
+        $stmt->execute($itemIds);
+        foreach ($stmt->fetchAll() as $product) {
+            $productsByItem[(int) $product['pre_cadastro_item_id']][] = $product;
+        }
+    }
+
+    return ['header' => $header, 'items' => $items, 'products_by_item' => $productsByItem];
+}
+
+function pc_consolidar_pre_cadastro(int $preCadastroId): array
+{
+    if ($preCadastroId <= 0) {
+        api_response(false, ['message' => 'Informe o pre-cadastro.'], 422);
+    }
+
+    $created = ['produtos_cab' => 0, 'produtos_cab_grade' => 0];
+    db()->beginTransaction();
+    try {
+        $loaded = pc_load_consolidacao_data($preCadastroId);
+        $header = $loaded['header'];
+        $items = $loaded['items'];
+        $productsByItem = $loaded['products_by_item'];
+        $errors = pc_validate_consolidacao($header, $items, $productsByItem);
+        if ($errors) {
+            db()->rollBack();
+            api_response(false, ['message' => 'Corrija as inconsistencias antes de consolidar.', 'errors' => $errors], 422);
+        }
+
+        $user = current_user();
+        $usuario = pc_cut((string) ($user['login'] ?? $user['nome'] ?? 'sistema'), 0, 30);
+        $now = date('Y-m-d H:i:s');
+
+        $cabStmt = db()->prepare(
+            "INSERT INTO produtos_cab
+                (Referencia, Fornecedor, CodFornecedor, CodFornecedorR3, Categoria, Grupo, GrupoCategoria,
+                 Colecao, Linha, Composicao, Caracteristica, Genero, Descricao, DescricaoComplementar,
+                 Unidade, Cor, Tamanho, NCM, CST_ICMS, Origem, AliquotaICMS, ReducaoICMS, CST_PIS,
+                 AliquotaPIS, CST_COFINS, AliquotaCOFINS, CST_IPI, AliquotaIPI, CFOP, CFOP_ProducaoProria,
+                 Peso, PrecoCompra, PrecoCompraTabela, PrecoVendaTabela, SetorLaranja, Encomenda,
+                 PrecoCheio, Status, Inclusao, Alteracao, Usuario, Consolidado, Estilo, Foto)
+             VALUES
+                (:Referencia, :Fornecedor, :CodFornecedor, :CodFornecedorR3, :Categoria, :Grupo, :GrupoCategoria,
+                 :Colecao, :Linha, :Composicao, :Caracteristica, :Genero, :Descricao, :DescricaoComplementar,
+                 :Unidade, :Cor, :Tamanho, :NCM, :CST_ICMS, :Origem, :AliquotaICMS, :ReducaoICMS, :CST_PIS,
+                 :AliquotaPIS, :CST_COFINS, :AliquotaCOFINS, :CST_IPI, :AliquotaIPI, :CFOP, :CFOP_ProducaoProria,
+                 :Peso, :PrecoCompra, :PrecoCompraTabela, :PrecoVendaTabela, :SetorLaranja, :Encomenda,
+                 :PrecoCheio, :Status, :Inclusao, :Alteracao, :Usuario, :Consolidado, :Estilo, :Foto)"
+        );
+        $gradeStmt = db()->prepare(
+            "INSERT INTO produtos_cab_grade
+                (Referencia, Distribuidora, GTIN, Linha, Colecao, Grupo, GrupoCategoria, Composicao,
+                 Caracteristica, Descricao, DescricaoComplementar, Unidade, Cor, Genero, Fornecedor,
+                 CodFornecedor, CodFornecedorR3, Categoria, Tamanho, NCM, CST_ICMS, Origem,
+                 AliquotaICMS, ReducaoICMS, CST_PIS, AliquotaPIS, CST_COFINS, AliquotaCOFINS,
+                 CST_IPI, AliquotaIPI, CFOP, CFOP_ProducaoProria, Peso, PrecoVendaTabela,
+                 PrecoCompraTabela, PrecoCompra, SetorLaranja, Encomenda, PrecoCheio, LocalFisico,
+                 Status, Inclusao, Alteracao, Usuario, Consolidado, CodigoAlternativo, Estilo, Foto)
+             VALUES
+                (:Referencia, :Distribuidora, :GTIN, :Linha, :Colecao, :Grupo, :GrupoCategoria, :Composicao,
+                 :Caracteristica, :Descricao, :DescricaoComplementar, :Unidade, :Cor, :Genero, :Fornecedor,
+                 :CodFornecedor, :CodFornecedorR3, :Categoria, :Tamanho, :NCM, :CST_ICMS, :Origem,
+                 :AliquotaICMS, :ReducaoICMS, :CST_PIS, :AliquotaPIS, :CST_COFINS, :AliquotaCOFINS,
+                 :CST_IPI, :AliquotaIPI, :CFOP, :CFOP_ProducaoProria, :Peso, :PrecoVendaTabela,
+                 :PrecoCompraTabela, :PrecoCompra, :SetorLaranja, :Encomenda, :PrecoCheio, :LocalFisico,
+                 :Status, :Inclusao, :Alteracao, :Usuario, :Consolidado, :CodigoAlternativo, :Estilo, :Foto)"
+        );
+
+        foreach ($items as $item) {
+            $products = $productsByItem[(int) $item['id']] ?? [];
+            $cores = array_values(array_unique(array_map(static fn(array $product): string => pc_trim($product['cor'] ?? ''), $products)));
+            $tamanhos = array_values(array_unique(array_map(static fn(array $product): string => pc_trim($product['tamanho'] ?? ''), $products)));
+            $base = [
+                'Referencia' => pc_trim($item['referencia_master']),
+                'Fornecedor' => pc_trim($item['r1']),
+                'CodFornecedor' => pc_trim($item['codigo_fornecdor']),
+                'CodFornecedorR3' => pc_trim($item['r3']),
+                'Categoria' => pc_trim($item['r2']),
+                'Grupo' => pc_trim($item['Grupo']),
+                'GrupoCategoria' => pc_trim($item['grupo_categoria']),
+                'Colecao' => (int) $item['colecao_id'],
+                'Linha' => (int) $item['linha'],
+                'Composicao' => (int) $item['composicao_id'],
+                'Caracteristica' => (int) $item['caracteristica_id'],
+                'Genero' => (int) $item['genero_id'],
+                'Descricao' => pc_trim($item['descricao']),
+                'DescricaoComplementar' => pc_trim($item['descricao_complementar'] ?? ''),
+                'Unidade' => pc_trim($item['Unidade']),
+                'NCM' => pc_trim($item['ncm']),
+                'CST_ICMS' => pc_trim($item['cst_icms']),
+                'Origem' => pc_trim($item['origem']),
+                'AliquotaICMS' => pc_decimal($item['aliquota_icms'] ?? 0),
+                'ReducaoICMS' => pc_decimal($item['reducao_icms'] ?? 0),
+                'CST_PIS' => pc_trim($item['cst_pis']),
+                'AliquotaPIS' => pc_decimal($item['aliquota_pis'] ?? 0),
+                'CST_COFINS' => pc_trim($item['cst_cofins']),
+                'AliquotaCOFINS' => pc_decimal($item['aliquota_cofins'] ?? 0),
+                'CST_IPI' => pc_trim($item['cst_ipi']),
+                'AliquotaIPI' => pc_decimal($item['aliquota_ipi'] ?? 0),
+                'CFOP' => pc_trim($item['cfop']),
+                'CFOP_ProducaoProria' => pc_trim($item['cfop_propria'] ?? ''),
+                'Peso' => pc_decimal($item['peso'] ?? 0),
+                'SetorLaranja' => pc_trim($item['setor_laranja'] ?? 'N') ?: 'N',
+                'Encomenda' => pc_trim($item['encomenda'] ?? 'N') ?: 'N',
+                'PrecoCheio' => pc_trim($item['preco_cheio'] ?? 'N') ?: 'N',
+                'Status' => 'Ativo',
+                'Inclusao' => $now,
+                'Alteracao' => $now,
+                'Usuario' => $usuario,
+                'Consolidado' => 'N',
+                'Estilo' => (int) ($item['estilo'] ?? 0),
+                'Foto' => 0,
+            ];
+
+            $cabStmt->execute($base + [
+                'Cor' => implode(',', array_filter($cores, static fn(string $value): bool => $value !== '')),
+                'Tamanho' => implode(',', array_filter($tamanhos, static fn(string $value): bool => $value !== '')),
+                'PrecoCompra' => pc_decimal($item['preco_compra'] ?? 0),
+                'PrecoCompraTabela' => pc_decimal($item['preco_compra_tabela'] ?? 0),
+                'PrecoVendaTabela' => pc_decimal($item['preco_venda_tabela'] ?? 0),
+            ]);
+            $created['produtos_cab']++;
+
+            foreach ($products as $product) {
+                $gradeStmt->execute($base + [
+                    'Distribuidora' => pc_trim($product['referencia']),
+                    'GTIN' => '',
+                    'Cor' => pc_trim($product['cor']),
+                    'Tamanho' => pc_trim($product['tamanho']),
+                    'PrecoVendaTabela' => pc_decimal($product['preco_varejo'] ?? 0),
+                    'PrecoCompraTabela' => pc_decimal($product['preco_atacado'] ?? 0),
+                    'PrecoCompra' => pc_decimal($product['preco_compra'] ?? 0),
+                    'LocalFisico' => null,
+                    'CodigoAlternativo' => pc_cut(pc_trim($product['sku'] ?? ''), 0, 20),
+                ]);
+                $created['produtos_cab_grade']++;
+            }
+        }
+
+        $stmt = db()->prepare("UPDATE pre_cadastro SET consolidado = 1 WHERE id = :id");
+        $stmt->execute(['id' => $preCadastroId]);
+        db()->commit();
+    } catch (Throwable $e) {
+        if (db()->inTransaction()) {
+            db()->rollBack();
+        }
+        api_response(false, ['message' => 'Nao foi possivel consolidar o pre-cadastro: ' . $e->getMessage()], 500);
+    }
+
+    return $created;
+}
+
+function pc_prepare_pre_cadastro_history_tables(): void
+{
+    pc_ensure_history_table('pre_cadastro', 'pre_cadastro_hst');
+    pc_ensure_history_table('pre_cadastro_item', 'pre_cadastro_item_hst');
+    pc_ensure_history_table('pre_cadastro_item_pro', 'pre_cadastro_item_pro_hst');
+}
+
+function pc_insert_history_header(int $preCadastroId): int
+{
+    $columns = pc_common_columns('pre_cadastro', 'pre_cadastro_hst');
+    $columnList = pc_column_list($columns);
+    $stmt = db()->prepare(
+        "INSERT INTO pre_cadastro_hst ($columnList)
+         SELECT $columnList
+           FROM pre_cadastro
+          WHERE id = :id"
+    );
+    $stmt->execute(['id' => $preCadastroId]);
+    return $stmt->rowCount();
+}
+
+function pc_insert_history_items(int $preCadastroId): int
+{
+    $columns = pc_common_columns('pre_cadastro_item', 'pre_cadastro_item_hst');
+    $columnList = pc_column_list($columns);
+    $stmt = db()->prepare(
+        "INSERT INTO pre_cadastro_item_hst ($columnList)
+         SELECT $columnList
+           FROM pre_cadastro_item
+          WHERE pre_cadastro_id = :id"
+    );
+    $stmt->execute(['id' => $preCadastroId]);
+    return $stmt->rowCount();
+}
+
+function pc_insert_history_products(int $preCadastroId): int
+{
+    $columns = pc_common_columns('pre_cadastro_item_pro', 'pre_cadastro_item_pro_hst');
+    $selectColumns = implode(', ', array_map(static fn(string $column): string => "pro.`$column`", $columns));
+    $stmt = db()->prepare(
+        "INSERT INTO pre_cadastro_item_pro_hst (" . pc_column_list($columns) . ")
+         SELECT $selectColumns
+           FROM pre_cadastro_item_pro pro
+           INNER JOIN pre_cadastro_item item ON item.id = pro.pre_cadastro_item_id
+          WHERE item.pre_cadastro_id = :id"
+    );
+    $stmt->execute(['id' => $preCadastroId]);
+    return $stmt->rowCount();
+}
+
+function pc_mover_pre_cadastro_historico(int $preCadastroId): array
+{
+    if ($preCadastroId <= 0) {
+        api_response(false, ['message' => 'Informe o pre-cadastro.'], 422);
+    }
+
+    pc_prepare_pre_cadastro_history_tables();
+
+    $moved = ['pre_cadastro' => 0, 'items' => 0, 'products' => 0];
+    db()->beginTransaction();
+    try {
+        $stmt = db()->prepare("SELECT id FROM pre_cadastro WHERE id = :id LIMIT 1 FOR UPDATE");
+        $stmt->execute(['id' => $preCadastroId]);
+        if (!$stmt->fetchColumn()) {
+            db()->rollBack();
+            api_response(false, ['message' => 'Pre-cadastro nao encontrado.'], 404);
+        }
+
+        $moved['products'] = pc_insert_history_products($preCadastroId);
+        $moved['items'] = pc_insert_history_items($preCadastroId);
+        $moved['pre_cadastro'] = pc_insert_history_header($preCadastroId);
+
+        if ($moved['pre_cadastro'] !== 1) {
+            db()->rollBack();
+            api_response(false, ['message' => 'Nao foi possivel mover o cabecalho para o historico.'], 500);
+        }
+
+        $stmt = db()->prepare("DELETE FROM pre_cadastro WHERE id = :id");
+        $stmt->execute(['id' => $preCadastroId]);
+        db()->commit();
+    } catch (Throwable $e) {
+        if (db()->inTransaction()) {
+            db()->rollBack();
+        }
+        api_response(false, ['message' => 'Nao foi possivel mover para o historico: ' . $e->getMessage()], 500);
+    }
+
+    return $moved;
+}
+
 try {
     if ($action === 'options') {
         pc_domain_options(
@@ -1081,6 +1545,14 @@ try {
         }
         $created = pc_update_all((int) ($data['id'] ?? 0), $groups);
         api_response(true, ['message' => 'Pre-cadastro atualizado com sucesso.', 'created' => $created]);
+    }
+    if ($action === 'consolidate') {
+        $created = pc_consolidar_pre_cadastro((int) ($data['id'] ?? 0));
+        api_response(true, ['message' => 'Pre-cadastro consolidado com sucesso.', 'created' => $created]);
+    }
+    if ($action === 'history') {
+        $moved = pc_mover_pre_cadastro_historico((int) ($data['id'] ?? 0));
+        api_response(true, ['message' => 'Pre-cadastro movido para o historico.', 'moved' => $moved]);
     }
     api_response(false, ['message' => 'Acao invalida.'], 404);
 } catch (Throwable $e) {

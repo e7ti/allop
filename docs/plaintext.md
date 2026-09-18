@@ -4,9 +4,9 @@
 **Atencao:** nao usar `D:\E7TI\PHP\appf` para demandas do Allop.
 
 **Documento-base:** 01/06/2026  
-**Ultima revisao documental:** 17/09/2026  
-**Ultima revisao conferida do codigo:** 17/09/2026  
-**Ultima revisao conferida do `banco.sql`:** 17/09/2026  
+**Ultima revisao documental:** 18/09/2026
+**Ultima revisao conferida do codigo:** 18/09/2026
+**Ultima revisao conferida do `banco.sql`:** 18/09/2026
 **Ultima revisao conferida do `banco_fotos.sql`:** 19/06/2026  
 **Escopo conferido:** aplicacao PHP, APIs, telas, assets, seed, banco principal, banco de fotos e documentacao existente.
 
@@ -196,10 +196,11 @@ Configuracoes de e-mail:
 | --- | --- |
 | `mod/compras/cp_compras_lista.php` | Pesquisa e lista pedidos de compra. |
 | `mod/compras/cp_compras_form.php` | Cabecalho, itens, tamanhos, cores, rateio, fotos, logs e workflow. |
-| `mod/compras/pre_cadastro_produtos_lista.php` | Seleciona pedido de compra, gera a pre-visualizacao do pre-cadastro e permite completar dados obrigatorios. |
+| `mod/compras/pre_cadastro_produtos_lista.php` | Lista pre-cadastros, mostra status de consolidacao/compra e expoe acoes de novo, editar, consolidar, gerar compra e historico. |
+| `mod/compras/pre_cadastro_produtos_form.php` | Seleciona pedido de compra, gera a pre-visualizacao do pre-cadastro, permite completar dados obrigatorios e editar pre-cadastros ainda nao consolidados. |
 | `api/compras/cp_compras.php` | API principal de compras. |
 | `api/compras/cp_compras_pdf.php` | Gera PDF completo do pedido em A4 paisagem. |
-| `api/compras/pre_cadastro_produtos.php` | API para preview, Select2 e gravacao do pre-cadastro de produtos. |
+| `api/compras/pre_cadastro_produtos.php` | API para lista, preview, Select2, gravacao, edicao, consolidacao e historico do pre-cadastro de produtos. |
 
 #### Acoes da API de Compras
 
@@ -223,24 +224,54 @@ Configuracoes de e-mail:
 
 #### Pre Cadastro Produtos
 
-`mod/compras/pre_cadastro_produtos_lista.php` usa a rota cadastrada no menu Compras pelo seed. A tela permite selecionar um pedido aprovado via Select2, carregar a hierarquia ativa de compras e montar os dados que serao gravados em `pre_cadastro`, `pre_cadastro_item` e `pre_cadastro_item_pro`.
+`mod/compras/pre_cadastro_produtos_lista.php` usa a rota cadastrada no menu Compras pelo seed. A tela lista os pre-cadastros ja gerados, exibe fornecedor e categoria com codigo e nome, destaca o status de consolidacao e disponibiliza as acoes conforme o estado do registro.
+
+`mod/compras/pre_cadastro_produtos_form.php` e a tela de inclusao/edicao. Ela permite selecionar um pedido aprovado via Select2, carregar a hierarquia ativa de compras e montar os dados que serao gravados em `pre_cadastro`, `pre_cadastro_item` e `pre_cadastro_item_pro`.
 
 Regras atuais:
 
-- somente pedidos com `status_id = 2` (`Aprovado`) entram na pesquisa e podem gerar pre-cadastro;
+- somente pedidos com `status_id = 2` (`Aprovado`) e ainda nao vinculados a `pre_cadastro.cp_compras_id` entram na pesquisa para novo pre-cadastro;
 - `pre_cadastro` agrupa por pedido, categoria do item e data de entrega efetiva do tamanho ou do item;
 - campos vindos do pedido e dos itens de compra sao preenchidos automaticamente quando existem;
+- a colecao pode ser carregada de `pf_colecao` usando o SKU e o fornecedor;
 - a descricao do item e ajustada em `descricao` com ate 50 caracteres e `descricao_complementar` com o restante usado pela tela;
-- `r3` inicia em branco e deve ser informado pelo usuario antes de gravar;
+- `r3` inicia em branco em novos registros, recebe foco ao clicar no item e deve ser informado pelo usuario antes de gravar;
 - `r3` aceita apenas 4 numeros;
 - `referencia_master` e `referencia` sao calculadas na tela a partir de `r1`, `r2`, `r3`, tamanho e cor;
+- `Grupo` usa pesquisa distinta e `Grupo/Categoria` e filtrado pelo grupo selecionado;
+- `Composicao` e `Caracteristica` usam o codigo de `Grupo/Categoria` para buscar opcoes em `produtos_categoria_composicao` e `produtos_categoria_caracteristicas`;
 - quando a tabela `cp_depara_cor` existe, a API usa o de/para entre cor do fornecedor e `produtos_cor.Codigo` para sugerir a cor KidStok;
 - tamanho e cor tambem podem ser selecionados por Select2 a partir de `produtos_tamanho` e `produtos_cor`;
 - campos sem origem em compras e campos com relacionamento usam Select2 remoto na propria API;
 - os campos `setor_laranja` e `preco_cheio` usam toggles Sim/Nao por item, tamanho ou cor;
+- quando `preco_cheio` e Sim, o Atacado acompanha o Varejo; o valor anterior do Atacado fica preservado para restauracao ao voltar para Nao;
 - campos tributarios obrigatorios incluem `cfop`, `cfop_propria`, `cst_icms`, `cst_pis`, `cst_cofins` e `cst_ipi`;
-- a gravacao valida campos obrigatorios, pedido aprovado, categoria, R2, R3, tamanho, cor, NCM e duplicidade de referencia antes de inserir;
+- a gravacao valida campos obrigatorios, pedido aprovado, categoria, R2, R3, tamanho, cor, NCM, duplicidade de referencia e existencia de `referencia_master` em `produtos_cab` antes de inserir ou alterar;
+- `estilo` e `origem` sao persistidos quando informados na tela;
 - a gravacao usa transacao unica no banco principal e faz rollback em erro.
+- a edicao abre os itens recolhidos e nao permite salvar quando `pre_cadastro.consolidado = 1`;
+- apos consolidar, o pre-cadastro fica bloqueado para edicao.
+
+Acoes de `api/compras/pre_cadastro_produtos.php`:
+
+| Acao | Comportamento |
+| --- | --- |
+| `options` | Pesquisa opcoes remotas de pedido, fornecedor, categoria, grupo, composicao, caracteristica, genero, estilo, origem, tributacao, tamanho, cor e demais relacionamentos da tela. |
+| `preview` | Carrega os dados do pedido aprovado e monta a estrutura inicial de pre-cadastro. |
+| `get` | Carrega um pre-cadastro existente com cabecalho, itens, tamanhos, cores e status de consolidacao. |
+| `save` | Insere `pre_cadastro`, `pre_cadastro_item` e `pre_cadastro_item_pro`. |
+| `update` | Atualiza um pre-cadastro ainda nao consolidado, recriando os filhos dentro da transacao. |
+| `consolidate` | Gera `produtos_cab` a partir de `pre_cadastro_item`, gera `produtos_cab_grade` a partir de `pre_cadastro_item_pro` usando campos do item, grava `Consolidado = 'N'` nos produtos gerados e marca `pre_cadastro.consolidado = 1`. |
+| `history` | Move registros consolidados para `pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst`, criando ou alinhando colunas historicas antes da copia. |
+
+Regras da listagem:
+
+- `consolidado = 0` aparece como `Nao consolidado` em cor de alerta e exibe `Consolidar` e `Editar`;
+- `consolidado = 1` aparece como `Consolidado` em verde e nao permite edicao;
+- o botao `Gerar compra` aparece apenas quando `consolidado = 1` e `compra = 0`; por enquanto, ele e apenas visual e possui tooltip `Gera Pedido de Compra`;
+- o botao `Historico` aparece apenas quando `consolidado = 1` e possui tooltip `Move pre cadastro para historico`;
+- o processo de gerar compra ainda nao esta implementado;
+- `pre_cadastro_item.compra_nro` guarda o numero do pedido de compra quando o processo de compra for implementado.
 
 #### Estrutura Funcional do Pedido
 
@@ -469,6 +500,8 @@ Triggers relevantes para compras:
 
 Essas triggers gravam snapshots em tabelas de log usando os dados antigos (`OLD`) e consultam `Iteracao`/`Localizacao` no pedido.
 
+As tabelas de historico do pre-cadastro (`pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst`) sao criadas ou alinhadas pelo seed e pela API antes do processo de mover para historico.
+
 ### 8.2 Banco de Fotos
 
 `config/database.php` aponta o banco de fotos para `allop_devel_fotos`.
@@ -495,6 +528,8 @@ As tabelas tem estrutura equivalente para armazenar fotos em Base64, com campos 
 - cria o usuario `admin` apenas se ele ainda nao existir;
 - cria tabelas auxiliares com `CREATE TABLE IF NOT EXISTS`;
 - cria ou ajusta estruturas ligadas a `config_email`, `urls_allop` e compras;
+- garante `pre_cadastro.consolidado`, `pre_cadastro.compra` e `pre_cadastro_item.compra_nro`;
+- cria ou alinha `pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst` com as tabelas origem;
 - recria triggers de log de compras com `DROP TRIGGER IF EXISTS` + `CREATE TRIGGER`;
 - imprime `Seed executado com sucesso.`.
 
@@ -509,7 +544,7 @@ Aplicacoes registradas pelo seed:
 - Empresas;
 - E-mail;
 - Pedidos de Compra.
-- Pré Cadastro Produtos.
+- Pre Cadastro Produtos.
 
 O seed e parcialmente idempotente, mas executa DDL e altera dados de menu/permissoes. Deve ser usado com backup e consciencia do ambiente.
 
@@ -582,7 +617,7 @@ Banco:
 | Menu | `menu_items()`, `menu_icon()`, `.menu-main-link`, `.menu-svg` | Menu por perfil com icones SVG inline. |
 | Cards | `.card-slim`, `.dashboard-tile`, `.dashboard-chart-card` | Formularios, dashboards e paineis. |
 | Grids | `.table-custom`, `.grid-shell`, `.grid-filter`, `.filter-inline` | Listagens responsivas em linhas-card, com espacamento entre linhas e hover destacado. |
-| Botoes | `.btn-new`, `.btn-save`, `.btn-sync`, `.btn-edit`, `.btn-view`, `.btn-delete`, `.btn-print`, `.btn-photo`, `.btn-manage-photos`, `.btn-filter`, `.btn-back` | Acoes padronizadas com icones por CSS. |
+| Botoes | `.btn-new`, `.btn-save`, `.btn-sync`, `.btn-edit`, `.btn-view`, `.btn-delete`, `.btn-print`, `.btn-photo`, `.btn-manage-photos`, `.btn-filter`, `.btn-back`, `.btn-consolidate`, `.btn-generate-purchase`, `.btn-history` | Acoes padronizadas com icones por CSS. |
 | Alertas | `appAlert()`, `appOkAlert()`, `appConfirm()` | Mensagens e confirmacao via Bootstrap Modal/Alert. |
 | Salvamento | `setFormSaving()` | Bloqueia botao e mostra processamento. |
 | Status | `.badge-status-*`, `.cp-localizacao-badge`, `.dashboard-grid-badge` | Badges de status, localizacao e publicacao. |
@@ -591,7 +626,7 @@ Banco:
 | Fotos | `#cp-fotos-modal`, `.cp-item-fotos-panels`, `.cp-foto-dropzone`, `.cp-fotos-grid`, `.cp-foto-card`, `.cp-foto-preview-img` | Paineis de fotos, upload, exclusao e preview de imagens. |
 | Log de cor | `#cp-cor-log-modal`, `.cp-preco-alterado-*`, `.btn-price-log` | Comparacao de preco com ultimo log. |
 | Login | `.login-page`, `.login-shell`, `.login-card`, `.login-showcase` | Tela de acesso com logos e alternancia de visibilidade da senha. |
-| Pre-cadastro | `.pre-cadastro-ref-badges`, `.pre-cadastro-metric-badges`, `.pre-cadastro-toggle`, `.pre-cadastro-tamanhos-accordion` | Badges de referencias e metricas, toggles Sim/Nao, accordions de itens/tamanhos e grade de produtos gerados. |
+| Pre-cadastro | `.pre-cadastro-ref-badges`, `.pre-cadastro-metric-badges`, `.pre-cadastro-toggle`, `.pre-cadastro-tamanhos-accordion`, `.btn-pre-cadastro-consolidar`, `.btn-pre-cadastro-historico` | Badges de referencias e metricas, toggles Sim/Nao, accordions de itens/tamanhos, grade de produtos gerados e acoes da listagem. |
 
 ## 12. Pontos de Atencao Conhecidos
 

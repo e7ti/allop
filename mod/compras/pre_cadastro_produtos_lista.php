@@ -27,6 +27,7 @@ $erro = '';
 
 try {
     $consolidadoSelect = pc_lista_column_exists('pre_cadastro', 'consolidado') ? 'pc.consolidado' : '0 AS consolidado';
+    $compraSelect = pc_lista_column_exists('pre_cadastro', 'compra') ? 'pc.compra' : '0 AS compra';
     $stmt = db()->query(
         "SELECT pc.id,
                 pc.cp_compras_id,
@@ -37,14 +38,18 @@ try {
                 pc.Tamanhos,
                 pc.Cores,
                 pc.valor_total,
+                pc.fornecedor_id,
                 $consolidadoSelect,
+                $compraSelect,
                 cd.NomeCD AS cd_nome,
                 COALESCE(NULLIF(e.Fantasia, ''), e.Nome) AS empresa_nome,
-                COALESCE(NULLIF(f.NomeFornecedor, ''), pc.fornecedor_id) AS fornecedor_nome
+                COALESCE(NULLIF(f.NomeFornecedor, ''), pc.fornecedor_id) AS fornecedor_nome,
+                COALESCE(NULLIF(cat.TipoProduto, ''), pc.Categoria) AS categoria_nome
            FROM pre_cadastro pc
            LEFT JOIN empresas_cd cd ON cd.Codigo = pc.cd_id
            LEFT JOIN empresas e ON e.Codigo = pc.empresa_id
            LEFT JOIN produtos_fornecedor f ON f.Codigo = pc.fornecedor_id
+           LEFT JOIN produtos_categorias cat ON cat.Codigo = pc.Categoria
           ORDER BY pc.id DESC
           LIMIT 200"
     );
@@ -85,7 +90,7 @@ render_header('Pre Cadastro Produtos', [
                             <th class="text-end">Qtde</th>
                             <th class="text-end">Valor</th>
                             <th>Status</th>
-                            <th class="text-end">Acoes</th>
+                            <th class="text-end">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -95,8 +100,8 @@ render_header('Pre Cadastro Produtos', [
                                 <td data-label="Pedido"><?= h($row['cp_compras_id']) ?></td>
                                 <td data-label="CD"><?= h($row['cd_nome'] ?? '') ?></td>
                                 <td data-label="Empresa"><?= h($row['empresa_nome'] ?? '') ?></td>
-                                <td data-label="Fornecedor"><?= h($row['fornecedor_nome'] ?? '') ?></td>
-                                <td data-label="Categoria"><?= h($row['Categoria'] ?? '') ?></td>
+                                <td data-label="Fornecedor"><?= h(trim((string) ($row['fornecedor_id'] ?? '') . ' - ' . (string) ($row['fornecedor_nome'] ?? ''), ' -')) ?></td>
+                                <td data-label="Categoria"><?= h(trim((string) ($row['Categoria'] ?? '') . ' - ' . (string) ($row['categoria_nome'] ?? ''), ' -')) ?></td>
                                 <td data-label="Entrega"><?= h($row['data_entrega'] ? date('d/m/Y', strtotime((string) $row['data_entrega'])) : '') ?></td>
                                 <td data-label="Itens" class="text-end"><?= h($row['Itens']) ?></td>
                                 <td data-label="Tamanhos" class="text-end"><?= h($row['Tamanhos']) ?></td>
@@ -110,11 +115,18 @@ render_header('Pre Cadastro Produtos', [
                                         <span class="badge bg-warning text-dark">Nao consolidado</span>
                                     <?php endif; ?>
                                 </td>
-                                <td data-label="Acoes" class="text-end">
+                                <td data-label="Ações" class="text-end">
                                     <?php if ((int) ($row['consolidado'] ?? 0) === 0): ?>
-                                        <button class="btn btn-sm btn-warning text-dark btn-consolidate" type="button">Consolidar</button>
+                                        <button class="btn btn-sm btn-warning text-dark btn-consolidate btn-pre-cadastro-consolidar" type="button" data-id="<?= h($row['id']) ?>">Consolidar</button>
+                                        <a class="btn btn-sm btn-edit" href="pre_cadastro_produtos_form.php?id=<?= h($row['id']) ?>">Editar</a>
+                                    <?php elseif ((int) ($row['compra'] ?? 0) === 0): ?>
+                                        <button class="btn btn-sm btn-orange btn-generate-purchase" type="button" data-id="<?= h($row['id']) ?>" data-bs-toggle="tooltip" title="Gera Pedido de Compra">Gerar compra</button>
+                                    <?php else: ?>
+                                        <span class="text-muted small">Compra gerada</span>
                                     <?php endif; ?>
-                                    <a class="btn btn-sm btn-edit" href="pre_cadastro_produtos_form.php?id=<?= h($row['id']) ?>">Editar</a>
+                                    <?php if ((int) ($row['consolidado'] ?? 0) === 1): ?>
+                                        <button class="btn btn-sm btn-outline-secondary btn-history btn-pre-cadastro-historico" type="button" data-id="<?= h($row['id']) ?>" data-bs-toggle="tooltip" title="Move pre cadastro para historico">Histórico</button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -124,4 +136,9 @@ render_header('Pre Cadastro Produtos', [
         <?php endif; ?>
     </div>
 </section>
+<script>
+window.preCadastroProdutosListaConfig = {
+    api: '../../api/compras/pre_cadastro_produtos.php'
+};
+</script>
 <?php render_footer(); ?>

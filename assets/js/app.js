@@ -84,6 +84,12 @@
         initPreCadastroProdutos();
     }
 
+    if (window.preCadastroProdutosListaConfig) {
+        initPreCadastroProdutosLista();
+    }
+
+    initBootstrapTooltips();
+
     const $form = $('#entity-form');
     if ($form.length) {
         const id = Number($form.data('id'));
@@ -96,6 +102,12 @@
         });
     }
 });
+
+function initBootstrapTooltips() {
+    $('[data-bs-toggle="tooltip"]').each(function () {
+        bootstrap.Tooltip.getOrCreateInstance(this);
+    });
+}
 
 function appAlert(message, type) {
     if (window.cpComprasFormConfig && $('#cp-compras-form').length) {
@@ -1261,6 +1273,57 @@ function initPreCadastroProdutos() {
     }
 }
 
+function initPreCadastroProdutosLista() {
+    $('.btn-pre-cadastro-consolidar').on('click', function () {
+        const $button = $(this);
+        const id = Number($button.data('id') || 0);
+        if (id <= 0) {
+            appOkAlert('Pre-cadastro invalido.', appAlertTitle('warning'));
+            return;
+        }
+        appConfirm('Consolidar este pre-cadastro e gerar os produtos?', function () {
+            $button.prop('disabled', true).text('Consolidando...');
+            $.post(window.preCadastroProdutosListaConfig.api + '?action=consolidate', { id: id }, function (response) {
+                const created = response.created || {};
+                appOkAlert((response.message || 'Pre-cadastro consolidado.') +
+                    '\nProdutos: ' + (created.produtos_cab || 0) +
+                    '\nGrade: ' + (created.produtos_cab_grade || 0), 'Pre Cadastro Produtos', function () {
+                    window.location.reload();
+                });
+            }, 'json').fail(function (xhr) {
+                const errors = xhr.responseJSON?.errors || [];
+                appOkAlert((xhr.responseJSON?.message || 'Nao foi possivel consolidar o pre-cadastro.') +
+                    (errors.length ? '\n' + errors.slice(0, 12).join('\n') : ''), appAlertTitle('danger'));
+                $button.prop('disabled', false).text('Consolidar');
+            });
+        }, 'Consolidar Pre Cadastro');
+    });
+
+    $('.btn-pre-cadastro-historico').on('click', function () {
+        const $button = $(this);
+        const id = Number($button.data('id') || 0);
+        if (id <= 0) {
+            appOkAlert('Pre-cadastro invalido.', appAlertTitle('warning'));
+            return;
+        }
+        appConfirm('Mover este pre-cadastro para o historico?', function () {
+            $button.prop('disabled', true).text('Movendo...');
+            $.post(window.preCadastroProdutosListaConfig.api + '?action=history', { id: id }, function (response) {
+                const moved = response.moved || {};
+                appOkAlert((response.message || 'Pre-cadastro movido para o historico.') +
+                    '\nCabeçalhos: ' + (moved.pre_cadastro || 0) +
+                    '\nItens: ' + (moved.items || 0) +
+                    '\nProdutos: ' + (moved.products || 0), 'Pre Cadastro Produtos', function () {
+                    window.location.reload();
+                });
+            }, 'json').fail(function (xhr) {
+                appOkAlert(xhr.responseJSON?.message || 'Nao foi possivel mover para o historico.', appAlertTitle('danger'));
+                $button.prop('disabled', false).text('Histórico');
+            });
+        }, 'Histórico Pre Cadastro');
+    });
+}
+
 function preparePreCadastroEditToolbar() {
     $('#pre-cadastro-pedido').closest('.col-12').addClass('d-none');
     $('#btn-pre-cadastro-preview').addClass('d-none');
@@ -1275,9 +1338,28 @@ function loadPreCadastroEdit(id) {
     }).done(function (response) {
         preCadastroGroups = response.groups || [];
         renderPreCadastroPreview(response);
+        if (preCadastroIsConsolidado()) {
+            setPreCadastroReadOnly();
+            appAlert('Pre-cadastro consolidado nao pode ser editado.', 'warning');
+            return;
+        }
         $('#btn-pre-cadastro-save').prop('disabled', preCadastroGroups.length === 0);
     }).fail(function (xhr) {
         appAlert(xhr.responseJSON?.message || 'Não foi possível carregar o pré-cadastro.', 'danger');
+    });
+}
+
+function preCadastroIsConsolidado() {
+    return preCadastroGroups.some(function (group) {
+        return Number(group.consolidado || 0) === 1;
+    });
+}
+
+function setPreCadastroReadOnly() {
+    $('#btn-pre-cadastro-save').addClass('d-none').prop('disabled', true);
+    $('.pre-cadastro-field, .pre-cadastro-toggle-input').prop('disabled', true);
+    $('.pre-cadastro-select').each(function () {
+        $(this).prop('disabled', true).trigger('change.select2');
     });
 }
 
@@ -1746,9 +1828,10 @@ function updatePreCadastroField($field, event) {
     if (productIndexRaw !== undefined) {
         const product = item.products[Number(productIndexRaw)];
         if (product) {
+            const previousValue = product[field];
             product[field] = value;
             if ($field.hasClass('pre-cadastro-select')) {
-                product[field + '_text'] = event.type === 'select2:select' && event.params?.data?.text ? event.params.data.text : '';
+                product[field + '_text'] = preCadastroSelectText($field, event, previousValue ? product[field + '_text'] : '');
             }
             if (field === 'preco_cheio') {
                 applyPreCadastroPrecoCheio(product, value);
@@ -1756,9 +1839,10 @@ function updatePreCadastroField($field, event) {
             }
         }
     } else {
+        const previousValue = item[field];
         item[field] = value;
         if ($field.hasClass('pre-cadastro-select')) {
-            item[field + '_text'] = event.type === 'select2:select' && event.params?.data?.text ? event.params.data.text : '';
+            item[field + '_text'] = preCadastroSelectText($field, event, previousValue ? item[field + '_text'] : '');
         }
         if (field === 'r2') {
             if (!String(group.Categoria || '').trim()) {
@@ -1767,10 +1851,11 @@ function updatePreCadastroField($field, event) {
             }
             $('.pre-cadastro-ref-badge [data-ref-field="r2"][data-group-index="' + $field.data('group-index') + '"][data-item-index="' + $field.data('item-index') + '"]').text(value || '-');
         }
-        if (field === 'Grupo') {
+        const changedByUser = event.type !== 'sync' && String(previousValue || '') !== String(value || '');
+        if (field === 'Grupo' && changedByUser) {
             resetPreCadastroSubgrupo($field, item);
         }
-        if (field === 'grupo_categoria') {
+        if (field === 'grupo_categoria' && changedByUser) {
             resetPreCadastroCategoriaDependents($field, item);
         }
         if (field === 'setor_laranja' || field === 'preco_cheio') {
@@ -1808,6 +1893,17 @@ function updatePreCadastroField($field, event) {
         }
     }
     recalcPreCadastroReferences();
+}
+
+function preCadastroSelectText($field, event, fallback) {
+    if (event.type === 'select2:clear') {
+        return '';
+    }
+    if (event.type === 'select2:select' && event.params?.data?.text) {
+        return event.params.data.text;
+    }
+    const optionText = $field.find('option:selected').text();
+    return optionText || fallback || '';
 }
 
 function applyPreCadastroPrecoCheio(product, value) {
@@ -1882,6 +1978,12 @@ function recalcPreCadastroReferences() {
 }
 
 function savePreCadastroProdutos() {
+    if (preCadastroIsConsolidado()) {
+        appOkAlert('Pre-cadastro consolidado nao pode ser editado.', appAlertTitle('warning'));
+        setPreCadastroReadOnly();
+        return;
+    }
+
     syncPreCadastroFields();
     const missing = preCadastroMissingFields();
     if (missing.length) {

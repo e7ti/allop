@@ -44,6 +44,54 @@ function ensureColumn(string $table, string $column, string $definition): void
     db()->exec("ALTER TABLE `$table` ADD COLUMN `$column` $definition");
 }
 
+function tableColumns(string $table): array
+{
+    $stmt = db()->prepare(
+        "SELECT COLUMN_NAME, COLUMN_TYPE, IS_NULLABLE, COLUMN_DEFAULT, EXTRA, COLUMN_COMMENT
+           FROM INFORMATION_SCHEMA.COLUMNS
+          WHERE TABLE_SCHEMA = DATABASE()
+            AND TABLE_NAME = :table
+          ORDER BY ORDINAL_POSITION"
+    );
+    $stmt->execute(['table' => $table]);
+    return $stmt->fetchAll();
+}
+
+function columnDefinition(array $column): string
+{
+    $sql = $column['COLUMN_TYPE'];
+    $sql .= ($column['IS_NULLABLE'] ?? 'YES') === 'NO' ? ' NOT NULL' : ' NULL';
+    if ($column['COLUMN_DEFAULT'] !== null) {
+        $sql .= ' DEFAULT ' . db()->quote((string) $column['COLUMN_DEFAULT']);
+    }
+    if (trim((string) ($column['EXTRA'] ?? '')) !== '') {
+        $sql .= ' ' . $column['EXTRA'];
+    }
+    if (trim((string) ($column['COLUMN_COMMENT'] ?? '')) !== '') {
+        $sql .= ' COMMENT ' . db()->quote((string) $column['COLUMN_COMMENT']);
+    }
+    return $sql;
+}
+
+function ensureHistoryTable(string $sourceTable, string $historyTable): void
+{
+    if (!tableExists($sourceTable)) {
+        return;
+    }
+    if (!tableExists($historyTable)) {
+        db()->exec("CREATE TABLE `$historyTable` LIKE `$sourceTable`");
+    }
+
+    $historyColumns = array_flip(array_map(static fn(array $column): string => $column['COLUMN_NAME'], tableColumns($historyTable)));
+    foreach (tableColumns($sourceTable) as $column) {
+        $columnName = $column['COLUMN_NAME'];
+        if (isset($historyColumns[$columnName])) {
+            continue;
+        }
+        db()->exec("ALTER TABLE `$historyTable` ADD COLUMN `$columnName` " . columnDefinition($column));
+    }
+}
+
 function findId(string $table, string $column, string $value): ?int
 {
     $stmt = db()->prepare("SELECT id FROM $table WHERE $column = :value LIMIT 1");
@@ -211,6 +259,12 @@ deleteMenuByName('Sair');
 renameMenuIfExists('Seguranca', 'Segurança');
 
 ensureColumn('pre_cadastro', 'consolidado', "tinyint(1) NOT NULL DEFAULT '0' COMMENT '0 - nao consolidado, 1 - consolidado' AFTER `QtdeCores`");
+ensureColumn('pre_cadastro', 'compra', "tinyint(1) NOT NULL DEFAULT '0' COMMENT '0 - nao gerou compra, 1 - gerou compra' AFTER `consolidado`");
+ensureColumn('pre_cadastro_item', 'compra_nro', "int(11) NOT NULL DEFAULT '0' COMMENT 'Numero do pedido de compra gerado'");
+ensureHistoryTable('pre_cadastro', 'pre_cadastro_hst');
+ensureHistoryTable('pre_cadastro_item', 'pre_cadastro_item_hst');
+ensureHistoryTable('pre_cadastro_item_pro', 'pre_cadastro_item_pro_hst');
+ensureColumn('pre_cadastro_item_hst', 'compra_nro', "int(11) NOT NULL DEFAULT '0' COMMENT 'Numero do pedido de compra gerado' AFTER `cp_compras_itens_id`");
 
 $menuConfiguracoesId = saveMenu('Configurações', 10);
 $menuProdutosId = saveMenu('Produtos', 20);
