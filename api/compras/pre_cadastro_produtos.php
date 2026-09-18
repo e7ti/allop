@@ -164,6 +164,18 @@ function pc_product_master_exists(string $referenciaMaster): bool
     return (int) $stmt->fetchColumn() > 0;
 }
 
+function pc_produto_codigo_por_distribuidora(string $referencia): ?string
+{
+    if ($referencia === '') {
+        return null;
+    }
+
+    $stmt = db()->prepare("SELECT Codigo FROM produtos WHERE Distribuidora = :referencia LIMIT 1");
+    $stmt->execute(['referencia' => $referencia]);
+    $codigo = $stmt->fetchColumn();
+    return $codigo === false ? null : (string) $codigo;
+}
+
 function pc_pre_cadastro_consolidado(int $preCadastroId): bool
 {
     if ($preCadastroId <= 0) {
@@ -1515,6 +1527,190 @@ function pc_mover_pre_cadastro_historico(int $preCadastroId): array
     return $moved;
 }
 
+function pc_next_compra_pedido(int $cd): int
+{
+    $stmt = db()->prepare("SELECT COALESCE(MAX(Pedido), 0) + 1 FROM compras WHERE CD = :cd");
+    $stmt->execute(['cd' => $cd]);
+    return (int) $stmt->fetchColumn();
+}
+
+function pc_validate_generate_purchase(array $header, array $items, array $productsByItem): array
+{
+    $errors = [];
+    if ((int) ($header['consolidado'] ?? 0) !== 1) {
+        $errors[] = 'Pre-cadastro precisa estar consolidado para gerar compra.';
+    }
+    if ((int) ($header['compra'] ?? 0) === 1) {
+        $errors[] = 'Compra ja foi gerada para este pre-cadastro.';
+    }
+    if (!$items) {
+        $errors[] = 'Pre-cadastro sem itens para gerar compra.';
+    }
+
+    foreach ($items as $index => $item) {
+        $prefix = 'Item ' . ($index + 1) . ' (' . pc_trim($item['referencia_fornecedor'] ?? '') . ')';
+        $refMaster = pc_trim($item['referencia_master'] ?? '');
+        if ($refMaster === '') {
+            $errors[] = "$prefix: referencia master nao informada.";
+        }
+        if ((int) ($item['compra_nro'] ?? 0) > 0) {
+            $errors[] = "$prefix: pedido de compra ja gerado.";
+        }
+        $products = $productsByItem[(int) $item['id']] ?? [];
+        if (!$products) {
+            $errors[] = "$prefix: nao possui grade para gerar compra.";
+            continue;
+        }
+        foreach ($products as $productIndex => $product) {
+            $gradePrefix = $prefix . ', grade ' . ($productIndex + 1);
+            $referenciaProduto = pc_trim($product['referencia'] ?? '');
+            if ($referenciaProduto === '') {
+                $errors[] = "$gradePrefix: referencia nao informada.";
+            } elseif (pc_produto_codigo_por_distribuidora($referenciaProduto) === null) {
+                $errors[] = "$gradePrefix: referencia $referenciaProduto nao encontrada em produtos.Distribuidora.";
+            }
+            if (pc_decimal($product['qtde'] ?? 0) <= 0) {
+                $errors[] = "$gradePrefix: quantidade deve ser maior que zero.";
+            }
+            if ((int) ($product['compra_nro'] ?? 0) > 0) {
+                $errors[] = "$gradePrefix: pedido de compra ja gerado.";
+            }
+        }
+    }
+
+    return $errors;
+}
+
+function pc_gerar_compra_pre_cadastro(int $preCadastroId): array
+{
+    if ($preCadastroId <= 0) {
+        api_response(false, ['message' => 'Informe o pre-cadastro.'], 422);
+    }
+
+    $created = ['compras' => 0, 'compras_itens' => 0, 'pedidos' => []];
+    db()->beginTransaction();
+    try {
+        $loaded = pc_load_consolidacao_data($preCadastroId);
+        $header = $loaded['header'];
+        $items = $loaded['items'];
+        $productsByItem = $loaded['products_by_item'];
+        $errors = pc_validate_generate_purchase($header, $items, $productsByItem);
+        if ($errors) {
+            db()->rollBack();
+            api_response(false, ['message' => 'Corrija as inconsistencias antes de gerar compra.', 'errors' => $errors], 422);
+        }
+
+        $user = current_user();
+        $usuario = pc_cut((string) ($user['login'] ?? $user['nome'] ?? 'sistema'), 0, 30);
+        $today = date('Y-m-d');
+        $time = date('H:i:s');
+        $cd = (int) $header['cd_id'];
+        $empresa = (int) $header['empresa_id'];
+        $fornecedor = pc_trim($header['fornecedor_id']);
+        $previsaoEntrega = pc_trim($header['data_entrega'] ?? '') ?: null;
+
+        $compraStmt = db()->prepare(
+            "INSERT INTO compras
+                (CD, Empresa, Pedido, FornecedorCodigo, Referencia, DataPedido, HoraPedido,
+                 PrevisaoEntrega, QtdeTotal, Itens, QtdeEntregue, QtdeSaldo, ValorTotal,
+                 Observacoes, Usuario, Inclusao, Alteracao, Controle)
+             VALUES
+                (:CD, :Empresa, :Pedido, :FornecedorCodigo, :Referencia, :DataPedido, :HoraPedido,
+                 :PrevisaoEntrega, :QtdeTotal, :Itens, 0, :QtdeSaldo, :ValorTotal,
+                 :Observacoes, :Usuario, :Inclusao, :Alteracao, 0)"
+        );
+        $itemStmt = db()->prepare(
+            "INSERT INTO compras_itens
+                (CD, Pedido, Produto, Sequencia, Distribuidora, Referencia, Quantidade,
+                 ValorUnitario, ValorTotal, Entregue, Saldo, PrevisaoEntrega)
+             VALUES
+                (:CD, :Pedido, :Produto, :Sequencia, :Distribuidora, :Referencia, :Quantidade,
+                 :ValorUnitario, :ValorTotal, 0, :Saldo, :PrevisaoEntrega)"
+        );
+        $updateItemStmt = db()->prepare("UPDATE pre_cadastro_item SET compra_nro = :pedido WHERE id = :id");
+        $updateProductStmt = pc_column_exists('pre_cadastro_item_pro', 'compra_nro')
+            ? db()->prepare("UPDATE pre_cadastro_item_pro SET compra_nro = :pedido WHERE id = :id")
+            : null;
+
+        foreach ($items as $item) {
+            $products = $productsByItem[(int) $item['id']] ?? [];
+            $qtdeTotal = 0.0;
+            $valorTotal = 0.0;
+            foreach ($products as $product) {
+                $qtde = pc_decimal($product['qtde'] ?? 0);
+                $valorUnitario = pc_decimal($product['preco_compra'] ?? 0);
+                $qtdeTotal += $qtde;
+                $valorTotal += $qtde * $valorUnitario;
+            }
+
+            $pedido = pc_next_compra_pedido($cd);
+            $referenciaMaster = pc_trim($item['referencia_master']);
+            $compraStmt->execute([
+                'CD' => $cd,
+                'Empresa' => $empresa,
+                'Pedido' => $pedido,
+                'FornecedorCodigo' => $fornecedor,
+                'Referencia' => pc_cut($referenciaMaster, 0, 15),
+                'DataPedido' => $today,
+                'HoraPedido' => $time,
+                'PrevisaoEntrega' => $previsaoEntrega,
+                'QtdeTotal' => $qtdeTotal,
+                'Itens' => count($products),
+                'QtdeSaldo' => $qtdeTotal,
+                'ValorTotal' => round($valorTotal, 2),
+                'Observacoes' => 'Gerado pelo pre-cadastro ' . $preCadastroId . ' a partir do pedido ' . (int) $header['cp_compras_id'] . '.',
+                'Usuario' => $usuario,
+                'Inclusao' => $today,
+                'Alteracao' => $today,
+            ]);
+
+            $sequencia = 1;
+            foreach ($products as $product) {
+                $qtde = pc_decimal($product['qtde'] ?? 0);
+                $valorUnitario = pc_decimal($product['preco_compra'] ?? 0);
+                $referenciaProduto = pc_trim($product['referencia'] ?? '');
+                $produtoCodigo = pc_produto_codigo_por_distribuidora($referenciaProduto);
+                if ($produtoCodigo === null) {
+                    throw new RuntimeException('Referencia ' . $referenciaProduto . ' nao encontrada em produtos.Distribuidora.');
+                }
+                $itemStmt->execute([
+                    'CD' => $cd,
+                    'Pedido' => $pedido,
+                    'Produto' => $produtoCodigo,
+                    'Sequencia' => $sequencia,
+                    'Distribuidora' => pc_cut($referenciaProduto, 0, 15),
+                    'Referencia' => pc_cut($referenciaMaster, 0, 8),
+                    'Quantidade' => $qtde,
+                    'ValorUnitario' => $valorUnitario,
+                    'ValorTotal' => round($qtde * $valorUnitario, 2),
+                    'Saldo' => $qtde,
+                    'PrevisaoEntrega' => $previsaoEntrega,
+                ]);
+                if ($updateProductStmt) {
+                    $updateProductStmt->execute(['pedido' => $pedido, 'id' => (int) $product['id']]);
+                }
+                $created['compras_itens']++;
+                $sequencia++;
+            }
+
+            $updateItemStmt->execute(['pedido' => $pedido, 'id' => (int) $item['id']]);
+            $created['compras']++;
+            $created['pedidos'][] = $pedido;
+        }
+
+        $stmt = db()->prepare("UPDATE pre_cadastro SET compra = 1 WHERE id = :id");
+        $stmt->execute(['id' => $preCadastroId]);
+        db()->commit();
+    } catch (Throwable $e) {
+        if (db()->inTransaction()) {
+            db()->rollBack();
+        }
+        api_response(false, ['message' => 'Nao foi possivel gerar compra: ' . $e->getMessage()], 500);
+    }
+
+    return $created;
+}
+
 try {
     if ($action === 'options') {
         pc_domain_options(
@@ -1553,6 +1749,10 @@ try {
     if ($action === 'history') {
         $moved = pc_mover_pre_cadastro_historico((int) ($data['id'] ?? 0));
         api_response(true, ['message' => 'Pre-cadastro movido para o historico.', 'moved' => $moved]);
+    }
+    if ($action === 'generate_purchase') {
+        $created = pc_gerar_compra_pre_cadastro((int) ($data['id'] ?? 0));
+        api_response(true, ['message' => 'Compra gerada com sucesso.', 'created' => $created]);
     }
     api_response(false, ['message' => 'Acao invalida.'], 404);
 } catch (Throwable $e) {

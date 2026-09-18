@@ -1783,6 +1783,7 @@ CREATE TABLE IF NOT EXISTS `pre_cadastro_item_pro` (
   `preco_compra` double NOT NULL DEFAULT '0' COMMENT 'Preco de Compra',
   `preco_atacado` double NOT NULL DEFAULT '0' COMMENT 'Preco Compra Tabela',
   `preco_varejo` double NOT NULL DEFAULT '0' COMMENT 'Preco Venda Tabela',
+  `compra_nro` int(11) NOT NULL DEFAULT '0' COMMENT 'Numero do pedido de compra gerado',
   PRIMARY KEY (`id`) USING BTREE,
   UNIQUE KEY `IDXReferencia` (`referencia`) USING BTREE,
   KEY `FK_pre_cadastro_item_pro_pre_cadastro_item` (`pre_cadastro_item_id`) USING BTREE,

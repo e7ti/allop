@@ -1322,6 +1322,32 @@ function initPreCadastroProdutosLista() {
             });
         }, 'Histórico Pre Cadastro');
     });
+
+    $('.btn-generate-purchase').on('click', function () {
+        const $button = $(this);
+        const id = Number($button.data('id') || 0);
+        if (id <= 0) {
+            appOkAlert('Pre-cadastro invalido.', appAlertTitle('warning'));
+            return;
+        }
+        appConfirm('Gerar pedido de compra para este pre-cadastro?', function () {
+            $button.prop('disabled', true).text('Gerando...');
+            $.post(window.preCadastroProdutosListaConfig.api + '?action=generate_purchase', { id: id }, function (response) {
+                const created = response.created || {};
+                appOkAlert((response.message || 'Compra gerada com sucesso.') +
+                    '\nPedidos: ' + (created.pedidos || []).join(', ') +
+                    '\nCompras: ' + (created.compras || 0) +
+                    '\nItens: ' + (created.compras_itens || 0), 'Pre Cadastro Produtos', function () {
+                    window.location.reload();
+                });
+            }, 'json').fail(function (xhr) {
+                const errors = xhr.responseJSON?.errors || [];
+                appOkAlert((xhr.responseJSON?.message || 'Nao foi possivel gerar compra.') +
+                    (errors.length ? '\n' + errors.slice(0, 12).join('\n') : ''), appAlertTitle('danger'));
+                $button.prop('disabled', false).text('Gerar compra');
+            });
+        }, 'Gerar Compra');
+    });
 }
 
 function preparePreCadastroEditToolbar() {

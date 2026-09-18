@@ -261,10 +261,12 @@ renameMenuIfExists('Seguranca', 'Segurança');
 ensureColumn('pre_cadastro', 'consolidado', "tinyint(1) NOT NULL DEFAULT '0' COMMENT '0 - nao consolidado, 1 - consolidado' AFTER `QtdeCores`");
 ensureColumn('pre_cadastro', 'compra', "tinyint(1) NOT NULL DEFAULT '0' COMMENT '0 - nao gerou compra, 1 - gerou compra' AFTER `consolidado`");
 ensureColumn('pre_cadastro_item', 'compra_nro', "int(11) NOT NULL DEFAULT '0' COMMENT 'Numero do pedido de compra gerado'");
+ensureColumn('pre_cadastro_item_pro', 'compra_nro', "int(11) NOT NULL DEFAULT '0' COMMENT 'Numero do pedido de compra gerado'");
 ensureHistoryTable('pre_cadastro', 'pre_cadastro_hst');
 ensureHistoryTable('pre_cadastro_item', 'pre_cadastro_item_hst');
 ensureHistoryTable('pre_cadastro_item_pro', 'pre_cadastro_item_pro_hst');
 ensureColumn('pre_cadastro_item_hst', 'compra_nro', "int(11) NOT NULL DEFAULT '0' COMMENT 'Numero do pedido de compra gerado' AFTER `cp_compras_itens_id`");
+ensureColumn('pre_cadastro_item_pro_hst', 'compra_nro', "int(11) NOT NULL DEFAULT '0' COMMENT 'Numero do pedido de compra gerado'");
 
 $menuConfiguracoesId = saveMenu('Configurações', 10);
 $menuProdutosId = saveMenu('Produtos', 20);
