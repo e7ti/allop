@@ -38,7 +38,6 @@ $id = (int) ($_GET['id'] ?? 0);
             <div class="col-12 col-md-3"><label class="form-label">CD</label><select class="form-select js-cp-compra-select" name="cd_id" data-type="empresas_cd" required></select></div>
             <div class="col-12 col-md-3"><label class="form-label">Empresa</label><select class="form-select js-cp-compra-select" name="empresa_id" data-type="empresas" required></select></div>
             <div class="col-12 col-md-4"><label class="form-label">Fornecedor</label><select class="form-select js-cp-compra-select" name="Fornecedor_id" data-type="fornecedores" required></select></div>
-            <div class="col-12 col-md-2"><label class="form-label">Data Pedido</label><input class="form-control" name="DataPedido" type="date" required></div>
             <div class="col-12 col-md-2"><label class="form-label">Markup Franqueadora</label><div class="input-group cp-money-input-group"><span class="input-group-text">R$</span><input class="form-control js-money cp-header-money-field text-end" name="MarkupFranqueadora" type="text" inputmode="numeric" autocomplete="off" value="0,00"></div></div>
             <div class="col-12 col-md-2"><label class="form-label">Markup Franquia</label><input class="form-control js-money cp-header-money-field text-end" name="MarkupFranquia" type="text" inputmode="numeric" autocomplete="off" value="0,00"></div>
             <div class="col-12 col-md-2"><label class="form-label">Markup Total</label><input class="form-control js-money cp-header-money-field text-end" name="MarkupTotal" type="text" inputmode="numeric" autocomplete="off" value="0,00" readonly></div>
@@ -53,6 +52,10 @@ $id = (int) ($_GET['id'] ?? 0);
                     <span class="badge cp-localizacao-badge badge-localizacao-kidstok">KidStok</span>
                 </div>
             </div>
+            <div class="col-12 col-md-3"><label class="form-label">CRIAÇÃO</label><input class="form-control" name="Inclusao_display" type="text" readonly></div>
+            <div class="col-12 col-md-3"><label class="form-label">PUBLICAÇÃO</label><input class="form-control" name="DataPedido" type="date" required></div>
+            <div class="col-12 col-md-3"><label class="form-label">ENVIO FORNECEDOR</label><input class="form-control" name="DataHoraEnvioFornecedor_display" type="text" readonly></div>
+            <div class="col-12 col-md-3"><label class="form-label">RESPOSTA FORNECEDOR</label><input class="form-control" name="DataHoraRespostaFornecedor_display" type="text" readonly></div>
             <div class="col-12 d-none" id="cp-sts-motivo-group">
                 <div class="cp-recusa-panel">
                     <label class="form-label">Motivo da recusa</label>

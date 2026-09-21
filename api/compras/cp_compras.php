@@ -33,6 +33,24 @@ function cp_trim($value): string
     return trim((string) ($value ?? ''));
 }
 
+function cp_date_from_request($value): string
+{
+    $date = DateTime::createFromFormat('Y-m-d', cp_trim($value));
+    return $date ? $date->format('Y-m-d') : date('Y-m-d');
+}
+
+function cp_datetime_from_request($value): string
+{
+    $text = cp_trim($value);
+    foreach (['Y-m-d H:i:s', 'Y-m-d\TH:i:s'] as $format) {
+        $date = DateTime::createFromFormat($format, $text);
+        if ($date) {
+            return $date->format('Y-m-d H:i:s');
+        }
+    }
+    return date('Y-m-d H:i:s');
+}
+
 function cp_fix_text_encoding($value): string
 {
     $text = (string) ($value ?? '');
@@ -1576,7 +1594,7 @@ function cp_portal_fornecedor_url(int $cdId, int $empresaId): string
     return $url;
 }
 
-function cp_send_proposta_email(int $id, bool $aprovadoAguardandoFoto = false): int
+function cp_send_proposta_email(int $id, bool $aprovadoAguardandoFoto = false, ?string $dataPedidoEnvio = null): int
 {
     $stmt = db()->prepare(
         "SELECT c.id,
@@ -1638,8 +1656,9 @@ function cp_send_proposta_email(int $id, bool $aprovadoAguardandoFoto = false): 
         throw new RuntimeException('O fornecedor não possui usuários ativos cadastrados para receber a proposta.');
     }
 
-    $dataPedido = DateTime::createFromFormat('Y-m-d', (string) $pedido['DataPedido']);
-    $dataPedidoText = $dataPedido ? $dataPedido->format('d/m/Y') : (string) $pedido['DataPedido'];
+    $dataPedidoValor = $dataPedidoEnvio ?: (string) $pedido['DataPedido'];
+    $dataPedido = DateTime::createFromFormat('Y-m-d', $dataPedidoValor);
+    $dataPedidoText = $dataPedido ? $dataPedido->format('d/m/Y') : $dataPedidoValor;
     $fornecedorNome = cp_fix_text_encoding($pedido['fornecedor_nome']);
     $portalUrl = cp_portal_fornecedor_url((int) $pedido['cd_id'], (int) $pedido['empresa_id']);
     $subject = 'Portal Fornecedor Kidstok - Pedido #' . $pedido['ID'] . ' ' . $fornecedorNome;
@@ -1703,6 +1722,8 @@ function cp_workflow_update(int $id, string $workflowAction): void
     }
 
     $usuario = cp_current_user_name();
+    $dataPedidoNavegador = cp_trim($_POST['data_pedido'] ?? $_GET['data_pedido'] ?? '');
+    $dataHoraEnvioNavegador = cp_trim($_POST['data_hora_envio_fornecedor'] ?? $_GET['data_hora_envio_fornecedor'] ?? '');
     if ($workflowAction === 'enviar_proposta') {
         $stmtCategorias = db()->prepare(
             "SELECT COUNT(*)
@@ -1715,17 +1736,29 @@ function cp_workflow_update(int $id, string $workflowAction): void
         if ((int) $stmtCategorias->fetchColumn() > 0) {
             api_response(false, ['message' => 'A categoria é obrigatória nos itens para enviar a proposta ao fornecedor.'], 422);
         }
-        $recipientCount = cp_send_proposta_email($id);
+        $dataHoraEnvioFornecedor = cp_datetime_from_request($dataHoraEnvioNavegador);
+        $dataPedido = $dataPedidoNavegador !== ''
+            ? cp_date_from_request($dataPedidoNavegador)
+            : substr($dataHoraEnvioFornecedor, 0, 10);
+        $recipientCount = cp_send_proposta_email($id, false, $dataPedido);
         $stmt = db()->prepare(
             "UPDATE cp_compras
                 SET Publicado = 1,
+                    DataPedido = :data_pedido,
+                    DataHoraEnvioFornecedor = :data_hora_envio_fornecedor,
                     Localizacao = 'Fornecedor',
                     Iteracao = COALESCE(Iteracao, 0) + 1,
                     Alteracao = :alteracao,
                     Usuario = :usuario
               WHERE id = :id"
         );
-        $stmt->execute(['alteracao' => date('Y-m-d'), 'usuario' => $usuario, 'id' => $id]);
+        $stmt->execute([
+            'data_pedido' => $dataPedido,
+            'data_hora_envio_fornecedor' => $dataHoraEnvioFornecedor,
+            'alteracao' => $dataPedido,
+            'usuario' => $usuario,
+            'id' => $id,
+        ]);
         api_response(true, [
             'message' => 'Proposta enviada ao fornecedor por e-mail.',
             'destinatarios' => $recipientCount,
@@ -1741,12 +1774,18 @@ function cp_workflow_update(int $id, string $workflowAction): void
             api_response(false, ['message' => 'Insira fotos do fornecedor antes de aprovar este pedido.'], 422);
         }
         if (!$temFotosFornecedor) {
-            $recipientCount = cp_send_proposta_email($id, true);
+            $dataHoraEnvioFornecedor = cp_datetime_from_request($dataHoraEnvioNavegador);
+            $dataPedido = $dataPedidoNavegador !== ''
+                ? cp_date_from_request($dataPedidoNavegador)
+                : substr($dataHoraEnvioFornecedor, 0, 10);
+            $recipientCount = cp_send_proposta_email($id, true, $dataPedido);
             $stmt = db()->prepare(
                 "UPDATE cp_compras
                     SET status_id = :status_id,
                         Localizacao = 'Fornecedor',
                         Publicado = 1,
+                        DataPedido = :data_pedido,
+                        DataHoraEnvioFornecedor = :data_hora_envio_fornecedor,
                         Iteracao = COALESCE(Iteracao, 0) + 1,
                         DataAprovacao = :data_aprovacao,
                         UsuarioAprovacao = :usuario_aprovacao,
@@ -1756,8 +1795,10 @@ function cp_workflow_update(int $id, string $workflowAction): void
             );
             $stmt->execute([
                 'status_id' => CP_STATUS_APROVADO_AGUARDANDO_FOTO,
-                'data_aprovacao' => date('Y-m-d'),
-                'alteracao' => date('Y-m-d'),
+                'data_pedido' => $dataPedido,
+                'data_hora_envio_fornecedor' => $dataHoraEnvioFornecedor,
+                'data_aprovacao' => $dataPedido,
+                'alteracao' => $dataPedido,
                 'usuario_aprovacao' => $usuario,
                 'usuario' => $usuario,
                 'id' => $id,
@@ -1875,6 +1916,9 @@ try {
             "SELECT c.id,
                     c.id AS ID,
                     c.DataPedido,
+                    c.Inclusao,
+                    c.DataHoraEnvioFornecedor,
+                    c.DataHoraRespostaFornecedor,
                     c.ValorTotalPedido,
                     c.status_id,
                     COALESCE(cst.descricao_compras, '') AS descricao_compras,

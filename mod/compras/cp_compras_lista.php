@@ -29,13 +29,16 @@ render_header('Pedidos de Compra', [
             <thead>
                 <tr>
                     <th>Pedido</th>
-                    <th>Data</th>
+                    <th>CRIAÇÃO</th>
+                    <th>PUBLICAÇÃO</th>
                     <th>CD</th>
                     <th>Empresa</th>
                     <th>Fornecedor</th>
                     <th>Status</th>
                     <th>Localização</th>
                     <th>Publicado</th>
+                    <th>ENVIO FORNECEDOR</th>
+                    <th>RESPOSTA FORNECEDOR</th>
                     <th class="text-end">Valor</th>
                     <th class="text-end">Ações</th>
                 </tr>

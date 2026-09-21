@@ -314,11 +314,17 @@ O formulario de compra usa layout em duas colunas em desktop:
 
 No resumo ficam `Salvar alteracoes`, `Imprimir PDF`, `Enviar Proposta`, `Enviar Fornecedor`, `Aprovar` e `Recusar`, exibidos conforme status, publicacao, localizacao, fotos e alteracoes pendentes.
 
-A lista `cp_compras_lista` usa a mesma ordem de campos do dashboard em `Ultimos 10 pedidos`: Pedido, Data, CD, Empresa, Fornecedor, Status, Localizacao, Publicado, Valor e Acoes.
+No cabecalho do `cp_compras_form`, a linha de datas exibe `Criacao` (`Inclusao`), `Publicacao` (`DataPedido`), `Envio Fornecedor` (`DataHoraEnvioFornecedor`) e `Resposta Fornecedor` (`DataHoraRespostaFornecedor`).
+
+A lista `cp_compras_lista` exibe: Pedido, Criacao, Publicacao, CD, Empresa, Fornecedor, Status, Localizacao, Publicado, Envio Fornecedor, Resposta Fornecedor, Valor e Acoes.
 
 Regras de gravacao e validacao:
 
 - CD, empresa, fornecedor e data do pedido sao obrigatorios;
+- em `cp_compras`, `DataPedido` representa a data de publicacao do pedido;
+- em `cp_compras`, `Inclusao` representa a data de criacao/gravacao inicial do pedido;
+- em `cp_compras`, `DataHoraEnvioFornecedor` representa a data e hora em que o pedido foi enviado ao fornecedor;
+- em `cp_compras`, `DataHoraRespostaFornecedor` representa a data e hora da resposta do fornecedor;
 - a categoria do pedido pode ser informada no cabecalho por Select2, pesquisando `produtos_categorias` em ordem alfabetica por `TipoProduto`;
 - a categoria pode ficar em branco enquanto o pedido estiver em edicao;
 - a categoria pode ser alterada quando o pedido estiver editavel na KidStok;

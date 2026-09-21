@@ -1216,20 +1216,23 @@ function loadCpComprasGrid() {
                     : '<a class="btn btn-sm btn-outline-secondary btn-view btn-icon-only" title="Visualizar" aria-label="Visualizar" href="' + cfg.form + '?id=' + row.id + '"></a>';
                 return '<tr>' +
                     '<td data-label="Pedido">' + escapeHtml(row.ID || '') + '</td>' +
-                    '<td data-label="Data">' + escapeHtml(formatDateBr(row.DataPedido || '')) + '</td>' +
+                    '<td data-label="CRIAÇÃO">' + escapeHtml(formatDateBr(row.Inclusao || '')) + '</td>' +
+                    '<td data-label="PUBLICAÇÃO">' + escapeHtml(formatDateBr(row.DataPedido || '')) + '</td>' +
                     '<td data-label="CD">' + escapeHtml(row.cd_nome || '') + '</td>' +
                     '<td data-label="Empresa">' + escapeHtml(row.empresa_nome || '') + '</td>' +
                     '<td data-label="Fornecedor">' + escapeHtml(row.fornecedor_nome || '') + '</td>' +
                     '<td data-label="Status">' + cpPedidoStatusBadge(row.descricao_compras || row.Sts, localizacao) + '</td>' +
                     '<td data-label="Localização">' + cpLocalizacaoBadge(localizacao) + '</td>' +
                     '<td data-label="Publicado">' + cpPublicadoBadge(row.Publicado) + '</td>' +
+                    '<td data-label="ENVIO FORNECEDOR">' + escapeHtml(formatDateTimeBr(row.DataHoraEnvioFornecedor || '')) + '</td>' +
+                    '<td data-label="RESPOSTA FORNECEDOR">' + escapeHtml(formatDateTimeBr(row.DataHoraRespostaFornecedor || '')) + '</td>' +
                     '<td data-label="Valor" class="text-end">' + escapeHtml(formatMoneyBr(row.ValorTotalPedido || 0)) + '</td>' +
                     '<td data-label="Ações" class="text-end">' +
                     actions +
                     '</td>' +
                     '</tr>';
             }).join('');
-            $('#cp-compras-grid').html(html || '<tr><td colspan="10" class="text-center text-muted">Nenhum registro encontrado.</td></tr>');
+            $('#cp-compras-grid').html(html || '<tr><td colspan="13" class="text-center text-muted">Nenhum registro encontrado.</td></tr>');
         })
         .fail(function (xhr) {
             appAlert(xhr.responseJSON?.message || 'Não foi possível carregar os pedidos.', 'danger');
@@ -2249,7 +2252,7 @@ function initCpComprasForm() {
                 appAlert(xhr.responseJSON?.message || 'Não foi possível carregar o pedido.', 'danger');
             });
     } else {
-        $form.find('[name="DataPedido"]').val(new Date().toISOString().slice(0, 10));
+        $form.find('[name="DataPedido"]').val(cpCompraBrowserLocalDateTime().date);
         $form.find('[name="Sts"]').val('Aberto');
         $form.find('[name="Sts_display"]').val('Aberto');
         cpCompraStatusIdAtual = 0;
@@ -2440,6 +2443,11 @@ function executarCpCompraWorkflow($form, action, confirmMessage, extraData) {
     }
     const executar = function () {
         const data = Object.assign({ id: id }, extraData || {});
+        if (['enviar_proposta', 'aprovar'].includes(action)) {
+            const localDateTime = cpCompraBrowserLocalDateTime();
+            data.data_pedido = localDateTime.date;
+            data.data_hora_envio_fornecedor = localDateTime.dateTime;
+        }
         const $workflowButtons = $('#btn-cp-enviar-proposta, #btn-cp-enviar-fornecedor, #btn-cp-aprovar, #btn-cp-recusar, #btn-cp-confirmar-recusa, #btn-cp-cancelar-recusa');
         $workflowButtons.prop('disabled', true);
         $.post(window.cpComprasFormConfig.api + '?action=' + action, data, function (response) {
@@ -2674,6 +2682,9 @@ function fillCpCompraHeader($form, row) {
             $('#cp-pedido-localizacao-form').html(cpLocalizacaoBadge(row[name] || 'KidStok'));
         }
     });
+    $form.find('[name="Inclusao_display"]').val(formatDateBr(row.Inclusao || ''));
+    $form.find('[name="DataHoraEnvioFornecedor_display"]').val(formatDateTimeBr(row.DataHoraEnvioFornecedor || ''));
+    $form.find('[name="DataHoraRespostaFornecedor_display"]').val(formatDateTimeBr(row.DataHoraRespostaFornecedor || ''));
     toggleCpCompraMotivo($form);
     recalcCpCompraMarkupTotal($form);
 }
@@ -5632,6 +5643,39 @@ function formatDateBr(value) {
         return value;
     }
     return parts[2] + '/' + parts[1] + '/' + parts[0];
+}
+
+function padDatePart(value) {
+    return String(value).padStart(2, '0');
+}
+
+function cpCompraBrowserLocalDateTime() {
+    const now = new Date();
+    const date = [
+        now.getFullYear(),
+        padDatePart(now.getMonth() + 1),
+        padDatePart(now.getDate())
+    ].join('-');
+    const time = [
+        padDatePart(now.getHours()),
+        padDatePart(now.getMinutes()),
+        padDatePart(now.getSeconds())
+    ].join(':');
+    return {
+        date: date,
+        dateTime: date + ' ' + time
+    };
+}
+
+function formatDateTimeBr(value) {
+    if (!value) {
+        return '';
+    }
+    const normalized = String(value).replace('T', ' ');
+    const parts = normalized.split(' ');
+    const date = formatDateBr(parts[0] || '');
+    const time = (parts[1] || '').slice(0, 5);
+    return [date, time].filter(Boolean).join(' ');
 }
 
 function formatMoneyBr(value) {
