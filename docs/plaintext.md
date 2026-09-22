@@ -4,10 +4,10 @@
 **Atencao:** nao usar `D:\E7TI\PHP\appf` para demandas do Allop.
 
 **Documento-base:** 01/06/2026  
-**Ultima revisao documental:** 18/09/2026
-**Ultima revisao conferida do codigo:** 18/09/2026
-**Ultima revisao conferida do `banco.sql`:** 18/09/2026
-**Ultima revisao conferida do `banco_fotos.sql`:** 19/06/2026  
+**Ultima revisao documental:** 22/09/2026
+**Ultima revisao conferida do codigo:** 22/09/2026
+**Ultima revisao conferida do `banco.sql`:** 22/09/2026
+**Ultima revisao conferida do `banco_fotos.sql`:** 22/09/2026  
 **Escopo conferido:** aplicacao PHP, APIs, telas, assets, seed, banco principal, banco de fotos e documentacao existente.
 
 ## 1. Objetivo
@@ -55,6 +55,7 @@ index.php
 | `logout.php` | Encerra a sessao. |
 | `dashboard.php` | Painel autenticado com indicadores, graficos e ultimos pedidos de compra. |
 | `alterar_senha_admin.php` | Tela especifica para trocar a senha do usuario `admin`. |
+| `sx.php` | Tela externa, com sessao propria `allop_sx`, para pesquisar usuarios e alterar senhas no banco principal. |
 | `config/` | Configuracao geral e conexoes PDO. |
 | `includes/` | Autenticacao, permissoes, layout e envio SMTP. |
 | `mod/` | Telas dos modulos do sistema. |
@@ -86,6 +87,7 @@ Arquivos Markdown/documentacao proprios:
 | `includes/layout.php` | Renderiza header, menu, area de conteudo, footer e assets locais. |
 | `includes/smtp_mailer.php` | Cliente SMTP por socket com SSL implicito, STARTTLS e autenticacao opcional. |
 | `api/bootstrap.php` | Inicializacao comum das APIs, `api_response()`, `request_data()` e `api_require_login()`. |
+| `sx.php` | Fluxo publico de troca de senha por usuario, com token CSRF proprio e Select2 remoto interno ao arquivo. |
 | `assets/js/app.js` | CRUD generico, Select2, alertas, confirmacao, sincronizacao de grids, ViaCEP, empresas, e-mail e fluxo completo de compras. |
 | `assets/css/style.css` | Tema global, responsividade, botoes com icones, grids, dashboard, login e componentes de compras. |
 | `scripts/seed_aplicacoes.php` | Seed de menus, aplicacoes, perfil Administrador, permissoes, usuario inicial e estruturas auxiliares. |
@@ -127,6 +129,11 @@ APIs auxiliares:
 | `api/seguranca/admin_senha.php` | Altera a senha do login `admin` com `password_hash()`. Nao exige sessao atualmente. |
 | `api/seguranca/crud.php` | CRUD generico para entidades de seguranca. |
 | `api/seguranca/perfil_aplicacoes.php` | Lista perfis, lista permissoes por perfil, salva permissoes em lote e exclui permissoes de um perfil. |
+
+Telas raiz de senha:
+
+- `alterar_senha_admin.php`: formulario publico para alterar somente a senha do login `admin`, chamando `api/seguranca/admin_senha.php`;
+- `sx.php`: formulario publico com sessao propria `allop_sx`, token por formulario, pesquisa remota de usuarios em `seg_usuarios` e gravacao de senha com `password_hash()` para qualquer usuario selecionado.
 
 Entidades aceitas pelo CRUD generico:
 
@@ -451,6 +458,7 @@ Sessao:
 - a sessao guarda `id`, `nome`, `login` e `perfil_id`;
 - paginas internas chamam `require_login()`;
 - APIs internas normalmente chamam `api_require_login()`;
+- `sx.php` usa uma sessao separada chamada `allop_sx`, apenas para token de formulario;
 - login aceita senha com hash e senha em texto puro legado;
 - novas senhas sao gravadas com `password_hash()`;
 - logout limpa `$_SESSION`, remove o cookie da sessao quando aplicavel e chama `session_destroy()`.
@@ -463,7 +471,7 @@ Formato de resposta das APIs:
 }
 ```
 
-Falhas usam `success: false` e normalmente incluem `message`. Os status HTTP usados incluem 401, 403, 404, 422 e 500.
+Falhas usam `success: false` e normalmente incluem `message`. Os status HTTP usados incluem 401, 403, 404, 422 e 500. O fluxo `sx.php` tambem pode retornar 419 quando o token proprio do formulario expira ou nao confere.
 
 Menu:
 
@@ -497,8 +505,11 @@ IDs de menu previstos pelo seed:
 
 `banco.sql` contem:
 
-- 238 tabelas;
+- 241 tabelas;
 - 67 triggers;
+- 4 funcoes;
+- 28 procedures;
+- 9 views;
 - dump estrutural, sem dados.
 
 Principais grupos de tabelas:
@@ -514,6 +525,7 @@ Principais grupos de tabelas:
 | Etiquetas e pre-cadastro | `etiquetas_cab`, `etiquetas_ite`, `etiquetas_api`, `pre_cadastro`, `pre_cadastro_item`, `pre_cadastro_item_pro` |
 | Catalogo/ERP legado | tabelas `produtos*`, `KidStok`, `KidStokAntesGCom`, `cfops`, `cests_ncm`, `st_*`, `compras*`, `nfe_*`, `romaneios_*`, `fechamento*`, `provisorios*`, `transportadoras*`, `veiculos*`, `tb*` e auxiliares |
 | Cadastros auxiliares/API | `bancos`, `cargos`, `cidades*`, `estados*`, `franqueados*`, `consultores*`, `ramo_atividades*`, `regioes*`, `responsaveis*`, `configuracoes_*`, `logs`, `log_scripts` |
+| Views e rotinas legadas | views `produtos_*`, `vw_compras_*`, `vw_produtos_fabrica`, `rmnUH`, funcoes `sf_*` e procedures `sp_*`/legadas presentes no dump. |
 
 Triggers relevantes para compras:
 
@@ -651,6 +663,7 @@ Banco:
 | Fotos | `#cp-fotos-modal`, `.cp-item-fotos-panels`, `.cp-foto-dropzone`, `.cp-fotos-grid`, `.cp-foto-card`, `.cp-foto-preview-img` | Paineis de fotos, upload, exclusao e preview de imagens. |
 | Log de cor | `#cp-cor-log-modal`, `.cp-preco-alterado-*`, `.btn-price-log` | Comparacao de preco com ultimo log. |
 | Login | `.login-page`, `.login-shell`, `.login-card`, `.login-showcase` | Tela de acesso com logos e alternancia de visibilidade da senha. |
+| SX | `.sx-wrap`, `.sx-panel`, `.sx-title`, `.sx-mark`, `.btn-sx` | Tela externa `sx.php` para alteracao de senha de usuarios. Os estilos ficam inline no proprio arquivo. |
 | Pre-cadastro | `.pre-cadastro-ref-badges`, `.pre-cadastro-metric-badges`, `.pre-cadastro-toggle`, `.pre-cadastro-tamanhos-accordion`, `.btn-pre-cadastro-consolidar`, `.btn-pre-cadastro-historico` | Badges de referencias e metricas, toggles Sim/Nao, accordions de itens/tamanhos, grade de produtos gerados e acoes da listagem. |
 
 ## 12. Pontos de Atencao Conhecidos
@@ -658,11 +671,11 @@ Banco:
 1. **Permissao incompleta nas APIs:** o menu usa `visualizar` por perfil, mas as APIs nao validam permissoes especificas de inserir, editar, excluir, imprimir, exportar ou processar.
 2. **Permissoes por usuario sem efeito no menu:** `seg_usuarios_permissoes` existe e possui telas, mas nao participa da montagem do menu.
 3. **Dashboard sem filtro por permissoes:** os indicadores de compras ainda nao variam conforme permissoes do usuario.
-4. **Troca de senha admin publica:** `api/seguranca/admin_senha.php` nao chama `api_require_login()`.
+4. **Troca de senha admin publica:** `api/seguranca/admin_senha.php` nao chama `api_require_login()` e o formulario `alterar_senha_admin.php` fica fora do fluxo autenticado.
 5. **Grafias legadas:** `seg_usuarios_permissoes` usa `edtiar` e `imprirmir` no codigo.
 6. **Credenciais no codigo:** `config/database.php` contem constantes versionadas; o recomendado e migrar para variaveis de ambiente.
 7. **Erros expostos:** varias APIs retornam `Throwable::getMessage()` diretamente ao cliente.
-8. **CSRF ausente:** nao ha token CSRF nos formularios ou acoes mutaveis.
+8. **CSRF ausente ou parcial:** a maioria dos formularios e acoes mutaveis nao possui token CSRF; `sx.php` e uma excecao parcial porque valida token proprio, mas continua fora da autenticacao principal.
 9. **Senha legada aceita:** o login aceita texto puro para compatibilidade.
 10. **DDL no seed:** `seed_aplicacoes.php` cria tabelas auxiliares e recria triggers; isso deve ser executado com backup.
 11. **Transacao entre bancos:** operacoes com fotos podem envolver banco principal e banco de fotos sem atomicidade distribuida real.
@@ -676,6 +689,7 @@ Banco:
 19. **Workflow depende de snapshot no frontend:** o bloqueio de `Aprovar` e `Recusar` apos alteracoes locais de preco, valor ou entrega compara a grade atual com o estado carregado em `cpCompraWorkflowSnapshot`. Alteracoes feitas por fora da tela dependem do estado persistido e das regras da API.
 20. **Pre-cadastro sem permissao propria por acao:** `pre_cadastro_produtos.php` exige sessao, mas nao confere permissao especifica de processar/gravar antes de gerar ou inserir o pre-cadastro.
 21. **De/para de cores opcional:** a sugestao automatica de cor KidStok no pre-cadastro depende da existencia e preenchimento de `cp_depara_cor`; sem esse mapa, a cor precisa ser completada manualmente.
+22. **`sx.php` publico para troca de senha:** a tela externa possui token de formulario, mas nao exige login, perfil, permissao ou segredo adicional antes de listar usuarios e alterar senhas de `seg_usuarios`.
 
 ## 13. Como Recriar o Projeto do Zero
 
@@ -702,6 +716,7 @@ Para recriar o projeto, manter estes itens:
 - `banco.sql`;
 - `banco_fotos.sql`;
 - imagens em `assets/img/`, especialmente `SemFoto.png`;
+- telas raiz `login.php`, `dashboard.php`, `alterar_senha_admin.php` e `sx.php`, quando esses fluxos forem usados no ambiente;
 - bibliotecas locais em `assets/vendor/`.
 
 A pasta `vendor/` pode ser recriada com Composer quando `composer.json` e `composer.lock` estiverem presentes.
@@ -718,8 +733,9 @@ A pasta `vendor/` pode ser recriada com Composer quando `composer.json` e `compo
 8. Acessar `index.php` pelo navegador e validar se a tela de login carrega com CSS, JS e imagens.
 9. Executar `scripts/seed_aplicacoes.php` apenas apos backup ou em ambiente novo, para criar/atualizar menus, aplicacoes, permissoes, perfil Administrador e usuario administrador inicial.
 10. Entrar como administrador e trocar a senha inicial imediatamente pela tela `alterar_senha_admin.php` ou por fluxo administrativo equivalente.
-11. Conferir o menu do perfil Administrador e liberar permissoes dos demais perfis conforme necessario.
-12. Testar dashboard, listagens principais, cadastro de empresas/CD, configuracao de e-mail e fluxo de pedido de compra.
+11. Se `sx.php` for publicado no ambiente, restringir seu acesso na camada de infraestrutura ou substituir por fluxo autenticado.
+12. Conferir o menu do perfil Administrador e liberar permissoes dos demais perfis conforme necessario.
+13. Testar dashboard, listagens principais, cadastro de empresas/CD, configuracao de e-mail e fluxo de pedido de compra.
 
 ### 13.4 Ordem Recomendada de Validacao Inicial
 
