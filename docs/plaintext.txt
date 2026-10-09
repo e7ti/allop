@@ -276,6 +276,7 @@ Regras atuais:
 - campos sem origem em compras e campos com relacionamento usam Select2 remoto na propria API;
 - os campos `setor_laranja` e `preco_cheio` usam toggles Sim/Nao por item, tamanho ou cor;
 - quando `preco_cheio` e Sim, o Atacado acompanha o Varejo; o valor anterior do Atacado fica preservado para restauracao ao voltar para Nao;
+- o item possui a opcao `Somar tamanho/cor duplicado`; quando marcada, a tela e a API consideram duplicidade por item + tamanho + cor, juntam as linhas antes de validar/gravar, somam as quantidades e usam o maior preco entre as linhas agrupadas;
 - campos tributarios obrigatorios incluem `cfop`, `cfop_propria`, `cst_icms`, `cst_pis`, `cst_cofins` e `cst_ipi`;
 - a gravacao valida campos obrigatorios, pedido aprovado, categoria, R2, R3, tamanho, cor, NCM, duplicidade de referencia e existencia de `referencia_master` em `produtos_cab` antes de inserir ou alterar;
 - `estilo` e `origem` sao persistidos quando informados na tela;

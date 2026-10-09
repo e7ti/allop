@@ -487,6 +487,7 @@ function pc_build_preview(int $pedidoId): array
                 'cfop_propria' => '',
                 'setor_laranja' => 'N',
                 'preco_cheio' => 'N',
+                'agrupar_cores_duplicadas' => 'N',
                 'sts' => (int) $row['item_sts'],
                 'fields' => [],
                 'products' => [],
@@ -659,6 +660,7 @@ function pc_load_pre_cadastro(int $preCadastroId): array
             'caracteristica_id_text' => $caracteristicaOption['text'] ?? '',
             'setor_laranja' => (string) $itemRow['setor_laranja'],
             'preco_cheio' => (string) $itemRow['preco_cheio'],
+            'agrupar_cores_duplicadas' => 'N',
             'encomenda' => (string) $itemRow['encomenda'],
             'estilo' => (string) ($itemRow['estilo'] ?? ''),
             'estilo_text' => $estiloOption['text'] ?? '',
@@ -773,9 +775,107 @@ function pc_recalc_group(array &$group): void
     $group['valor_total'] = round($valor, 2);
 }
 
+function pc_item_agrupar_cores_duplicadas(array $item): bool
+{
+    $value = strtoupper(pc_trim($item['agrupar_cores_duplicadas'] ?? 'N'));
+    return in_array($value, ['S', 'SIM', '1', 'TRUE', 'ON'], true);
+}
+
+function pc_product_reference(array $item, array $product): string
+{
+    return pc_trim($item['r1'] ?? '') . pc_trim($item['r2'] ?? '') . pc_trim($item['r3'] ?? '') .
+        pc_trim($product['tamanho'] ?? '') . pc_trim($product['cor'] ?? '');
+}
+
+function pc_merge_duplicate_product(array &$target, array $product): void
+{
+    $target['qtde'] = pc_decimal($target['qtde'] ?? 0) + pc_decimal($product['qtde'] ?? 0);
+    foreach (['preco_fornecedor', 'preco_compra', 'preco_atacado', 'preco_varejo'] as $priceField) {
+        $target[$priceField] = max(
+            pc_decimal($target[$priceField] ?? 0),
+            pc_decimal($product[$priceField] ?? 0)
+        );
+    }
+    if (pc_trim($target['sku'] ?? '') === '' && pc_trim($product['sku'] ?? '') !== '') {
+        $target['sku'] = pc_trim($product['sku']);
+    }
+    $target['valor_total_produto'] = round(
+        pc_decimal($target['qtde'] ?? 0) * pc_decimal($target['preco_compra'] ?? 0),
+        2
+    );
+}
+
+function pc_aggregate_duplicate_products(array &$groups): void
+{
+    foreach ($groups as &$group) {
+        $referenceMap = [];
+        foreach (($group['items'] ?? []) as $itemIndex => &$item) {
+            if (!pc_item_agrupar_cores_duplicadas($item) || empty($item['products']) || !is_array($item['products'])) {
+                foreach (($item['products'] ?? []) as $productIndex => $product) {
+                    $referencia = pc_product_reference($item, $product);
+                    if ($referencia !== '' && !isset($referenceMap[$referencia])) {
+                        $referenceMap[$referencia] = [$itemIndex, $productIndex];
+                    }
+                }
+                continue;
+            }
+
+            $aggregated = [];
+            $order = [];
+            foreach ($item['products'] as $product) {
+                $key = pc_product_reference($item, $product);
+                if ($key === '') {
+                    $key = pc_trim($product['tamanho'] ?? '') . '|' . pc_trim($product['cor'] ?? '');
+                }
+
+                if (!isset($aggregated[$key])) {
+                    $product['qtde'] = pc_decimal($product['qtde'] ?? 0);
+                    $product['preco_fornecedor'] = pc_decimal($product['preco_fornecedor'] ?? 0);
+                    $product['preco_compra'] = pc_decimal($product['preco_compra'] ?? 0);
+                    $product['preco_atacado'] = pc_decimal($product['preco_atacado'] ?? 0);
+                    $product['preco_varejo'] = pc_decimal($product['preco_varejo'] ?? 0);
+                    $product['valor_total_produto'] = round($product['qtde'] * $product['preco_compra'], 2);
+                    $aggregated[$key] = $product;
+                    $order[] = $key;
+                    continue;
+                }
+
+                pc_merge_duplicate_product($aggregated[$key], $product);
+            }
+
+            $item['products'] = array_map(static fn(string $key): array => $aggregated[$key], $order);
+            foreach ($item['products'] as $productIndex => $product) {
+                $referencia = pc_product_reference($item, $product);
+                if ($referencia === '') {
+                    continue;
+                }
+                if (!isset($referenceMap[$referencia])) {
+                    $referenceMap[$referencia] = [$itemIndex, $productIndex];
+                    continue;
+                }
+                [$targetItemIndex, $targetProductIndex] = $referenceMap[$referencia];
+                if (!isset($group['items'][$targetItemIndex]['products'][$targetProductIndex])) {
+                    $referenceMap[$referencia] = [$itemIndex, $productIndex];
+                    continue;
+                }
+                pc_merge_duplicate_product($group['items'][$targetItemIndex]['products'][$targetProductIndex], $product);
+                unset($item['products'][$productIndex]);
+            }
+            $item['products'] = array_values($item['products']);
+        }
+        unset($item);
+        $group['items'] = array_values(array_filter($group['items'] ?? [], static function (array $item): bool {
+            return !pc_item_agrupar_cores_duplicadas($item) || !empty($item['products']);
+        }));
+        pc_recalc_group($group);
+    }
+    unset($group);
+}
+
 function pc_validate_payload(array $groups, int $excludePreCadastroId = 0): array
 {
     $errors = [];
+    $payloadRefs = [];
     $pedidoStmt = db()->prepare("SELECT status_id FROM cp_compras WHERE id = :id LIMIT 1");
     foreach ($groups as $gIndex => $group) {
         $label = 'Grupo ' . ($gIndex + 1);
@@ -830,6 +930,10 @@ function pc_validate_payload(array $groups, int $excludePreCadastroId = 0): arra
                 if (strlen($referencia) > 15) {
                     $errors[] = "$produtoLabel: referencia maior que 15 caracteres.";
                 }
+                if ($referencia !== '' && isset($payloadRefs[$referencia])) {
+                    $errors[] = "$produtoLabel: referencia $referencia duplicada no envio.";
+                }
+                $payloadRefs[$referencia] = true;
                 if (pc_reference_exists($referencia, $excludePreCadastroId)) {
                     $errors[] = "$produtoLabel: referencia $referencia ja existe.";
                 }
@@ -859,6 +963,7 @@ function pc_normalize_groups_categories(array &$groups): void
 function pc_insert_all(array $groups): array
 {
     pc_normalize_groups_categories($groups);
+    pc_aggregate_duplicate_products($groups);
     $errors = pc_validate_payload($groups);
     if ($errors) {
         api_response(false, ['message' => 'Corrija as inconsistencias antes de gravar.', 'errors' => $errors], 422);
@@ -1010,6 +1115,7 @@ function pc_update_all(int $preCadastroId, array $groups): array
     }
 
     pc_normalize_groups_categories($groups);
+    pc_aggregate_duplicate_products($groups);
     $errors = pc_validate_payload($groups, $preCadastroId);
     if ($errors) {
         api_response(false, ['message' => 'Corrija as inconsistencias antes de gravar.', 'errors' => $errors], 422);

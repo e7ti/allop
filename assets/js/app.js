@@ -1532,6 +1532,7 @@ function renderPreCadastroItem(item, groupIndex, itemIndex) {
         preCadastroSelect(path, 'caracteristica_id', 'Característica', 'caracteristicas', item.caracteristica_id || '', item.caracteristica_id_text || '', 'col-12 col-md-3') +
         preCadastroSelect(path, 'genero_id', 'Gênero', 'generos', item.genero_id || '', item.genero_id_text || '', 'col-12 col-md-3') +
         preCadastroSelect(path, 'estilo', 'Estilo', 'estilos', item.estilo || '', item.estilo_text || '', 'col-12 col-md-3') +
+        preCadastroSimNaoSelect(path, 'agrupar_cores_duplicadas', 'Somar tamanho/cor duplicado', item.agrupar_cores_duplicadas || 'N', 'col-12 col-md-3') +
         '</div>' +
         '</div>' +
         '<div class="tab-pane fade" id="' + tributosTabId + '" role="tabpanel" aria-labelledby="' + tributosTabId + '-tab">' +
@@ -2006,6 +2007,53 @@ function recalcPreCadastroReferences() {
     });
 }
 
+function preCadastroItemAgrupaDuplicados(item) {
+    const value = String(item.agrupar_cores_duplicadas || 'N').trim().toUpperCase();
+    return ['S', 'SIM', '1', 'TRUE', 'ON'].indexOf(value) >= 0;
+}
+
+function mergePreCadastroProdutoDuplicado(target, product) {
+    target.qtde = (Number(target.qtde) || 0) + (Number(product.qtde) || 0);
+    ['preco_fornecedor', 'preco_compra', 'preco_atacado', 'preco_varejo'].forEach(function (field) {
+        target[field] = Math.max(Number(target[field]) || 0, Number(product[field]) || 0);
+    });
+    if (!String(target.sku || '').trim() && String(product.sku || '').trim()) {
+        target.sku = String(product.sku || '').trim();
+    }
+    target.valor_total_produto = (Number(target.qtde) || 0) * (Number(target.preco_compra) || 0);
+}
+
+function consolidatePreCadastroDuplicateProducts() {
+    preCadastroGroups.forEach(function (group) {
+        (group.items || []).forEach(function (item) {
+            if (!preCadastroItemAgrupaDuplicados(item) || !Array.isArray(item.products)) {
+                return;
+            }
+            const aggregated = {};
+            const order = [];
+            item.products.forEach(function (product) {
+                const key = String(product.referencia || '') ||
+                    (String(item.referencia_fornecedor || '') + '|' + String(product.tamanho || '') + '|' + String(product.cor || ''));
+                if (!aggregated[key]) {
+                    aggregated[key] = Object.assign({}, product);
+                    aggregated[key].qtde = Number(product.qtde) || 0;
+                    aggregated[key].preco_fornecedor = Number(product.preco_fornecedor) || 0;
+                    aggregated[key].preco_compra = Number(product.preco_compra) || 0;
+                    aggregated[key].preco_atacado = Number(product.preco_atacado) || 0;
+                    aggregated[key].preco_varejo = Number(product.preco_varejo) || 0;
+                    aggregated[key].valor_total_produto = aggregated[key].qtde * aggregated[key].preco_compra;
+                    order.push(key);
+                    return;
+                }
+                mergePreCadastroProdutoDuplicado(aggregated[key], product);
+            });
+            item.products = order.map(function (key) {
+                return aggregated[key];
+            });
+        });
+    });
+}
+
 function savePreCadastroProdutos() {
     if (preCadastroIsConsolidado()) {
         appOkAlert('Pre-cadastro consolidado nao pode ser editado.', appAlertTitle('warning'));
@@ -2014,6 +2062,8 @@ function savePreCadastroProdutos() {
     }
 
     syncPreCadastroFields();
+    recalcPreCadastroReferences();
+    consolidatePreCadastroDuplicateProducts();
     const missing = preCadastroMissingFields();
     if (missing.length) {
         appOkAlert('Preencha os campos obrigatórios antes de gravar:\n' + missing.slice(0, 10).join('\n'), appAlertTitle('warning'));
