@@ -1,13 +1,13 @@
 # ALLOP - Arquitetura, Regras e Padroes do Sistema
 
 **Projeto correto para manutencao:** `D:\E7TI\PHP\allop`  
-**Atencao:** nao usar `D:\E7TI\PHP\appf` para demandas do Allop.
+**Atencao:** CERTIFIQUE-SE QUE VOCE ESTA NO WORKSPACE ALLOP.
 
 **Documento-base:** 01/06/2026  
-**Ultima revisao documental:** 20/08/2026  
-**Ultima revisao conferida do codigo:** 20/08/2026  
-**Ultima revisao conferida do `banco.sql`:** 15/07/2026  
-**Ultima revisao conferida do `banco_fotos.sql`:** 19/06/2026  
+**Ultima revisao documental:** 09/10/2026
+**Ultima revisao conferida do codigo:** 09/10/2026
+**Ultima revisao conferida do `banco.sql`:** 09/10/2026
+**Ultima revisao conferida do `banco_fotos.sql`:** 09/10/2026  
 **Escopo conferido:** aplicacao PHP, APIs, telas, assets, seed, banco principal, banco de fotos e documentacao existente.
 
 ## 1. Objetivo
@@ -32,7 +32,7 @@ Principais caracteristicas:
 - Dompdf instalado via Composer para geracao de PDF;
 - menu dinamico por perfil;
 - dashboard de compras;
-- modulo de compras com pedido, itens, tamanhos, cores, rateio, fotos, e-mail, logs e workflow.
+- modulo de compras com pedido, itens, tamanhos, cores, rateio, fotos, e-mail, logs, workflow, pre-cadastro e de/para de cores.
 
 Fluxo principal:
 
@@ -55,6 +55,7 @@ index.php
 | `logout.php` | Encerra a sessao. |
 | `dashboard.php` | Painel autenticado com indicadores, graficos e ultimos pedidos de compra. |
 | `alterar_senha_admin.php` | Tela especifica para trocar a senha do usuario `admin`. |
+| `sx.php` | Tela externa, com sessao propria `allop_sx`, para pesquisar usuarios e alterar senhas no banco principal. |
 | `config/` | Configuracao geral e conexoes PDO. |
 | `includes/` | Autenticacao, permissoes, layout e envio SMTP. |
 | `mod/` | Telas dos modulos do sistema. |
@@ -86,6 +87,7 @@ Arquivos Markdown/documentacao proprios:
 | `includes/layout.php` | Renderiza header, menu, area de conteudo, footer e assets locais. |
 | `includes/smtp_mailer.php` | Cliente SMTP por socket com SSL implicito, STARTTLS e autenticacao opcional. |
 | `api/bootstrap.php` | Inicializacao comum das APIs, `api_response()`, `request_data()` e `api_require_login()`. |
+| `sx.php` | Fluxo publico de troca de senha por usuario, com token CSRF proprio e Select2 remoto interno ao arquivo. |
 | `assets/js/app.js` | CRUD generico, Select2, alertas, confirmacao, sincronizacao de grids, ViaCEP, empresas, e-mail e fluxo completo de compras. |
 | `assets/css/style.css` | Tema global, responsividade, botoes com icones, grids, dashboard, login e componentes de compras. |
 | `scripts/seed_aplicacoes.php` | Seed de menus, aplicacoes, perfil Administrador, permissoes, usuario inicial e estruturas auxiliares. |
@@ -116,16 +118,22 @@ Regra geral: manter bibliotecas locais. As excecoes atuais sao ViaCEP no navegad
 | `mod/seguranca/aplicacoes_lista.php` / `aplicacoes_form.php` | `api/seguranca/crud.php?entity=aplicacoes` |
 | `mod/seguranca/perfil_aplicacoes_lista.php` / `perfil_aplicacoes_form.php` | `api/seguranca/perfil_aplicacoes.php` |
 | `mod/seguranca/usuarios_permissoes_lista.php` / `usuarios_permissoes_form.php` | `api/seguranca/crud.php?entity=usuarios_permissoes` |
+| `mod/seguranca/cp_compras_emails_lista.php` / `cp_compras_emails_form.php` | `api/seguranca/crud.php?entity=cp_compras_emails` |
 
 APIs auxiliares:
 
 | API | Acoes/comportamento |
 | --- | --- |
 | `api/seguranca/auth.php` | Valida login ativo, aceita senha com `password_verify()` e texto puro legado, cria sessao e retorna redirect. |
-| `api/seguranca/options.php` | Fornece opcoes Select2 para perfis, aplicacoes, menus, usuarios, CDs e empresas. |
+| `api/seguranca/options.php` | Fornece opcoes Select2 para perfis, aplicacoes, menus, usuarios, CDs, empresas, contas de e-mail, cores KidStok e cores de colecao pendentes de de/para. |
 | `api/seguranca/admin_senha.php` | Altera a senha do login `admin` com `password_hash()`. Nao exige sessao atualmente. |
 | `api/seguranca/crud.php` | CRUD generico para entidades de seguranca. |
 | `api/seguranca/perfil_aplicacoes.php` | Lista perfis, lista permissoes por perfil, salva permissoes em lote e exclui permissoes de um perfil. |
+
+Telas raiz de senha:
+
+- `alterar_senha_admin.php`: formulario publico para alterar somente a senha do login `admin`, chamando `api/seguranca/admin_senha.php`;
+- `sx.php`: formulario publico com sessao propria `allop_sx`, token por formulario, pesquisa remota de usuarios em `seg_usuarios` e gravacao de senha com `password_hash()` para qualquer usuario selecionado.
 
 Entidades aceitas pelo CRUD generico:
 
@@ -134,7 +142,28 @@ Entidades aceitas pelo CRUD generico:
 - `aplicacoes`;
 - `perfil_aplicacoes`;
 - `usuarios_permissoes`;
+- `cp_compras_emails`;
+- `cp_depara_cor`;
 - `menus`.
+
+E-mails de compras:
+
+- usa o CRUD generico com a entidade `cp_compras_emails`;
+- persiste `config_email_id`, `Nome`, `email` e `status` na tabela `cp_compras_emails`;
+- a listagem mostra a conta vinculada de `config_email`, nome, e-mail e status textual;
+- o campo `config_email_id` usa Select2 remoto do tipo `config_email`, fornecido por `api/seguranca/options.php`;
+- os arquivos ficam em `mod/seguranca`, mas o seed cadastra a aplicacao no menu `Configuracoes`.
+
+De/para de cores:
+
+- usa o CRUD generico com a entidade `cp_depara_cor`;
+- persiste `cor_fornecedor` e `codigo_ks` na tabela `cp_depara_cor`;
+- a chave do registro e a propria `cor_fornecedor`, nao um `id` numerico;
+- a listagem pesquisa por cor do fornecedor, codigo KidStok ou nome da cor em `produtos_cor`;
+- o formulario em lote carrega ate 500 cores distintas de `pf_colecao.cor_produto`, mostra quantidade de itens por cor e permite vincular cada cor a `produtos_cor`;
+- o Select2 `pf_colecao_cores` retorna somente cores de colecao ainda nao mapeadas;
+- o Select2 `produtos_cor` retorna `Codigo - Nome`;
+- os arquivos ficam em `mod/compras`, mas a API usada e `api/seguranca/crud.php`.
 
 Acoes de `api/seguranca/perfil_aplicacoes.php`:
 
@@ -196,14 +225,19 @@ Configuracoes de e-mail:
 | --- | --- |
 | `mod/compras/cp_compras_lista.php` | Pesquisa e lista pedidos de compra. |
 | `mod/compras/cp_compras_form.php` | Cabecalho, itens, tamanhos, cores, rateio, fotos, logs e workflow. |
+| `mod/compras/pre_cadastro_produtos_lista.php` | Lista pre-cadastros, mostra status de consolidacao/compra e expoe acoes de novo, editar, consolidar, gerar compra e historico. |
+| `mod/compras/pre_cadastro_produtos_form.php` | Seleciona pedido de compra, gera a pre-visualizacao do pre-cadastro, permite completar dados obrigatorios e editar pre-cadastros ainda nao consolidados. |
+| `mod/compras/cp_depara_cor_lista.php` | Lista mapeamentos entre cores do fornecedor e cores KidStok. |
+| `mod/compras/cp_depara_cor_form.php` | Carrega cores de `pf_colecao`, mostra pendencias e salva mapeamentos em lote ou por linha. |
 | `api/compras/cp_compras.php` | API principal de compras. |
 | `api/compras/cp_compras_pdf.php` | Gera PDF completo do pedido em A4 paisagem. |
+| `api/compras/pre_cadastro_produtos.php` | API para lista, preview, Select2, gravacao, edicao, consolidacao e historico do pre-cadastro de produtos. |
 
 #### Acoes da API de Compras
 
 | Acao | Comportamento |
 | --- | --- |
-| `options` | Pesquisa CDs, empresas, fornecedores e referencias para Select2. |
+| `options` | Pesquisa CDs, empresas, fornecedores, referencias e categorias para Select2. |
 | `defaults` | Retorna CD/empresa automaticamente quando existe apenas um registro. |
 | `list` | Lista ate 200 pedidos por numero, status, localizacao, fornecedor, empresa ou CD. Tambem aceita `pedido_id`. |
 | `get` | Carrega cabecalho, itens, tamanhos, cores, rateios, indicadores de fotos e indicadores de log da iteracao atual. |
@@ -215,9 +249,84 @@ Configuracoes de e-mail:
 | `fotos_upload` | Recebe upload de imagens. Origem padrao `kidstok` grava em `cp_compras_fotos_ks`; origem `fornecedor` existe no contrato, mas e bloqueada pela regra interna. |
 | `fotos_delete` | Exclui foto KidStok. Fotos do fornecedor sao bloqueadas para exclusao pela tela interna. |
 | `cor_log_ultimo` | Retorna o ultimo log de preco da cor do pedido. |
-| `enviar_proposta` | Envia e-mail, publica o pedido, muda localizacao para `Fornecedor` e incrementa `Iteracao`. |
+| `enviar_proposta` | Envia e-mail, publica o pedido, muda localizacao para `Fornecedor` e incrementa `Iteracao`. Tambem e a acao usada pelo botao `Enviar Fornecedor` quando o pedido esta em `Aprovado Aguardando Foto Fornecedor` e localizado em `KidStok`. |
 | `aprovar` | Aprova pedido publicado; se ainda nao ha foto do fornecedor, muda para `Aprovado Aguardando Foto Fornecedor`, envia e-mail e devolve ao fornecedor. |
 | `recusar` | Recusa pedido publicado, exige motivo e devolve para `KidStok`. |
+
+#### Pre Cadastro Produtos
+
+`mod/compras/pre_cadastro_produtos_lista.php` usa a rota cadastrada no menu Compras pelo seed. A tela lista os pre-cadastros ja gerados, exibe fornecedor e categoria com codigo e nome, destaca o status de consolidacao e disponibiliza as acoes conforme o estado do registro.
+
+`mod/compras/pre_cadastro_produtos_form.php` e a tela de inclusao/edicao. Ela permite selecionar um pedido aprovado via Select2, carregar a hierarquia ativa de compras e montar os dados que serao gravados em `pre_cadastro`, `pre_cadastro_item` e `pre_cadastro_item_pro`.
+
+Regras atuais:
+
+- somente pedidos com `status_id = 2` (`Aprovado`) e ainda nao vinculados a `pre_cadastro.cp_compras_id` entram na pesquisa para novo pre-cadastro;
+- `pre_cadastro` agrupa por pedido, categoria do item e data de entrega efetiva do tamanho ou do item;
+- campos vindos do pedido e dos itens de compra sao preenchidos automaticamente quando existem;
+- a colecao pode ser carregada de `pf_colecao` usando o SKU e o fornecedor;
+- a descricao do item e ajustada em `descricao` com ate 50 caracteres e `descricao_complementar` com o restante usado pela tela;
+- `r3` inicia em branco em novos registros, recebe foco ao clicar no item e deve ser informado pelo usuario antes de gravar;
+- `r3` aceita apenas 4 numeros;
+- `referencia_master` e `referencia` sao calculadas na tela a partir de `r1`, `r2`, `r3`, tamanho e cor;
+- `Grupo` usa pesquisa distinta e `Grupo/Categoria` e filtrado pelo grupo selecionado;
+- `Composicao` e `Caracteristica` usam o codigo de `Grupo/Categoria` para buscar opcoes em `produtos_categoria_composicao` e `produtos_categoria_caracteristicas`;
+- quando a tabela `cp_depara_cor` existe e esta preenchida, a API usa o de/para entre cor do fornecedor e `produtos_cor.Codigo` para sugerir a cor KidStok;
+- tamanho e cor tambem podem ser selecionados por Select2 a partir de `produtos_tamanho` e `produtos_cor`;
+- campos sem origem em compras e campos com relacionamento usam Select2 remoto na propria API;
+- os campos `setor_laranja` e `preco_cheio` usam toggles Sim/Nao por item, tamanho ou cor;
+- quando `preco_cheio` e Sim, o Atacado acompanha o Varejo; o valor anterior do Atacado fica preservado para restauracao ao voltar para Nao;
+- campos tributarios obrigatorios incluem `cfop`, `cfop_propria`, `cst_icms`, `cst_pis`, `cst_cofins` e `cst_ipi`;
+- a gravacao valida campos obrigatorios, pedido aprovado, categoria, R2, R3, tamanho, cor, NCM, duplicidade de referencia e existencia de `referencia_master` em `produtos_cab` antes de inserir ou alterar;
+- `estilo` e `origem` sao persistidos quando informados na tela;
+- a gravacao usa transacao unica no banco principal e faz rollback em erro.
+- a edicao abre os itens recolhidos e nao permite salvar quando `pre_cadastro.consolidado = 1`;
+- apos consolidar, o pre-cadastro fica bloqueado para edicao.
+
+Acoes de `api/compras/pre_cadastro_produtos.php`:
+
+| Acao | Comportamento |
+| --- | --- |
+| `options` | Pesquisa opcoes remotas de pedido, fornecedor, categoria, grupo, composicao, caracteristica, genero, estilo, origem, tributacao, tamanho, cor e demais relacionamentos da tela. |
+| `preview` | Carrega os dados do pedido aprovado e monta a estrutura inicial de pre-cadastro. |
+| `get` | Carrega um pre-cadastro existente com cabecalho, itens, tamanhos, cores e status de consolidacao. |
+| `save` | Insere `pre_cadastro`, `pre_cadastro_item` e `pre_cadastro_item_pro`. |
+| `update` | Atualiza um pre-cadastro ainda nao consolidado, recriando os filhos dentro da transacao. |
+| `consolidate` | Gera `produtos_cab` a partir de `pre_cadastro_item`, gera `produtos_cab_grade` a partir de `pre_cadastro_item_pro` usando campos do item, grava `Consolidado = 'N'` nos produtos gerados e marca `pre_cadastro.consolidado = 1`. |
+| `generate_purchase` | Gera pedidos na tabela `compras` e itens em `compras_itens` a partir de pre-cadastro consolidado, depois move o pre-cadastro para historico. |
+| `history` | Move registros consolidados para `pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst`, criando ou alinhando colunas historicas antes da copia. |
+
+Regras da listagem:
+
+- `consolidado = 0` aparece como `Nao consolidado` em cor de alerta e exibe `Consolidar` e `Editar`;
+- `consolidado = 1` aparece como `Consolidado` em verde e nao permite edicao;
+- o botao `Gerar compra` aparece apenas quando `consolidado = 1` e `compra = 0`;
+- o botao `Historico` aparece apenas quando `consolidado = 1` e possui tooltip `Move pre cadastro para historico`;
+- ao gerar compra, cada registro de `pre_cadastro_item` gera um pedido novo em `compras`;
+- cada registro de `pre_cadastro_item_pro` do item gera uma linha em `compras_itens`;
+- `pre_cadastro_item_pro.referencia` e validada contra `produtos.Distribuidora`;
+- `compras_itens.Produto` recebe o `produtos.Codigo` localizado pela `Distribuidora`, para preservar a chave estrangeira;
+- `compras_itens.Distribuidora` recebe a referencia completa de `pre_cadastro_item_pro.referencia`;
+- `pre_cadastro_item.compra_nro` e `pre_cadastro_item_pro.compra_nro` guardam o numero do pedido gerado;
+- no final do processo, `pre_cadastro.compra` e marcado como `1` e o cabecalho, itens e grades sao copiados para `pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst`;
+- apos copiar para historico, os registros originais sao removidos de `pre_cadastro_item_pro`, `pre_cadastro_item` e `pre_cadastro`, por isso deixam de aparecer na listagem ativa;
+- a geracao roda em transacao e bloqueia pre-cadastro nao consolidado, compra ja gerada, itens/grades sem quantidade ou referencias nao cadastradas em `produtos.Distribuidora`.
+
+#### De/Para de Cores
+
+`mod/compras/cp_depara_cor_lista.php` usa a entidade `cp_depara_cor` do CRUD generico para listar, filtrar, editar e excluir mapeamentos. A listagem exibe a cor do fornecedor e a cor KidStok no formato `codigo - nome`.
+
+`mod/compras/cp_depara_cor_form.php` e uma tela operacional em lote. Ela consulta cores distintas de `pf_colecao.cor_produto`, cruza com `cp_depara_cor` e `produtos_cor`, mostra o total de cores e pendencias, e permite salvar todas as linhas selecionadas ou uma linha por vez.
+
+Regras atuais:
+
+- `cor_fornecedor` e chave primaria em `cp_depara_cor`;
+- `codigo_ks` referencia `produtos_cor.Codigo`;
+- cores ja mapeadas aparecem com badge `Mapeada`;
+- cores sem `codigo_ks` aparecem como `Pendente`;
+- a tela em lote usa Select2 remoto para escolher a cor KidStok;
+- o mapeamento e usado como sugestao automatica no pre-cadastro de produtos;
+- sem mapeamento, o usuario precisa completar a cor KidStok manualmente no pre-cadastro.
 
 #### Estrutura Funcional do Pedido
 
@@ -243,11 +352,22 @@ O formulario de compra usa layout em duas colunas em desktop:
 
 No resumo ficam `Salvar alteracoes`, `Imprimir PDF`, `Enviar Proposta`, `Enviar Fornecedor`, `Aprovar` e `Recusar`, exibidos conforme status, publicacao, localizacao, fotos e alteracoes pendentes.
 
-A lista `cp_compras_lista` usa a mesma ordem de campos do dashboard em `Ultimos 10 pedidos`: Pedido, Data, CD, Empresa, Fornecedor, Status, Localizacao, Publicado, Valor e Acoes.
+No cabecalho do `cp_compras_form`, a linha de datas exibe `Criacao` (`Inclusao`), `Publicacao` (`DataPedido`), `Envio Fornecedor` (`DataHoraEnvioFornecedor`) e `Resposta Fornecedor` (`DataHoraRespostaFornecedor`).
+
+A lista `cp_compras_lista` exibe: Pedido, Criacao, Publicacao, CD, Empresa, Fornecedor, Status, Localizacao, Publicado, Envio Fornecedor, Resposta Fornecedor, Valor e Acoes.
 
 Regras de gravacao e validacao:
 
 - CD, empresa, fornecedor e data do pedido sao obrigatorios;
+- em `cp_compras`, `DataPedido` representa a data de publicacao do pedido;
+- no formulario interno, a data de publicacao nao e editavel; em novo pedido, inicia com a data atual;
+- em `cp_compras`, `Inclusao` representa a data de criacao/gravacao inicial do pedido;
+- em `cp_compras`, `DataHoraEnvioFornecedor` representa a data e hora em que o pedido foi enviado ao fornecedor;
+- em `cp_compras`, `DataHoraRespostaFornecedor` representa a data e hora da resposta do fornecedor;
+- a categoria do pedido pode ser informada no cabecalho por Select2, pesquisando `produtos_categorias` em ordem alfabetica por `TipoProduto`;
+- a categoria pode ficar em branco enquanto o pedido estiver em edicao;
+- a categoria pode ser alterada quando o pedido estiver editavel na KidStok;
+- envio de proposta ao fornecedor exige categoria informada;
 - o frontend exige ao menos um item confirmado;
 - uma referencia nao pode aparecer mais de uma vez no mesmo pedido;
 - item ativo deve ter ao menos um tamanho ativo;
@@ -263,7 +383,10 @@ Regras de gravacao e validacao:
 - itens/tamanhos/cores inativos nao disparam validacoes de rateio;
 - o total do pedido e recalculado no servidor pela soma dos totais das cores ativas;
 - registros existentes sao atualizados; registros removidos da hierarquia sao excluidos;
-- datas de entrega vazias nos tamanhos sao gravadas como `NULL`, sem assumir a data do item nem a data do pedido.
+- a data de entrega e informada por item e aplicada em cascata aos tamanhos;
+- a data de entrega de cada tamanho pode ser alterada manualmente depois da cascata do item;
+- se o fornecedor alterar a data de entrega do tamanho, o campo Data entrega fica destacado em vermelho na tela interna;
+- datas de entrega vazias nos tamanhos sao gravadas como `NULL`, sem assumir a data do pedido.
 - a quantidade de pecas exibida no item e no resumo e derivada da soma das cores ativas; quando um tamanho nao tem cores, usa a quantidade do tamanho.
 
 #### Status Oficiais de Compras
@@ -285,7 +408,7 @@ Regras de status, localizacao e workflow:
 - pedido localizado em `Fornecedor` nao permite edicao, exclusao, aprovacao ou recusa pela tela interna;
 - pedido `Aprovado` ou `Recusado` fica somente para visualizacao e impressao;
 - pedido `Aprovado Aguardando Foto Fornecedor` nao permite edicao do pedido;
-- se `Aprovado Aguardando Foto Fornecedor` estiver em `KidStok`, o formulario pode exibir `Enviar Fornecedor`;
+- se `Aprovado Aguardando Foto Fornecedor` estiver em `KidStok`, o formulario pode exibir `Enviar Fornecedor`, que chama `enviar_proposta` para publicar novamente e devolver o pedido ao fornecedor;
 - aprovacao exige pedido publicado;
 - se a KidStok alterar preco, valor ou data de entrega em relacao ao pedido carregado, `Aprovar` e `Recusar` ficam bloqueados/ocultos; o caminho correto passa a ser `Enviar Proposta`;
 - ao salvar alteracoes locais de preco, valor ou data de entrega, o pedido e marcado como `Publicado = 0` para exigir nova proposta ao fornecedor;
@@ -355,7 +478,7 @@ Detalhes:
 - os status usam os IDs 0, 1, 2 e 3 de `cp_compras_status`;
 - os titulos dos cards vem de `descricao_compras`, com fallback em texto padrao;
 - cada card mostra quantidade e valor total em reais;
-- a grid mostra status, localizacao e publicacao separadamente;
+- a grid mostra os mesmos campos principais da listagem de pedidos: pedido, criacao, publicacao, CD, empresa, fornecedor, status, localizacao, publicado, envio fornecedor, resposta fornecedor, valor e acoes;
 - a grid usa botao de edicao apenas para pedido aberto e editavel;
 - pedidos fechados, aguardando foto ou localizados em `Fornecedor` usam botao de visualizacao;
 - quando consultas do dashboard falham, os indicadores caem para zero e a listagem fica vazia.
@@ -367,6 +490,7 @@ Sessao:
 - a sessao guarda `id`, `nome`, `login` e `perfil_id`;
 - paginas internas chamam `require_login()`;
 - APIs internas normalmente chamam `api_require_login()`;
+- `sx.php` usa uma sessao separada chamada `allop_sx`, apenas para token de formulario;
 - login aceita senha com hash e senha em texto puro legado;
 - novas senhas sao gravadas com `password_hash()`;
 - logout limpa `$_SESSION`, remove o cookie da sessao quando aplicavel e chama `session_destroy()`.
@@ -379,7 +503,7 @@ Formato de resposta das APIs:
 }
 ```
 
-Falhas usam `success: false` e normalmente incluem `message`. Os status HTTP usados incluem 401, 403, 404, 422 e 500.
+Falhas usam `success: false` e normalmente incluem `message`. Os status HTTP usados incluem 401, 403, 404, 422 e 500. O fluxo `sx.php` tambem pode retornar 419 quando o token proprio do formulario expira ou nao confere.
 
 Menu:
 
@@ -413,8 +537,11 @@ IDs de menu previstos pelo seed:
 
 `banco.sql` contem:
 
-- 240 tabelas;
+- 241 tabelas;
 - 67 triggers;
+- 4 funcoes;
+- 28 procedures;
+- 9 views;
 - dump estrutural, sem dados.
 
 Principais grupos de tabelas:
@@ -422,11 +549,15 @@ Principais grupos de tabelas:
 | Dominio | Tabelas principais |
 | --- | --- |
 | Seguranca | `seg_menu`, `seg_aplicacoes`, `seg_perfil`, `seg_perfil_permissoes`, `seg_usuarios`, `seg_usuarios_permissoes` |
-| Compras | `cp_compras`, `cp_compras_status`, `cp_compras_emails`, `cp_compras_itens`, `cp_compras_itens_tamanhos`, `cp_compras_itens_cores`, `cp_compras_itens_rateios` |
+| Compras | `cp_compras`, `cp_compras_status`, `cp_compras_emails`, `cp_depara_cor`, `cp_compras_itens`, `cp_compras_itens_tamanhos`, `cp_compras_itens_cores`, `cp_compras_itens_rateios` |
 | Logs de compras | `cp_compras_itens_log`, `cp_compras_itens_tamanhos_log`, `cp_compras_itens_cores_log` |
 | Configuracoes | `empresas`, `empresas_cd`, `config_email`, `urls_allop`, `situacao` |
 | Portal fornecedor | `pf_colecao`, `pf_usuarios`, `pf_usuarios_copy`, `pf_usuario_fornecedor` |
-| Catalogo/ERP legado | tabelas `produtos*`, `KidStok`, `cfops`, `cests_ncm`, `st_*`, `compras*`, `nfe_*`, `romaneios_*`, `fechamento*`, `provisorios*`, `transportadoras*`, `veiculos*` e auxiliares |
+| Agenda e conferencia de compras legado | `compras_agenda*`, `compras_contagem*`, `compras_recontagem*`, `conferentes`, `entrada_de_mercadorias*` |
+| Etiquetas e pre-cadastro | `etiquetas_cab`, `etiquetas_ite`, `etiquetas_api`, `pre_cadastro`, `pre_cadastro_item`, `pre_cadastro_item_pro` |
+| Catalogo/ERP legado | tabelas `produtos*`, `KidStok`, `KidStokAntesGCom`, `cfops`, `cests_ncm`, `st_*`, `compras*`, `nfe_*`, `romaneios_*`, `fechamento*`, `provisorios*`, `transportadoras*`, `veiculos*`, `tb*` e auxiliares |
+| Cadastros auxiliares/API | `bancos`, `cargos`, `cidades*`, `estados*`, `franqueados*`, `consultores*`, `ramo_atividades*`, `regioes*`, `responsaveis*`, `configuracoes_*`, `logs`, `log_scripts` |
+| Views e rotinas legadas | views `produtos_*`, `vw_compras_*`, `vw_produtos_fabrica`, `rmnUH`, funcoes `sf_*` e procedures `sp_*`/legadas presentes no dump. |
 
 Triggers relevantes para compras:
 
@@ -435,6 +566,8 @@ Triggers relevantes para compras:
 - `cp_compras_itens_tamanhos_after_update`.
 
 Essas triggers gravam snapshots em tabelas de log usando os dados antigos (`OLD`) e consultam `Iteracao`/`Localizacao` no pedido.
+
+As tabelas de historico do pre-cadastro (`pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst`) sao criadas ou alinhadas pelo seed e pela API antes do processo de mover para historico.
 
 ### 8.2 Banco de Fotos
 
@@ -462,6 +595,9 @@ As tabelas tem estrutura equivalente para armazenar fotos em Base64, com campos 
 - cria o usuario `admin` apenas se ele ainda nao existir;
 - cria tabelas auxiliares com `CREATE TABLE IF NOT EXISTS`;
 - cria ou ajusta estruturas ligadas a `config_email`, `urls_allop` e compras;
+- garante `pre_cadastro.consolidado`, `pre_cadastro.compra`, `pre_cadastro_item.compra_nro` e `pre_cadastro_item_pro.compra_nro`;
+- cria ou alinha `pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst` com as tabelas origem;
+- registra a aplicacao `De/Para de Cores` no menu Compras;
 - recria triggers de log de compras com `DROP TRIGGER IF EXISTS` + `CREATE TRIGGER`;
 - imprime `Seed executado com sucesso.`.
 
@@ -475,7 +611,11 @@ Aplicacoes registradas pelo seed:
 - Empresas CD;
 - Empresas;
 - E-mail;
-- Pedidos de Compra.
+- E-mails de Compras;
+- Pedidos de Compra;
+- Pre Cadastro Produtos;
+- Gerar Pre Cadastro Produtos, cadastrado com `visualizar = 0` para apoiar o formulario sem aparecer no menu.
+- De/Para de Cores.
 
 O seed e parcialmente idempotente, mas executa DDL e altera dados de menu/permissoes. Deve ser usado com backup e consciencia do ambiente.
 
@@ -548,7 +688,7 @@ Banco:
 | Menu | `menu_items()`, `menu_icon()`, `.menu-main-link`, `.menu-svg` | Menu por perfil com icones SVG inline. |
 | Cards | `.card-slim`, `.dashboard-tile`, `.dashboard-chart-card` | Formularios, dashboards e paineis. |
 | Grids | `.table-custom`, `.grid-shell`, `.grid-filter`, `.filter-inline` | Listagens responsivas em linhas-card, com espacamento entre linhas e hover destacado. |
-| Botoes | `.btn-new`, `.btn-save`, `.btn-sync`, `.btn-edit`, `.btn-view`, `.btn-delete`, `.btn-print`, `.btn-photo`, `.btn-manage-photos`, `.btn-filter`, `.btn-back` | Acoes padronizadas com icones por CSS. |
+| Botoes | `.btn-new`, `.btn-save`, `.btn-sync`, `.btn-edit`, `.btn-view`, `.btn-delete`, `.btn-print`, `.btn-photo`, `.btn-manage-photos`, `.btn-filter`, `.btn-back`, `.btn-consolidate`, `.btn-generate-purchase`, `.btn-history` | Acoes padronizadas com icones por CSS. |
 | Alertas | `appAlert()`, `appOkAlert()`, `appConfirm()` | Mensagens e confirmacao via Bootstrap Modal/Alert. |
 | Salvamento | `setFormSaving()` | Bloqueia botao e mostra processamento. |
 | Status | `.badge-status-*`, `.cp-localizacao-badge`, `.dashboard-grid-badge` | Badges de status, localizacao e publicacao. |
@@ -557,28 +697,34 @@ Banco:
 | Fotos | `#cp-fotos-modal`, `.cp-item-fotos-panels`, `.cp-foto-dropzone`, `.cp-fotos-grid`, `.cp-foto-card`, `.cp-foto-preview-img` | Paineis de fotos, upload, exclusao e preview de imagens. |
 | Log de cor | `#cp-cor-log-modal`, `.cp-preco-alterado-*`, `.btn-price-log` | Comparacao de preco com ultimo log. |
 | Login | `.login-page`, `.login-shell`, `.login-card`, `.login-showcase` | Tela de acesso com logos e alternancia de visibilidade da senha. |
+| SX | `.sx-wrap`, `.sx-panel`, `.sx-title`, `.sx-mark`, `.btn-sx` | Tela externa `sx.php` para alteracao de senha de usuarios. Os estilos ficam inline no proprio arquivo. |
+| Pre-cadastro | `.pre-cadastro-ref-badges`, `.pre-cadastro-metric-badges`, `.pre-cadastro-toggle`, `.pre-cadastro-tamanhos-accordion`, `.btn-pre-cadastro-consolidar`, `.btn-pre-cadastro-historico` | Badges de referencias e metricas, toggles Sim/Nao, accordions de itens/tamanhos, grade de produtos gerados e acoes da listagem. |
+| De/para de cores | `.cp-depara-cor-select`, `.cp-depara-cor-status`, `.cp-depara-cor-save-row` | Select2 de cor KidStok, badge de mapeamento e salvamento por linha no formulario em lote. |
 
 ## 12. Pontos de Atencao Conhecidos
 
 1. **Permissao incompleta nas APIs:** o menu usa `visualizar` por perfil, mas as APIs nao validam permissoes especificas de inserir, editar, excluir, imprimir, exportar ou processar.
 2. **Permissoes por usuario sem efeito no menu:** `seg_usuarios_permissoes` existe e possui telas, mas nao participa da montagem do menu.
 3. **Dashboard sem filtro por permissoes:** os indicadores de compras ainda nao variam conforme permissoes do usuario.
-4. **Troca de senha admin publica:** `api/seguranca/admin_senha.php` nao chama `api_require_login()`.
+4. **Troca de senha admin publica:** `api/seguranca/admin_senha.php` nao chama `api_require_login()` e o formulario `alterar_senha_admin.php` fica fora do fluxo autenticado.
 5. **Grafias legadas:** `seg_usuarios_permissoes` usa `edtiar` e `imprirmir` no codigo.
 6. **Credenciais no codigo:** `config/database.php` contem constantes versionadas; o recomendado e migrar para variaveis de ambiente.
 7. **Erros expostos:** varias APIs retornam `Throwable::getMessage()` diretamente ao cliente.
-8. **CSRF ausente:** nao ha token CSRF nos formularios ou acoes mutaveis.
+8. **CSRF ausente ou parcial:** a maioria dos formularios e acoes mutaveis nao possui token CSRF; `sx.php` e uma excecao parcial porque valida token proprio, mas continua fora da autenticacao principal.
 9. **Senha legada aceita:** o login aceita texto puro para compatibilidade.
 10. **DDL no seed:** `seed_aplicacoes.php` cria tabelas auxiliares e recria triggers; isso deve ser executado com backup.
 11. **Transacao entre bancos:** operacoes com fotos podem envolver banco principal e banco de fotos sem atomicidade distribuida real.
 12. **Dependencias externas:** ViaCEP e Google Fonts sao dependencias externas atuais.
 13. **`ibge` opcional em Empresas:** a API detecta a coluna; se ausente, ignora a persistencia.
-14. **Referencias legadas ausentes no dump:** foram identificadas referencias para tabelas como `romaneios_tabela_preco`, `tbestados`, `tbgrupos`, `tbmarcas`, `tbmedidas` e `tbmodelos`, que nao aparecem como tabelas base no `banco.sql`.
+14. **Referencias legadas parcialmente fora do dump:** o `banco.sql` atual inclui tabelas `tb*` legadas como `tbcest`, `tbcidades`, `tbfranqueados`, `tbprodutos`, `tbprodutosbarras`, `tbramoatividade`, `tbresponsaveis` e `tbresponsaveisadicionais`, mas ainda ha referencias historicas para nomes como `romaneios_tabela_preco`, `tbestados`, `tbgrupos`, `tbmarcas`, `tbmedidas` e `tbmodelos` que nao aparecem como tabelas base no dump.
 15. **`pf_usuarios_copy`:** tabela presente no dump sem referencia no codigo atual.
 16. **Status autocorrigidos por upsert:** `cp_ensure_status_catalog()` regrava os textos canonicos dos IDs 0 a 3 em `cp_compras_status`; alteracoes manuais nesses IDs podem ser sobrescritas.
 17. **Encoding legado:** varios arquivos PHP e documentos legados ainda exibem acentos quebrados em strings ja versionadas; novos textos deste documento foram gravados em UTF-8/ASCII para reduzir novas quebras.
 18. **Contrato de fotos do fornecedor:** a acao `fotos_upload` aceita `origem=fornecedor`, mas `cp_require_foto_mutavel()` bloqueia qualquer insercao ou exclusao em `cp_compras_fotos` pela tela interna.
 19. **Workflow depende de snapshot no frontend:** o bloqueio de `Aprovar` e `Recusar` apos alteracoes locais de preco, valor ou entrega compara a grade atual com o estado carregado em `cpCompraWorkflowSnapshot`. Alteracoes feitas por fora da tela dependem do estado persistido e das regras da API.
+20. **Pre-cadastro sem permissao propria por acao:** `pre_cadastro_produtos.php` exige sessao, mas nao confere permissao especifica de processar/gravar antes de gerar ou inserir o pre-cadastro.
+21. **De/para de cores opcional:** a sugestao automatica de cor KidStok no pre-cadastro depende da existencia e preenchimento de `cp_depara_cor`; a tela `mod/compras/cp_depara_cor_form.php` ajuda a manter esse mapa, mas sem ele a cor precisa ser completada manualmente.
+22. **`sx.php` publico para troca de senha:** a tela externa possui token de formulario, mas nao exige login, perfil, permissao ou segredo adicional antes de listar usuarios e alterar senhas de `seg_usuarios`.
 
 ## 13. Como Recriar o Projeto do Zero
 
@@ -605,6 +751,7 @@ Para recriar o projeto, manter estes itens:
 - `banco.sql`;
 - `banco_fotos.sql`;
 - imagens em `assets/img/`, especialmente `SemFoto.png`;
+- telas raiz `login.php`, `dashboard.php`, `alterar_senha_admin.php` e `sx.php`, quando esses fluxos forem usados no ambiente;
 - bibliotecas locais em `assets/vendor/`.
 
 A pasta `vendor/` pode ser recriada com Composer quando `composer.json` e `composer.lock` estiverem presentes.
@@ -621,8 +768,9 @@ A pasta `vendor/` pode ser recriada com Composer quando `composer.json` e `compo
 8. Acessar `index.php` pelo navegador e validar se a tela de login carrega com CSS, JS e imagens.
 9. Executar `scripts/seed_aplicacoes.php` apenas apos backup ou em ambiente novo, para criar/atualizar menus, aplicacoes, permissoes, perfil Administrador e usuario administrador inicial.
 10. Entrar como administrador e trocar a senha inicial imediatamente pela tela `alterar_senha_admin.php` ou por fluxo administrativo equivalente.
-11. Conferir o menu do perfil Administrador e liberar permissoes dos demais perfis conforme necessario.
-12. Testar dashboard, listagens principais, cadastro de empresas/CD, configuracao de e-mail e fluxo de pedido de compra.
+11. Se `sx.php` for publicado no ambiente, restringir seu acesso na camada de infraestrutura ou substituir por fluxo autenticado.
+12. Conferir o menu do perfil Administrador e liberar permissoes dos demais perfis conforme necessario.
+13. Testar dashboard, listagens principais, cadastro de empresas/CD, configuracao de e-mail e fluxo de pedido de compra.
 
 ### 13.4 Ordem Recomendada de Validacao Inicial
 
@@ -635,6 +783,7 @@ Depois da instalacao:
 - abrir `mod/configuracoes/empresas_cd/empresas_cd_lista.php`;
 - abrir `mod/configuracoes/configuracoes_email/configuracoes_email_lista.php`;
 - abrir `mod/compras/cp_compras_lista.php`;
+- abrir `mod/compras/cp_depara_cor_lista.php` e conferir o mapeamento de cores quando houver `pf_colecao` e `produtos_cor`;
 - criar ou editar um pedido em `mod/compras/cp_compras_form.php`;
 - testar upload/visualizacao de fotos usando o banco de fotos;
 - gerar PDF por `api/compras/cp_compras_pdf.php`;
