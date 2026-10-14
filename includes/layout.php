@@ -37,7 +37,16 @@ function menu_icon(string $name): string
         'usuario x aplicacoes' => '<svg viewBox="0 0 24 24"><path d="M10 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm0 2c-2.7 0-8 1.3-8 4v2h10.5a6.5 6.5 0 0 1-.5-2.5c0-1.2.3-2.4.9-3.3A15 15 0 0 0 10 13Zm8.7 1.3 1.4 1.4-4.6 4.6-2.6-2.6 1.4-1.4 1.2 1.2 3.2-3.2Z"/></svg>',
     ];
 
-    return $icons[$key] ?? '<svg viewBox="0 0 24 24"><path d="M5 4h14v16H5V4Zm2 4v2h10V8H7Zm0 4v2h10v-2H7Z"/></svg>';
+    $submenuIcons = [
+        'pedidos de compra' => '<svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H5V3h2Zm0 2v14h10V8h-4V5H7Zm8 .8V6h1.2L15 4.8V5.8ZM8 11h8v2H8v-2Zm0 4h8v2H8v-2Z"/></svg>',
+        'pre cadastro produtos' => '<svg viewBox="0 0 24 24"><path d="M12 2 4 6v12l8 4 8-4V6l-8-4Zm0 2.2 5.2 2.6L12 9.4 6.8 6.8 12 4.2ZM6 8.4l5 2.5v8.4l-5-2.5V8.4Zm7 10.9v-8.4l5-2.5v8.4l-5 2.5Zm2-5.3h2v2h-2v2h-2v-2h-2v-2h2v-2h2v2Z"/></svg>',
+        'pré cadastro produtos' => '<svg viewBox="0 0 24 24"><path d="M12 2 4 6v12l8 4 8-4V6l-8-4Zm0 2.2 5.2 2.6L12 9.4 6.8 6.8 12 4.2ZM6 8.4l5 2.5v8.4l-5-2.5V8.4Zm7 10.9v-8.4l5-2.5v8.4l-5 2.5Zm2-5.3h2v2h-2v2h-2v-2h-2v-2h2v-2h2v2Z"/></svg>',
+        'gerar pre cadastro produtos' => '<svg viewBox="0 0 24 24"><path d="M5 3h9l5 5v13H5V3Zm2 2v14h10V9h-4V5H7Zm7 .8V7h1.2L14 5.8ZM8 11h5v2H8v-2Zm0 3h5v2H8v-2Zm7-1h2v2h2v2h-2v2h-2v-2h-2v-2h2v-2Z"/></svg>',
+        'gerar pré cadastro produtos' => '<svg viewBox="0 0 24 24"><path d="M5 3h9l5 5v13H5V3Zm2 2v14h10V9h-4V5H7Zm7 .8V7h1.2L14 5.8ZM8 11h5v2H8v-2Zm0 3h5v2H8v-2Zm7-1h2v2h2v2h-2v2h-2v-2h-2v-2h2v-2Z"/></svg>',
+        'de/para de cores' => '<svg viewBox="0 0 24 24"><path d="M7 4a3 3 0 0 0-3 3v6a5 5 0 0 0 5 5h1v-2H9a3 3 0 0 1-3-3V7a1 1 0 0 1 2 0v5h2V7a3 3 0 0 0-3-3Zm10 2a3 3 0 0 0-3 3v1h2V9a1 1 0 0 1 2 0v6a1 1 0 0 1-2 0v-1h-2v1a3 3 0 0 0 6 0V9a3 3 0 0 0-3-3Zm-4 5 2-2v6l-2-2H9v-2h4Z"/></svg>',
+    ];
+
+    return $submenuIcons[$key] ?? $icons[$key] ?? '<svg viewBox="0 0 24 24"><path d="M5 4h14v16H5V4Zm2 4v2h10V8H7Zm0 4v2h10v-2H7Z"/></svg>';
 }
 
 function render_header(string $titulo, array $actions = []): void

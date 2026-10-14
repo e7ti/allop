@@ -22,10 +22,48 @@ $map = [
     'empresas_cd' => ['table' => 'empresas_cd', 'id' => 'Codigo', 'label' => 'NomeCD'],
     'empresas' => ['table' => 'empresas', 'id' => 'Codigo', 'label' => 'Fantasia', 'fallback' => 'Nome'],
     'config_email' => ['table' => 'config_email', 'id' => 'Codigo', 'label' => 'NomeConta', 'fallback' => 'Email'],
+    'produtos_cor' => ['table' => 'produtos_cor', 'id' => 'Codigo', 'label' => 'Nome', 'fallback' => 'Codigo'],
 ];
 
-if (!isset($map[$type])) {
+if ($type !== 'pf_colecao_cores' && !isset($map[$type])) {
     api_response(false, ['message' => 'Tipo inválido.'], 404);
+}
+
+if ($type === 'pf_colecao_cores') {
+    $stmt = db()->prepare(
+        "SELECT DISTINCT pfc.cor_produto AS id,
+                pfc.cor_produto AS text
+           FROM pf_colecao pfc
+          WHERE pfc.cor_produto IS NOT NULL
+            AND TRIM(pfc.cor_produto) <> ''
+            AND pfc.cor_produto LIKE :q
+            AND NOT EXISTS (
+                SELECT 1
+                  FROM cp_depara_cor d
+                 WHERE CONVERT(d.cor_fornecedor USING utf8mb4) COLLATE utf8mb4_unicode_ci = pfc.cor_produto
+            )
+          ORDER BY pfc.cor_produto
+          LIMIT 30"
+    );
+    $stmt->execute(['q' => $q]);
+    api_response(true, ['results' => $stmt->fetchAll()]);
+}
+
+if ($type === 'produtos_cor') {
+    $stmt = db()->prepare(
+        "SELECT Codigo AS id,
+                CONCAT(Codigo, ' - ', Nome) AS text
+           FROM produtos_cor
+          WHERE Codigo LIKE :q_codigo
+             OR Nome LIKE :q_nome
+          ORDER BY Nome
+          LIMIT 30"
+    );
+    $stmt->execute([
+        'q_codigo' => $q,
+        'q_nome' => $q,
+    ]);
+    api_response(true, ['results' => $stmt->fetchAll()]);
 }
 
 $table = $map[$type]['table'];

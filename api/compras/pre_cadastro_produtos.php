@@ -1593,6 +1593,41 @@ function pc_insert_history_products(int $preCadastroId): int
     return $stmt->rowCount();
 }
 
+function pc_mover_pre_cadastro_historico_transacao(int $preCadastroId): array
+{
+    $moved = ['pre_cadastro' => 0, 'items' => 0, 'products' => 0];
+
+    $stmt = db()->prepare("SELECT id FROM pre_cadastro WHERE id = :id LIMIT 1 FOR UPDATE");
+    $stmt->execute(['id' => $preCadastroId]);
+    if (!$stmt->fetchColumn()) {
+        throw new RuntimeException('Pre-cadastro nao encontrado.');
+    }
+
+    $moved['products'] = pc_insert_history_products($preCadastroId);
+    $moved['items'] = pc_insert_history_items($preCadastroId);
+    $moved['pre_cadastro'] = pc_insert_history_header($preCadastroId);
+
+    if ($moved['pre_cadastro'] !== 1) {
+        throw new RuntimeException('Nao foi possivel mover o cabecalho para o historico.');
+    }
+
+    $stmt = db()->prepare(
+        "DELETE pro
+           FROM pre_cadastro_item_pro pro
+           INNER JOIN pre_cadastro_item item ON item.id = pro.pre_cadastro_item_id
+          WHERE item.pre_cadastro_id = :id"
+    );
+    $stmt->execute(['id' => $preCadastroId]);
+
+    $stmt = db()->prepare("DELETE FROM pre_cadastro_item WHERE pre_cadastro_id = :id");
+    $stmt->execute(['id' => $preCadastroId]);
+
+    $stmt = db()->prepare("DELETE FROM pre_cadastro WHERE id = :id");
+    $stmt->execute(['id' => $preCadastroId]);
+
+    return $moved;
+}
+
 function pc_mover_pre_cadastro_historico(int $preCadastroId): array
 {
     if ($preCadastroId <= 0) {
@@ -1601,27 +1636,9 @@ function pc_mover_pre_cadastro_historico(int $preCadastroId): array
 
     pc_prepare_pre_cadastro_history_tables();
 
-    $moved = ['pre_cadastro' => 0, 'items' => 0, 'products' => 0];
     db()->beginTransaction();
     try {
-        $stmt = db()->prepare("SELECT id FROM pre_cadastro WHERE id = :id LIMIT 1 FOR UPDATE");
-        $stmt->execute(['id' => $preCadastroId]);
-        if (!$stmt->fetchColumn()) {
-            db()->rollBack();
-            api_response(false, ['message' => 'Pre-cadastro nao encontrado.'], 404);
-        }
-
-        $moved['products'] = pc_insert_history_products($preCadastroId);
-        $moved['items'] = pc_insert_history_items($preCadastroId);
-        $moved['pre_cadastro'] = pc_insert_history_header($preCadastroId);
-
-        if ($moved['pre_cadastro'] !== 1) {
-            db()->rollBack();
-            api_response(false, ['message' => 'Nao foi possivel mover o cabecalho para o historico.'], 500);
-        }
-
-        $stmt = db()->prepare("DELETE FROM pre_cadastro WHERE id = :id");
-        $stmt->execute(['id' => $preCadastroId]);
+        $moved = pc_mover_pre_cadastro_historico_transacao($preCadastroId);
         db()->commit();
     } catch (Throwable $e) {
         if (db()->inTransaction()) {
@@ -1693,7 +1710,9 @@ function pc_gerar_compra_pre_cadastro(int $preCadastroId): array
         api_response(false, ['message' => 'Informe o pre-cadastro.'], 422);
     }
 
-    $created = ['compras' => 0, 'compras_itens' => 0, 'pedidos' => []];
+    pc_prepare_pre_cadastro_history_tables();
+
+    $created = ['compras' => 0, 'compras_itens' => 0, 'pedidos' => [], 'moved' => ['pre_cadastro' => 0, 'items' => 0, 'products' => 0]];
     db()->beginTransaction();
     try {
         $loaded = pc_load_consolidacao_data($preCadastroId);
@@ -1806,6 +1825,8 @@ function pc_gerar_compra_pre_cadastro(int $preCadastroId): array
 
         $stmt = db()->prepare("UPDATE pre_cadastro SET compra = 1 WHERE id = :id");
         $stmt->execute(['id' => $preCadastroId]);
+
+        $created['moved'] = pc_mover_pre_cadastro_historico_transacao($preCadastroId);
         db()->commit();
     } catch (Throwable $e) {
         if (db()->inTransaction()) {

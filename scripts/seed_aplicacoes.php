@@ -283,6 +283,7 @@ $emailRoute = 'mod/configuracoes/configuracoes_email/configuracoes_email_lista.p
 $cpComprasRoute = 'mod/compras/cp_compras_lista.php';
 $preCadastroProdutosRoute = 'mod/compras/pre_cadastro_produtos_lista.php';
 $preCadastroProdutosFormRoute = 'mod/compras/pre_cadastro_produtos_form.php';
+$cpDeparaCorRoute = 'mod/compras/cp_depara_cor_lista.php';
 $cpComprasEmailsRoute = 'mod/seguranca/cp_compras_emails_lista.php';
 $oldEmailRoutes = [
     'mod/configuracoes_email/email_lista.php',
@@ -326,6 +327,7 @@ $aplicacoes = [
     ['nome' => 'Pedidos de Compra', 'rota' => $cpComprasRoute, 'menu_id' => $menuComprasId, 'ordem' => 10],
     ['nome' => 'Pré Cadastro Produtos', 'rota' => $preCadastroProdutosRoute, 'menu_id' => $menuComprasId, 'ordem' => 20],
     ['nome' => 'Gerar Pre Cadastro Produtos', 'rota' => $preCadastroProdutosFormRoute, 'menu_id' => $menuComprasId, 'ordem' => 21, 'visualizar' => 0],
+    ['nome' => 'De/Para de Cores', 'rota' => $cpDeparaCorRoute, 'menu_id' => $menuComprasId, 'ordem' => 30],
 ];
 
 foreach ($aplicacoes as $app) {
@@ -525,11 +527,15 @@ db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_cores_log` (
     `Sts` tinyint(4) NOT NULL DEFAULT '1',
     `Iteracao` int(11) NOT NULL DEFAULT '0',
     `Localizacao` varchar(15) NOT NULL DEFAULT 'KidStok',
+    `Usuario` varchar(60) NOT NULL DEFAULT '' COMMENT 'Usuario que fez a alteracao',
+    `data_hora` datetime DEFAULT NULL COMMENT 'Data e hora da alteracao',
     PRIMARY KEY (`id`),
     KEY `IDXTamanho_id` (`compras_itens_tamanho_id`),
     KEY `IDXid` (`compras_itens_cores_id`),
     CONSTRAINT `FK_cp_compras_itens_cores_log_cp_compras_itens_cores` FOREIGN KEY (`compras_itens_cores_id`) REFERENCES `cp_compras_itens_cores` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;");
+ensureColumn('cp_compras_itens_cores_log', 'Usuario', "varchar(60) NOT NULL DEFAULT '' COMMENT 'Usuario que fez a alteracao' AFTER `Localizacao`");
+ensureColumn('cp_compras_itens_cores_log', 'data_hora', "datetime DEFAULT NULL COMMENT 'Data e hora da alteracao' AFTER `Usuario`");
 
 db()->exec("CREATE TABLE IF NOT EXISTS `cp_compras_itens_rateios` (
     `id` int(11) unsigned NOT NULL AUTO_INCREMENT COMMENT 'id do registro',
@@ -570,11 +576,13 @@ db()->exec("CREATE TRIGGER `cp_compras_itens_cores_after_update` AFTER UPDATE ON
 BEGIN
   IF NOT (OLD.`Qtde` <=> NEW.`Qtde`) OR NOT (OLD.`preco_proposta` <=> NEW.`preco_proposta`) OR NOT (OLD.`Sts` <=> NEW.`Sts`) THEN
     INSERT INTO `cp_compras_itens_cores_log`
-      (`compras_itens_cores_id`, `compras_itens_tamanho_id`, `sku`, `cor`, `Qtde`, `preco_fornecedor`, `preco_proposta`, `valor_total_produto`, `preco_franqueado`, `markup_franquia`, `preco_loja`, `markup_loja`, `markup_total`, `Sts`, `Iteracao`, `Localizacao`)
+      (`compras_itens_cores_id`, `compras_itens_tamanho_id`, `sku`, `cor`, `Qtde`, `preco_fornecedor`, `preco_proposta`, `valor_total_produto`, `preco_franqueado`, `markup_franquia`, `preco_loja`, `markup_loja`, `markup_total`, `Sts`, `Iteracao`, `Localizacao`, `Usuario`, `data_hora`)
     VALUES
       (OLD.`id`, OLD.`compras_itens_tamanho_id`, OLD.`sku`, OLD.`cor`, OLD.`Qtde`, OLD.`preco_fornecedor`, OLD.`preco_proposta`, OLD.`valor_total_produto`, OLD.`preco_franqueado`, OLD.`markup_franquia`, OLD.`preco_loja`, OLD.`markup_loja`, OLD.`markup_total`, OLD.`Sts`,
        (SELECT c.`Iteracao` FROM `cp_compras` c INNER JOIN `cp_compras_itens` i ON i.`cp_compras_id` = c.`id` INNER JOIN `cp_compras_itens_tamanhos` t ON t.`compras_itens_id` = i.`id` WHERE t.`id` = OLD.`compras_itens_tamanho_id` LIMIT 1),
-       (SELECT c.`Localizacao` FROM `cp_compras` c INNER JOIN `cp_compras_itens` i ON i.`cp_compras_id` = c.`id` INNER JOIN `cp_compras_itens_tamanhos` t ON t.`compras_itens_id` = i.`id` WHERE t.`id` = OLD.`compras_itens_tamanho_id` LIMIT 1));
+       (SELECT c.`Localizacao` FROM `cp_compras` c INNER JOIN `cp_compras_itens` i ON i.`cp_compras_id` = c.`id` INNER JOIN `cp_compras_itens_tamanhos` t ON t.`compras_itens_id` = i.`id` WHERE t.`id` = OLD.`compras_itens_tamanho_id` LIMIT 1),
+       COALESCE((SELECT c.`Usuario` FROM `cp_compras` c INNER JOIN `cp_compras_itens` i ON i.`cp_compras_id` = c.`id` INNER JOIN `cp_compras_itens_tamanhos` t ON t.`compras_itens_id` = i.`id` WHERE t.`id` = OLD.`compras_itens_tamanho_id` LIMIT 1), ''),
+       NOW());
   END IF;
 END;");
 

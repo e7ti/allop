@@ -1436,11 +1436,13 @@ DELIMITER ;;
 BEGIN
   IF NOT (OLD.`Qtde` <=> NEW.`Qtde`) OR NOT (OLD.`preco_proposta` <=> NEW.`preco_proposta`) OR NOT (OLD.`Sts` <=> NEW.`Sts`) THEN
     INSERT INTO `cp_compras_itens_cores_log`
-      (`compras_itens_cores_id`, `compras_itens_tamanho_id`, `sku`, `cor`, `Qtde`, `preco_fornecedor`, `preco_proposta`, `valor_total_produto`, `preco_franqueado`, `markup_franquia`, `preco_loja`, `markup_loja`, `markup_total`, `Sts`, `Iteracao`, `Localizacao`)
+      (`compras_itens_cores_id`, `compras_itens_tamanho_id`, `sku`, `cor`, `Qtde`, `preco_fornecedor`, `preco_proposta`, `valor_total_produto`, `preco_franqueado`, `markup_franquia`, `preco_loja`, `markup_loja`, `markup_total`, `Sts`, `Iteracao`, `Localizacao`, `Usuario`, `data_hora`)
     VALUES
       (OLD.`id`, OLD.`compras_itens_tamanho_id`, OLD.`sku`, OLD.`cor`, OLD.`Qtde`, OLD.`preco_fornecedor`, OLD.`preco_proposta`, OLD.`valor_total_produto`, OLD.`preco_franqueado`, OLD.`markup_franquia`, OLD.`preco_loja`, OLD.`markup_loja`, OLD.`markup_total`, OLD.`Sts`,
        (SELECT c.`Iteracao` FROM `cp_compras` c INNER JOIN `cp_compras_itens` i ON i.`cp_compras_id` = c.`id` INNER JOIN `cp_compras_itens_tamanhos` t ON t.`compras_itens_id` = i.`id` WHERE t.`id` = OLD.`compras_itens_tamanho_id` LIMIT 1),
-       (SELECT c.`Localizacao` FROM `cp_compras` c INNER JOIN `cp_compras_itens` i ON i.`cp_compras_id` = c.`id` INNER JOIN `cp_compras_itens_tamanhos` t ON t.`compras_itens_id` = i.`id` WHERE t.`id` = OLD.`compras_itens_tamanho_id` LIMIT 1));
+       (SELECT c.`Localizacao` FROM `cp_compras` c INNER JOIN `cp_compras_itens` i ON i.`cp_compras_id` = c.`id` INNER JOIN `cp_compras_itens_tamanhos` t ON t.`compras_itens_id` = i.`id` WHERE t.`id` = OLD.`compras_itens_tamanho_id` LIMIT 1),
+       COALESCE((SELECT c.`Usuario` FROM `cp_compras` c INNER JOIN `cp_compras_itens` i ON i.`cp_compras_id` = c.`id` INNER JOIN `cp_compras_itens_tamanhos` t ON t.`compras_itens_id` = i.`id` WHERE t.`id` = OLD.`compras_itens_tamanho_id` LIMIT 1), ''),
+       NOW());
   END IF;
 END */;;
 DELIMITER ;
@@ -1473,11 +1475,13 @@ CREATE TABLE IF NOT EXISTS `cp_compras_itens_cores_log` (
   `Sts` tinyint(4) NOT NULL DEFAULT '1' COMMENT '0 - inativo, 1 - ativo',
   `Iteracao` int(11) NOT NULL DEFAULT '0' COMMENT 'Iteracoes allop',
   `Localizacao` varchar(15) NOT NULL DEFAULT 'KidStok' COMMENT 'Allop/Fornecedor',
-  PRIMARY KEY (`id`),
-  KEY `IDXTamanho_id` (`compras_itens_tamanho_id`),
+  `Usuario` varchar(60) NOT NULL DEFAULT '' COMMENT 'Usuario que fez a alteracao',
+  `data_hora` datetime DEFAULT NULL COMMENT 'Data e hora da alteracao',
+  PRIMARY KEY (`id`) USING BTREE,
+  KEY `IDXTamanho_id` (`compras_itens_tamanho_id`) USING BTREE,
   KEY `IDXid` (`compras_itens_cores_id`) USING BTREE,
   CONSTRAINT `FK_cp_compras_itens_cores_log_cp_compras_itens_cores` FOREIGN KEY (`compras_itens_cores_id`) REFERENCES `cp_compras_itens_cores` (`id`) ON DELETE CASCADE ON UPDATE NO ACTION
-) ENGINE=InnoDB AUTO_INCREMENT=520 DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB AUTO_INCREMENT=591 DEFAULT CHARSET=latin1 COLLATE=latin1_swedish_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --

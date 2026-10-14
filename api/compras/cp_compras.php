@@ -2023,10 +2023,12 @@ try {
     if ($action === 'save') {
         $id = (int) ($data['id'] ?? 0);
         $payload = cp_header_payload($data);
+        if ($id <= 0 && $payload['DataPedido'] === '') {
+            $payload['DataPedido'] = date('Y-m-d');
+        }
         $items = cp_items_from_request($data);
         $items = cp_normalize_zero_quantities($items);
         cp_validate_item_percentuais($items);
-        cp_validate_header($payload);
 
         $total = 0.0;
         foreach ($items as $item) {
@@ -2055,6 +2057,9 @@ try {
 
         if ($id > 0) {
             cp_require_pedido_editavel($id, 'editar');
+            $stmtDataPedido = db()->prepare("SELECT DataPedido FROM cp_compras WHERE id = :id LIMIT 1");
+            $stmtDataPedido->execute(['id' => $id]);
+            $payload['DataPedido'] = (string) ($stmtDataPedido->fetchColumn() ?: date('Y-m-d'));
         } else {
             $payload['Sts'] = 'Aberto';
             $payload['Publicado'] = 0;
@@ -2062,6 +2067,7 @@ try {
             $payload['Localizacao'] = 'KidStok';
         }
 
+        cp_validate_header($payload);
         $payload['status_id'] = cp_status_id($payload['Sts']);
         unset($payload['Sts']);
 

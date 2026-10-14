@@ -13,7 +13,7 @@
             processResults: response => ({
                 results: (response.data || []).map(row => ({
                     id: row.id,
-                    text: row.nome || row.login || row.descricao || row.usuario_nome || row.aplicacao_nome || row.perfil_nome || ('Registro ' + row.id)
+                    text: row.nome || row.login || row.descricao || row.cor_fornecedor || row.usuario_nome || row.aplicacao_nome || row.perfil_nome || ('Registro ' + row.id)
                 }))
             })
         }
@@ -92,8 +92,8 @@
 
     const $form = $('#entity-form');
     if ($form.length) {
-        const id = Number($form.data('id'));
-        if (id > 0) {
+        const id = $form.data('id');
+        if (id !== undefined && id !== null && String(id) !== '' && String(id) !== '0') {
             loadForm($form, id);
         }
         $form.on('submit', function (event) {
@@ -330,13 +330,18 @@ function loadGrid() {
     return apiPost(crudUrl(cfg.entity, 'list'), { q: q }).done(function (response) {
         const rows = response.data || [];
         const html = rows.map(row => {
+            const rowId = row[cfg.idField || 'id'];
+            const encodedId = encodeURIComponent(rowId);
             const cells = cfg.columns.map((column, index) => '<td data-label="' + cfg.labels[index] + '">' + formatValue(row[column], column) + '</td>').join('');
             return '<tr>' + cells + '<td data-label="Ações" class="text-end">' +
-                '<a class="btn btn-sm btn-outline-secondary btn-edit btn-icon-only me-1" title="Editar" aria-label="Editar" href="' + cfg.form + '?id=' + row.id + '"></a>' +
-                '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only" title="Excluir" aria-label="Excluir" onclick="deleteRow(' + row.id + ')"></button>' +
+                '<a class="btn btn-sm btn-outline-secondary btn-edit btn-icon-only me-1" title="Editar" aria-label="Editar" href="' + cfg.form + '?id=' + encodedId + '"></a>' +
+                '<button class="btn btn-sm btn-outline-danger btn-delete btn-icon-only js-grid-delete" title="Excluir" aria-label="Excluir" data-id="' + escapeAttr(rowId) + '"></button>' +
                 '</td></tr>';
         }).join('');
         $('#grid').html(html || '<tr><td colspan="8" class="text-center text-muted">Nenhum registro encontrado.</td></tr>');
+        $('#grid').find('.js-grid-delete').off('click.gridDelete').on('click.gridDelete', function () {
+            deleteRow($(this).data('id'));
+        });
     }).fail(function (xhr) {
         appAlert(xhr.responseJSON?.message || 'Não foi possível carregar os dados.', 'danger');
     });
@@ -406,7 +411,7 @@ function saveForm($form) {
     setFormSaving($form, true);
     apiPost(crudUrl($form.data('entity'), 'save'), $.param(data)).done(function (response) {
         appAlert(response.message || 'Registro salvo.', 'success');
-        if (response.id && Number($form.data('id')) === 0) {
+        if (response.id) {
             $form.find('[name="id"]').val(response.id);
             $form.data('id', response.id);
         }
@@ -1337,10 +1342,12 @@ function initPreCadastroProdutosLista() {
             $button.prop('disabled', true).text('Gerando...');
             $.post(window.preCadastroProdutosListaConfig.api + '?action=generate_purchase', { id: id }, function (response) {
                 const created = response.created || {};
+                const moved = created.moved || {};
                 appOkAlert((response.message || 'Compra gerada com sucesso.') +
                     '\nPedidos: ' + (created.pedidos || []).join(', ') +
                     '\nCompras: ' + (created.compras || 0) +
-                    '\nItens: ' + (created.compras_itens || 0), 'Pre Cadastro Produtos', function () {
+                    '\nItens: ' + (created.compras_itens || 0) +
+                    '\nHistórico: ' + (moved.pre_cadastro || 0) + ' cabeçalho(s), ' + (moved.items || 0) + ' item(ns), ' + (moved.products || 0) + ' produto(s)', 'Pre Cadastro Produtos', function () {
                     window.location.reload();
                 });
             }, 'json').fail(function (xhr) {
@@ -2125,6 +2132,7 @@ function initCpComprasForm() {
     cpCompraReadonlyLocalizacao = '';
     cpCompraStatusIdAtual = 0;
     cpCompraStatusDescricaoAtual = 'Aberto';
+    $form.find('[name="DataPedido"]').prop('readonly', true);
 
     $form.find('.js-cp-compra-select').each(function () {
         const $select = $(this);
@@ -4048,6 +4056,12 @@ function renderCpCompraCorLog(log, corAtual) {
         return '<div class="alert alert-info mb-0">Nenhum registro de alteração encontrado para esta cor.</div>';
     }
 
+    const tituloCor = [
+        corAtual?.cor || log.cor || 'Cor',
+        corAtual?.sku || log.sku || ''
+    ].filter(Boolean).join(' - ');
+    const usuario = log.Usuario || '-';
+    const dataHora = formatDateTimeSecondsBr(log.data_hora || '');
     const rows = [
         ['Quantidade', formatNumberBr(log.Qtde), formatNumberBr(corAtual?.Qtde || 0)],
         ['Preço fornecedor', 'R$ ' + formatMoneyBr(log.preco_fornecedor || 0), 'R$ ' + formatMoneyBr(corAtual?.preco_fornecedor || 0)],
@@ -4058,8 +4072,12 @@ function renderCpCompraCorLog(log, corAtual) {
     ];
 
     return '<div class="mb-3">' +
-        '<div class="fw-bold">' + escapeHtml(corAtual?.cor || log.cor || 'Cor') + '</div>' +
-        '<div class="text-muted small">Comparativo entre o último log e os valores atuais da cor.</div>' +
+        '<div class="fw-bold mb-2">' + escapeHtml(tituloCor) + '</div>' +
+        '<div class="cp-cor-log-meta mb-3">' +
+        '<div class="cp-cor-log-meta-item"><span>Usuário</span><strong>' + escapeHtml(usuario) + '</strong></div>' +
+        '<div class="cp-cor-log-meta-item"><span>Data/Hora</span><strong>' + escapeHtml(dataHora || '-') + '</strong></div>' +
+        '</div>' +
+        '<div class="text-muted">Comparativo entre o último log e os valores atuais da cor.</div>' +
         '</div>' +
         '<div class="table-responsive">' +
         '<table class="table table-custom align-middle mb-0">' +
@@ -5725,6 +5743,17 @@ function formatDateTimeBr(value) {
     const parts = normalized.split(' ');
     const date = formatDateBr(parts[0] || '');
     const time = (parts[1] || '').slice(0, 5);
+    return [date, time].filter(Boolean).join(' ');
+}
+
+function formatDateTimeSecondsBr(value) {
+    if (!value) {
+        return '';
+    }
+    const normalized = String(value).replace('T', ' ');
+    const parts = normalized.split(' ');
+    const date = formatDateBr(parts[0] || '');
+    const time = (parts[1] || '').slice(0, 8);
     return [date, time].filter(Boolean).join(' ');
 }
 

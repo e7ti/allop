@@ -103,7 +103,10 @@ function dashboard_ultimos_pedidos(): array
         $stmt = db()->query(
             "SELECT c.id,
                     c.id AS ID,
+                    c.Inclusao,
                     c.DataPedido,
+                    c.DataHoraEnvioFornecedor,
+                    c.DataHoraRespostaFornecedor,
                     c.ValorTotalPedido,
                     c.status_id,
                     COALESCE(cst.descricao_compras, '') AS descricao_compras,
@@ -137,6 +140,21 @@ function dashboard_date_br($value): string
 
     $date = DateTime::createFromFormat('Y-m-d', substr($value, 0, 10));
     return $date ? $date->format('d/m/Y') : $value;
+}
+
+function dashboard_datetime_br($value): string
+{
+    $value = trim((string) ($value ?? ''));
+    if ($value === '' || $value === '0000-00-00 00:00:00') {
+        return '';
+    }
+
+    $date = DateTime::createFromFormat('Y-m-d H:i:s', substr($value, 0, 19));
+    if (!$date) {
+        $date = DateTime::createFromFormat('Y-m-d H:i', substr($value, 0, 16));
+    }
+
+    return $date ? $date->format('d/m/Y H:i') : $value;
 }
 
 function dashboard_status_badge($status, $localizacao = ''): string
@@ -376,20 +394,23 @@ render_header('Dashboard');
                     <thead>
                         <tr>
                             <th>Pedido</th>
-                            <th>Data</th>
+                            <th>CRIA&Ccedil;&Atilde;O</th>
+                            <th>PUBLICA&Ccedil;&Atilde;O</th>
                             <th>CD</th>
                             <th>Empresa</th>
                             <th>Fornecedor</th>
                             <th>Status</th>
                             <th>Localização</th>
                             <th>Publicado</th>
+                            <th>ENVIO FORNECEDOR</th>
+                            <th>RESPOSTA FORNECEDOR</th>
                             <th class="text-end">Valor</th>
                             <th class="text-end">Ações</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php if (!$ultimosPedidos): ?>
-                            <tr><td colspan="10" class="text-center text-muted">Nenhum pedido encontrado.</td></tr>
+                            <tr><td colspan="13" class="text-center text-muted">Nenhum pedido encontrado.</td></tr>
                         <?php endif; ?>
                         <?php foreach ($ultimosPedidos as $pedido): ?>
                             <?php
@@ -399,13 +420,16 @@ render_header('Dashboard');
                             ?>
                             <tr>
                                 <td data-label="Pedido"><?= h((string) ($pedido['ID'] ?? '')) ?></td>
-                                <td data-label="Data"><?= h(dashboard_date_br($pedido['DataPedido'] ?? '')) ?></td>
+                                <td data-label="CRIA&Ccedil;&Atilde;O"><?= h(dashboard_date_br($pedido['Inclusao'] ?? '')) ?></td>
+                                <td data-label="PUBLICA&Ccedil;&Atilde;O"><?= h(dashboard_date_br($pedido['DataPedido'] ?? '')) ?></td>
                                 <td data-label="CD"><?= h((string) ($pedido['cd_nome'] ?? '')) ?></td>
                                 <td data-label="Empresa"><?= h((string) ($pedido['empresa_nome'] ?? '')) ?></td>
                                 <td data-label="Fornecedor"><?= h((string) ($pedido['fornecedor_nome'] ?? '')) ?></td>
                                 <td data-label="Status"><?= dashboard_status_badge($pedido['descricao_compras'] ?? $pedido['Sts'] ?? '', $pedido['Localizacao'] ?? '') ?></td>
                                 <td data-label="Localização"><?= dashboard_localizacao_badge($pedido['Localizacao'] ?? '') ?></td>
                                 <td data-label="Publicado"><?= dashboard_publicado_badge($pedido['Publicado'] ?? 0) ?></td>
+                                <td data-label="ENVIO FORNECEDOR"><?= h(dashboard_datetime_br($pedido['DataHoraEnvioFornecedor'] ?? '')) ?></td>
+                                <td data-label="RESPOSTA FORNECEDOR"><?= h(dashboard_datetime_br($pedido['DataHoraRespostaFornecedor'] ?? '')) ?></td>
                                 <td data-label="Valor" class="text-end">R$ <?= h(number_format((float) ($pedido['ValorTotalPedido'] ?? 0), 2, ',', '.')) ?></td>
                                 <td data-label="Ações" class="text-end">
                                     <a class="btn btn-sm btn-outline-secondary <?= h($acaoClasse) ?> btn-icon-only" title="<?= h($acaoTitulo) ?>" aria-label="<?= h($acaoTitulo) ?>" href="<?= app_url('mod/compras/cp_compras_form.php?id=' . (int) ($pedido['id'] ?? 0)) ?>"></a>

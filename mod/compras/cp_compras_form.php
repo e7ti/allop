@@ -53,7 +53,7 @@ $id = (int) ($_GET['id'] ?? 0);
                 </div>
             </div>
             <div class="col-12 col-md-3"><label class="form-label">CRIAÇÃO</label><input class="form-control" name="Inclusao_display" type="text" readonly></div>
-            <div class="col-12 col-md-3"><label class="form-label">PUBLICAÇÃO</label><input class="form-control" name="DataPedido" type="date" required></div>
+            <div class="col-12 col-md-3"><label class="form-label">PUBLICAÇÃO</label><input class="form-control" name="DataPedido" type="date" required readonly></div>
             <div class="col-12 col-md-3"><label class="form-label">ENVIO FORNECEDOR</label><input class="form-control" name="DataHoraEnvioFornecedor_display" type="text" readonly></div>
             <div class="col-12 col-md-3"><label class="form-label">RESPOSTA FORNECEDOR</label><input class="form-control" name="DataHoraRespostaFornecedor_display" type="text" readonly></div>
             <div class="col-12 d-none" id="cp-sts-motivo-group">

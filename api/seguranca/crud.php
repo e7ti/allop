@@ -48,6 +48,11 @@ $entities = [
         'columns' => ['config_email_id', 'Nome', 'email', 'status'],
         'search' => ['Nome', 'email'],
     ],
+    'cp_depara_cor' => [
+        'table' => 'cp_depara_cor',
+        'columns' => ['cor_fornecedor', 'codigo_ks'],
+        'search' => ['cor_fornecedor'],
+    ],
     'menus' => [
         'table' => 'seg_menu',
         'columns' => ['menu'],
@@ -170,6 +175,32 @@ try {
             api_response(true, ['data' => $stmt->fetchAll()]);
         }
 
+        if ($entityName === 'cp_depara_cor') {
+            $term = trim((string) ($data['q'] ?? ''));
+            $where = '';
+            $params = [];
+            if ($term !== '') {
+                $where = " WHERE d.cor_fornecedor LIKE :q_cor_fornecedor OR pc.Codigo LIKE :q_codigo OR pc.Nome LIKE :q_nome";
+                $params['q_cor_fornecedor'] = '%' . $term . '%';
+                $params['q_codigo'] = '%' . $term . '%';
+                $params['q_nome'] = '%' . $term . '%';
+            }
+
+            $stmt = db()->prepare(
+                "SELECT d.cor_fornecedor AS id,
+                        d.cor_fornecedor,
+                        d.codigo_ks,
+                        CONCAT(d.codigo_ks, ' - ', COALESCE(pc.Nome, '')) AS codigo_ks_text
+                   FROM cp_depara_cor d
+                   LEFT JOIN produtos_cor pc ON pc.Codigo = d.codigo_ks
+                   $where
+                  ORDER BY d.cor_fornecedor
+                  LIMIT 300"
+            );
+            $stmt->execute($params);
+            api_response(true, ['data' => $stmt->fetchAll()]);
+        }
+
         $term = trim((string) ($data['q'] ?? ''));
         $params = [];
         $where = '';
@@ -242,12 +273,32 @@ try {
             api_response(true, ['data' => $stmt->fetch()]);
         }
 
+        if ($entityName === 'cp_depara_cor') {
+            $stmt = db()->prepare(
+                "SELECT d.cor_fornecedor AS id,
+                        d.cor_fornecedor,
+                        d.codigo_ks,
+                        CONCAT(d.codigo_ks, ' - ', COALESCE(pc.Nome, '')) AS codigo_ks_text
+                   FROM cp_depara_cor d
+                   LEFT JOIN produtos_cor pc ON pc.Codigo = d.codigo_ks
+                  WHERE d.cor_fornecedor = :id"
+            );
+            $stmt->execute(['id' => (string) ($data['id'] ?? '')]);
+            api_response(true, ['data' => $stmt->fetch()]);
+        }
+
         $stmt = db()->prepare("SELECT * FROM $table WHERE id = :id");
         $stmt->execute(['id' => $id]);
         api_response(true, ['data' => $stmt->fetch()]);
     }
 
     if ($action === 'delete') {
+        if ($entityName === 'cp_depara_cor') {
+            $stmt = db()->prepare("DELETE FROM cp_depara_cor WHERE cor_fornecedor = :id");
+            $stmt->execute(['id' => (string) ($data['id'] ?? '')]);
+            api_response(true, ['message' => 'Registro excluÃ­do.']);
+        }
+
         $id = (int) ($data['id'] ?? 0);
         $stmt = db()->prepare("DELETE FROM $table WHERE id = :id");
         $stmt->execute(['id' => $id]);
@@ -255,6 +306,41 @@ try {
     }
 
     if ($action === 'save') {
+        if ($entityName === 'cp_depara_cor') {
+            $id = trim((string) ($data['id'] ?? ''));
+            $corFornecedor = trim((string) ($data['cor_fornecedor'] ?? ''));
+            $codigoKs = trim((string) ($data['codigo_ks'] ?? ''));
+
+            if ($corFornecedor === '' || $codigoKs === '') {
+                api_response(false, ['message' => 'Informe a cor do fornecedor e a cor KidStok.'], 422);
+            }
+
+            if ($id !== '') {
+                $stmt = db()->prepare(
+                    "UPDATE cp_depara_cor
+                        SET cor_fornecedor = :cor_fornecedor,
+                            codigo_ks = :codigo_ks
+                      WHERE cor_fornecedor = :id"
+                );
+                $stmt->execute([
+                    'cor_fornecedor' => $corFornecedor,
+                    'codigo_ks' => $codigoKs,
+                    'id' => $id,
+                ]);
+                api_response(true, ['message' => 'Registro atualizado.', 'id' => $corFornecedor]);
+            }
+
+            $stmt = db()->prepare(
+                "INSERT INTO cp_depara_cor (cor_fornecedor, codigo_ks)
+                 VALUES (:cor_fornecedor, :codigo_ks)"
+            );
+            $stmt->execute([
+                'cor_fornecedor' => $corFornecedor,
+                'codigo_ks' => $codigoKs,
+            ]);
+            api_response(true, ['message' => 'Registro inserido.', 'id' => $corFornecedor]);
+        }
+
         $id = (int) ($data['id'] ?? 0);
         $payload = [];
         foreach ($entity['columns'] as $column) {
