@@ -146,6 +146,10 @@ Entidades aceitas pelo CRUD generico:
 - `cp_depara_cor`;
 - `menus`.
 
+Observacoes de usuarios:
+
+- `seg_usuarios.chequesapp` indica se o usuario pode acessar o aplicativo de cheques (`0` nao, `1` sim).
+
 E-mails de compras:
 
 - usa o CRUD generico com a entidade `cp_compras_emails`;

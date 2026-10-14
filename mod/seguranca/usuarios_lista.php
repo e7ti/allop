@@ -28,13 +28,13 @@ render_header('Usuários', [
     </div>
     <div class="card-body table-responsive">
         <table class="table table-custom align-middle">
-            <thead><tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Ativo</th><th class="text-end">Ações</th></tr></thead>
+            <thead><tr><th>Nome</th><th>Login</th><th>Perfil</th><th>Ativo</th><th>Cheques App</th><th class="text-end">Ações</th></tr></thead>
             <tbody id="grid"></tbody>
         </table>
     </div>
 </section>
 <script>
-window.gridConfig = { entity: 'usuarios', form: 'usuarios_form.php', columns: ['nome', 'login', 'perfil_id', 'ativo'], labels: ['Nome', 'Login', 'Perfil', 'Ativo'] };
+window.gridConfig = { entity: 'usuarios', form: 'usuarios_form.php', columns: ['nome', 'login', 'perfil_id', 'ativo', 'chequesapp'], labels: ['Nome', 'Login', 'Perfil', 'Ativo', 'Cheques App'] };
 </script>
 <?php render_footer(); ?>
 

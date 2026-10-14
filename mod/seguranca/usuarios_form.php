@@ -23,6 +23,7 @@ $id = (int) ($_GET['id'] ?? 0);
         <div class="col-12 col-md-6"><label class="form-label">Senha</label><input class="form-control" name="senha" type="password" autocomplete="new-password"></div>
         <div class="col-12 col-md-6"><label class="form-label">Perfil</label><select class="form-select js-remote-select" name="perfil_id" data-type="perfis" required></select></div>
         <div class="col-12 col-md-6"><label class="form-label">Ativo</label><select class="form-select" name="ativo"><option value="1">Sim</option><option value="0">Não</option></select></div>
+        <div class="col-12 col-md-6"><label class="form-label">Cheques App</label><select class="form-select" name="chequesapp"><option value="0">Não</option><option value="1">Sim</option></select></div>
     </div>
     <div class="card-footer bg-white d-flex gap-2 justify-content-end">
         <button class="btn btn-orange btn-save" type="submit">Salvar</button>

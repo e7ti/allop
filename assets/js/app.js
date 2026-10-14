@@ -346,7 +346,7 @@ function formatValue(value, column) {
     if (value === null || value === undefined || value === '') {
         return '-';
     }
-    const booleanColumns = ['ativo', 'visualizar', 'inserir', 'editar', 'edtiar', 'excluir', 'imprimir', 'imprirmir', 'exportar', 'processar'];
+    const booleanColumns = ['ativo', 'chequesapp', 'visualizar', 'inserir', 'editar', 'edtiar', 'excluir', 'imprimir', 'imprirmir', 'exportar', 'processar'];
     if (booleanColumns.includes(column) && (value === 1 || value === '1')) {
         return '<span class="badge bg-success-subtle">Sim</span>';
     }

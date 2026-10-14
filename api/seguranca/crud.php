@@ -14,7 +14,7 @@ api_require_login();
 $entities = [
     'usuarios' => [
         'table' => 'seg_usuarios',
-        'columns' => ['nome', 'login', 'senha', 'perfil_id', 'ativo'],
+        'columns' => ['nome', 'login', 'senha', 'perfil_id', 'ativo', 'chequesapp'],
         'search' => ['nome', 'login'],
     ],
     'perfis' => [
@@ -264,7 +264,7 @@ try {
         }
 
         foreach ($payload as $column => $value) {
-            if (in_array($column, ['visualizar', 'inserir', 'editar', 'edtiar', 'excluir', 'imprimir', 'imprirmir', 'exportar', 'processar', 'ativo', 'status'], true)) {
+            if (in_array($column, ['visualizar', 'inserir', 'editar', 'edtiar', 'excluir', 'imprimir', 'imprirmir', 'exportar', 'processar', 'ativo', 'chequesapp', 'status'], true)) {
                 $payload[$column] = (int) (bool) $value;
             }
         }

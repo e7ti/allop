@@ -6236,9 +6236,10 @@ CREATE TABLE IF NOT EXISTS `seg_usuarios` (
   `login` varchar(120) NOT NULL,
   `senha` varchar(120) NOT NULL,
   `ativo` tinyint(4) NOT NULL DEFAULT '1' COMMENT '0-Inativo, 1-Ativo',
+  `chequesapp` tinyint(4) NOT NULL DEFAULT '0' COMMENT 'Permite acesso ao aplicativo de cheques 0-nao , 1 - sim',
   PRIMARY KEY (`id`),
   KEY `FK_seg_usuarios_seg_perfil` (`perfil_id`),
-  CONSTRAINT `FK_seg_usuarios_seg_perfil` FOREIGN KEY (`perfil_id`) REFERENCES `seg_perfil` (`id`) ON UPDATE NO ACTION
+  CONSTRAINT `FK_seg_usuarios_seg_perfil` FOREIGN KEY (`perfil_id`) REFERENCES `seg_perfil` (`id`) ON DELETE RESTRICT ON UPDATE NO ACTION
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
