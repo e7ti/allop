@@ -3106,6 +3106,43 @@ body {
     font-weight: 800;
 }
 
+.pre-cadastro-fotos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+}
+
+.pre-cadastro-foto-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 10px;
+    border: 2px solid #dee2e6;
+    border-radius: 10px;
+    cursor: pointer;
+    min-width: 0;
+}
+
+.pre-cadastro-foto-card.is-selected,
+.pre-cadastro-foto-card:focus-within {
+    border-color: #ff4500;
+    background: #fff5ef;
+}
+
+.pre-cadastro-foto-card img {
+    width: 100%;
+    height: 150px;
+    object-fit: contain;
+}
+
+.pre-cadastro-foto-large {
+    display: block;
+    max-width: 100%;
+    max-height: 420px;
+    object-fit: contain;
+    margin-inline: auto;
+}
+
 .pre-cadastro-toggle {
     align-items: center;
     cursor: pointer;

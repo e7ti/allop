@@ -43,10 +43,24 @@ render_header($preCadastroId > 0 ? 'Editar Pre Cadastro Produtos' : 'Gerar Pre C
     </button>
 </div>
 
+<div class="modal fade" id="pre-cadastro-foto-preview-modal" tabindex="-1" aria-labelledby="pre-cadastro-foto-preview-title" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title fs-5" id="pre-cadastro-foto-preview-title">Imagem do produto</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body text-center"><img id="pre-cadastro-foto-preview-img" class="img-fluid" alt="Imagem do produto"></div>
+        </div>
+    </div>
+</div>
+
 <script>
 window.preCadastroProdutosConfig = {
     api: '../../api/compras/pre_cadastro_produtos.php',
+    photosApi: '../../api/compras/cp_compras.php',
     preCadastroId: <?= $preCadastroId ?>
 };
 </script>
+<script defer src="<?= app_url('assets/js/pre_cadastro_fotos.js') ?>"></script>
 <?php render_footer(); ?>

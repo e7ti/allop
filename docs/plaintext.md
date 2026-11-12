@@ -87,11 +87,12 @@ Arquivos Markdown/documentacao proprios:
 | --- | --- |
 | `config/app.php` | Define `APP_NAME`, `APP_DATE`, `BASE_PATH`, `BASE_URL`, `app_url()` e `h()`. |
 | `config/database.php` | Configuracao ativa; define `db()` e `db_fotos()` com PDO, erro por excecao e prepared statements nativos. |
-| `config/database copy.php` | Copia local com configuracao de desenvolvimento; nao e incluida pelo codigo atual nem selecionada automaticamente. |
+| `config/database devel.php` / `config/database producao.php` | Copias locais de configuracao; nao sao incluidas pelo fluxo normal nem selecionadas automaticamente. Permanecem fora do commit. |
 | `includes/auth.php` | Inicializa sessao e fornece `current_user()`, `require_login()`, `login_user()` e `logout_user()`. |
 | `includes/permissions.php` | Monta o menu com base em `seg_perfil_permissoes.visualizar` e agrupa as rotas de cadastros de produtos em submenu. |
 | `includes/layout.php` | Renderiza header, menu, area de conteudo, footer e assets locais. |
 | `includes/smtp_mailer.php` | Cliente SMTP por socket com SSL implicito, STARTTLS e autenticacao opcional. |
+| `includes/pre_cadastro_tributos.php` | Leitura e mapeamento de `produtos_prm` para os tributos do pre-cadastro, com preservacao de campos ja preenchidos. |
 | `api/bootstrap.php` | Inicializacao comum das APIs, `api_response()`, `request_data()` e `api_require_login()`. |
 | `sx.php` | Fluxo publico de troca de senha por usuario, com token CSRF proprio e Select2 remoto interno ao arquivo. |
 | `assets/js/app.js` | CRUD generico, Select2, alertas, confirmacao, sincronizacao de grids, ViaCEP, empresas, e-mail e fluxo completo de compras. |
@@ -338,13 +339,16 @@ Regras atuais:
 - campos sem origem em compras e campos com relacionamento usam Select2 remoto na propria API;
 - os campos `setor_laranja` e `preco_cheio` usam toggles Sim/Nao por item, tamanho ou cor;
 - quando `preco_cheio` e Sim, o Atacado acompanha o Varejo; o valor anterior do Atacado fica preservado para restauracao ao voltar para Nao;
-- o item possui a opcao `Somar tamanho/cor duplicado`; quando marcada, a tela e a API consideram duplicidade por item + tamanho + cor, juntam as linhas antes de validar/gravar, somam as quantidades e usam o maior preco entre as linhas agrupadas;
+- o item possui a opcao `Somar tamanho/cor duplicado`, marcada por padrao na geracao e na reabertura. E uma opcao de processamento, sem coluna propria persistida; desmarca-la vale para o envio atual. A tela e a API usam `S` quando a propriedade esta ausente, respeitando `N` explicito. Quando marcada, juntam referencias completas repetidas no grupo antes de validar/gravar, somam as quantidades e usam o maior preco entre as linhas agrupadas;
 - campos tributarios obrigatorios incluem `cfop`, `cfop_propria`, `cst_icms`, `cst_pis`, `cst_cofins` e `cst_ipi`;
+- ao gerar dados, a aba Tributos recebe os padroes do primeiro registro de `produtos_prm` por `Codigo` crescente: `CFOP`, `Origem`, CSTs e aliquotas de ICMS/PIS/COFINS/IPI; `ReducaoBaseICMS` preenche `reducao_icms`. Os seletores recebem codigo e descricao dos dominios, preservando `0` e zeros iniciais. Ao reabrir um pre-cadastro nao consolidado, apenas valores ausentes, nulos ou vazios recebem os padroes; valores salvos, inclusive aliquota zero, sao mantidos. Consolidados conservam os dados salvos. `CFOP propria` nao possui coluna equivalente em `produtos_prm` e continua manual; o NCM continua vindo do pedido. Sem parametros, a geracao avisa e mantem o preenchimento manual, sem assumir CFOP fixo;
 - a gravacao valida campos obrigatorios, pedido aprovado, categoria, R2, R3, tamanho, cor, NCM, duplicidade de referencia e existencia de `referencia_master` em `produtos_cab` antes de inserir ou alterar;
 - `estilo` e `origem` sao persistidos quando informados na tela;
 - a gravacao usa transacao unica no banco principal e faz rollback em erro.
 - a edicao abre os itens recolhidos e nao permite salvar quando `pre_cadastro.consolidado = 1`;
 - apos consolidar, o pre-cadastro fica bloqueado para edicao.
+
+Cada item tem uma aba **Imagens / IA**, implementada em `assets/js/pre_cadastro_fotos.js`. Ao abrir, consulta as acoes existentes `fotos_fornecedor_list` e `fotos_list` de `api/compras/cp_compras.php`, com pedido, referencia do fornecedor e fornecedor do grupo. Exibe as duas origens, permite selecionar uma imagem por item e amplia-la em modal. Atualizar imagens preserva a selecao enquanto a foto existir e nao altera os dados digitados. Uma falha de origem nao oculta as fotos da outra. As imagens sao carregadas sob demanda e a selecao fica apenas na tela, sem salvar Base64 no pre-cadastro. A integracao com o servico de IA e o contrato do JSON ainda dependem de definicao; esta aba ainda nao envia imagens a um provedor.
 
 Acoes de `api/compras/pre_cadastro_produtos.php`:
 
@@ -735,7 +739,7 @@ IDs de menu previstos pelo seed:
 
 ### 8.1 Banco Principal
 
-Na configuracao local conferida em 03/11/2026, `config/database.php` define `DB_NAME = allop_devel`. O arquivo `config/database copy.php` tambem mantem `allop_devel`, mas nao e carregado pelo fluxo normal da aplicacao. Nao existe seletor automatico de ambiente entre esses arquivos; `seed_produtos.php` permite escolher explicitamente um arquivo de `config/` via `--config`. As credenciais existem nos arquivos de configuracao, mas nao devem ser copiadas para novas documentacoes, commits ou mensagens.
+Na configuracao local conferida em 12/11/2026, `config/database.php` define `DB_NAME = allop_devel`. As copias locais `config/database devel.php` e `config/database producao.php` nao sao carregadas pelo fluxo normal da aplicacao. Nao existe seletor automatico de ambiente entre esses arquivos; `seed_produtos.php` permite escolher explicitamente um arquivo de `config/` via `--config`. As credenciais existem nos arquivos de configuracao, mas nao devem ser copiadas para novas documentacoes, commits ou mensagens.
 
 O cabecalho de `banco.sql` identifica a origem como `allop_devel`, com geracao em 21/09/2026 e servidor MySQL 5.7.35-log. O nome no dump nao comprova o schema ou os dados do banco ativo; esta revisao conferiu apenas os arquivos locais.
 
@@ -777,7 +781,7 @@ O dump inclui `pre_cadastro.consolidado`, `pre_cadastro.compra` e `pre_cadastro_
 
 ### 8.2 Banco de Fotos
 
-Na configuracao local conferida em 03/11/2026, `config/database.php` define `DB_FOTOS_NAME = allop_kidstok_fotos`. A copia `config/database copy.php` conserva `allop_devel_fotos`, sem uso automatico pela aplicacao. Assim, a configuracao ativa combina o banco principal `allop_devel` com o banco de fotos `allop_kidstok_fotos`; os nomes foram conferidos nos arquivos, sem conexao aos bancos nesta revisao.
+Na configuracao local conferida em 12/11/2026, `config/database.php` define `DB_FOTOS_NAME = allop_devel_fotos`. A configuracao ativa usa o banco principal `allop_devel` e o banco de fotos `allop_devel_fotos`. As copias de configuracao nao sao selecionadas automaticamente. Os nomes foram conferidos nos arquivos, sem conexao aos bancos nesta revisao.
 
 `banco_fotos.sql` contem duas tabelas:
 
@@ -925,7 +929,7 @@ Banco:
 3. **Dashboard sem filtro por permissoes:** os indicadores de compras ainda nao variam conforme permissoes do usuario.
 4. **Troca de senha admin publica:** `api/seguranca/admin_senha.php` nao chama `api_require_login()` e o formulario `alterar_senha_admin.php` fica fora do fluxo autenticado.
 5. **Grafias legadas:** `seg_usuarios_permissoes` usa `edtiar` e `imprirmir` no codigo.
-6. **Credenciais no codigo:** `config/database.php` e a copia local `config/database copy.php` contem credenciais em constantes; o recomendado e migrar para variaveis de ambiente.
+6. **Credenciais no codigo:** `config/database.php` e as copias locais de configuracao contem credenciais em constantes; o recomendado e migrar para variaveis de ambiente.
 7. **Erros expostos:** varias APIs retornam `Throwable::getMessage()` diretamente ao cliente.
 8. **CSRF ausente ou parcial:** os formularios e acoes antigas nao possuem protecao uniforme. As gravacoes e processos de Cadastros > Produtos exigem POST e token CSRF de sessao. `sx.php` valida token proprio, mas continua fora da autenticacao principal.
 9. **Senha legada aceita:** o login aceita texto puro para compatibilidade.
@@ -945,7 +949,7 @@ Banco:
 23. **Historico sem validacao de consolidacao na API:** a listagem so oferece `Historico` para registros consolidados, mas `pc_mover_pre_cadastro_historico()` verifica o ID e a existencia do registro sem exigir `consolidado = 1`.
 24. **Consultas diretas em telas:** a listagem de pre-cadastro, o formulario em lote de de/para e o dashboard consultam o banco no PHP da propria tela. Sao excecoes atuais ao padrao de concentrar acesso a dados em APIs.
 25. **Senha de usuario sem validacao minima no CRUD:** o formulario de usuarios permite senha vazia na inclusao e a API generica nao exige tamanho minimo; na edicao, senha vazia preserva o valor existente.
-26. **Bancos de ambientes diferentes na configuracao ativa:** o principal aponta para `allop_devel` e as fotos de compras para `allop_kidstok_fotos`. Conferir ambos ao preparar ambiente e antes de gravar fotos de pedidos.
+26. **Ambiente do banco de fotos:** a configuracao ativa voltou a apontar para `allop_devel_fotos`, junto ao principal `allop_devel`, em 12/11/2026. Conferir ambos ao preparar ambiente e antes de gravar fotos de pedidos; nomes de bancos nao comprovam disponibilidade ou conteudo.
 27. **Lotes dependem de agendador externo:** o script de precos nao instala cron/tarefa; sem agendamento, aplicacao e retorno dependem de execucao manual.
 28. **Limites dos testes isolados de Produtos:** a fixture SQLite adapta `FOR UPDATE` e metadados MySQL; nao comprova concorrencia, triggers, procedures ou integracoes reais do MySQL.
 29. **Senha SMTP exposta nas consultas autenticadas:** `configuracoes_email.php` inclui `Senha` nas respostas de `list` e `get`, e nao verifica permissao especifica da aplicacao. O campo password no formulario apenas mascara a exibicao visual.
@@ -981,7 +985,7 @@ Para recriar o projeto, manter estes itens:
 - telas raiz `login.php`, `dashboard.php`, `alterar_senha_admin.php` e `sx.php`, quando esses fluxos forem usados no ambiente;
 - bibliotecas locais em `assets/vendor/`.
 
-A pasta `vendor/` pode ser recriada com Composer quando `composer.json` e `composer.lock` estiverem presentes. `config/database copy.php` e uma copia local, nao um arquivo necessario a execucao.
+A pasta `vendor/` pode ser recriada com Composer quando `composer.json` e `composer.lock` estiverem presentes. As copias locais de configuracao nao sao necessarias a execucao.
 
 ### 13.3 Passo a Passo
 
@@ -991,7 +995,7 @@ A pasta `vendor/` pode ser recriada com Composer quando `composer.json` e `compo
 4. Importar `banco.sql` no banco principal.
 5. Criar o banco de fotos.
 6. Importar `banco_fotos.sql` no banco de fotos.
-7. Ajustar `config/database.php` com host, nome dos bancos, usuarios, senhas e charset do novo ambiente; alterar apenas `config/database copy.php` nao muda as conexoes utilizadas.
+7. Ajustar `config/database.php` com host, nome dos bancos, usuarios, senhas e charset do novo ambiente; alterar apenas as copias locais de configuracao nao muda as conexoes utilizadas.
 8. Acessar `index.php` pelo navegador e validar se a tela de login carrega com CSS, JS e imagens.
 9. Executar `scripts/seed_aplicacoes.php` apenas apos backup ou em ambiente novo, para criar/atualizar menus, aplicacoes, permissoes, perfil Administrador e usuario administrador inicial.
 10. Entrar como administrador e trocar a senha inicial imediatamente pela tela `alterar_senha_admin.php` ou por fluxo administrativo equivalente.
@@ -1075,6 +1079,22 @@ node tests/produtos_valores_browser_test.mjs CAMINHO_DA_FIXTURE
 ```
 
 O script recusa configuracoes sem os marcadores da fixture. Valida previa sem gravacao, salvamento, recarga, calculo de atacado, arredondamento, aviso ao cancelar e rolagem mobile. Salva `valores-desktop.png` e `valores-mobile.png` na fixture.
+
+Os padroes tributarios do pre-cadastro possuem teste isolado:
+
+```powershell
+php tests/pre_cadastro_tributos_test.php
+```
+
+Executado em 12/11/2026 com 32 verificacoes em SQLite em memoria, sem carregar a configuracao de banco. Confere ordem dos parametros, mapeamento, descricoes, zeros iniciais, preservacao de valores salvos/zero, preenchimento de campos vazios e ausencia de parametros.
+
+Para a galeria e exibicao dos tributos na interface, o teste usa APIs ficticias e bloqueia o acesso a banco na copia temporaria:
+
+```powershell
+node tests/pre_cadastro_fotos_browser_test.mjs
+```
+
+Requer PHP CLI, Node.js com `WebSocket` global e Chrome no caminho Windows usado pelos demais testes de interface. Foi executado em 12/11/2026: checkbox marcado, carga sob demanda, selecao por item/origem, ampliacao, recarga preservando edicoes, estado vazio, erro parcial e layout mobile. Salva `pre-cadastro-desktop.png` e `pre-cadastro-mobile.png` na fixture temporaria. Nao testa um provedor real de IA; a integracao ainda nao foi definida.
 
 Para o cadastro de Produtos com accordion e cinco abas:
 

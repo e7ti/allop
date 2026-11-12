@@ -7,6 +7,7 @@ $aplicacao_nome = "pre_cadastro_produtos.php";
 $aplicacao_descricao = "API para gerar pre-cadastro de produtos a partir de pedidos de compra.";
 
 require_once __DIR__ . '/../bootstrap.php';
+require_once __DIR__ . '/../../includes/pre_cadastro_tributos.php';
 api_require_login();
 
 $action = (string) ($_GET['action'] ?? $_POST['action'] ?? 'list');
@@ -436,8 +437,9 @@ function pc_build_preview(int $pedidoId): array
         api_response(false, ['message' => 'Pedido sem itens, tamanhos e cores ativos para gerar pre-cadastro.'], 422);
     }
 
+    $tributos = pc_tributos_padrao(db());
     $groups = [];
-    $warnings = [];
+    $warnings = $tributos ? [] : ['Nenhum parametro tributario cadastrado em produtos_prm. Preencha os tributos antes de gravar.'];
     foreach ($rows as $row) {
         $categoria = pc_trim($row['Categoria'] ?? '');
         $dataEntrega = pc_trim($row['tamanho_entrega'] ?? '') ?: pc_trim($row['item_entrega'] ?? '');
@@ -482,16 +484,14 @@ function pc_build_preview(int $pedidoId): array
                 'Unidade_text' => 'PC - Peça',
                 'ncm' => $ncmOption['id'] ?? '',
                 'ncm_text' => $ncmOption['text'] ?? '',
-                'cfop' => '5102',
-                'cfop_text' => '5102',
                 'cfop_propria' => '',
                 'setor_laranja' => 'N',
                 'preco_cheio' => 'N',
-                'agrupar_cores_duplicadas' => 'N',
+                'agrupar_cores_duplicadas' => 'S',
                 'sts' => (int) $row['item_sts'],
                 'fields' => [],
                 'products' => [],
-            ];
+            ] + $tributos;
         }
         if ($colecaoOption && pc_trim($groups[$key]['items'][$itemKey]['colecao_id'] ?? '') === '') {
             $groups[$key]['items'][$itemKey]['colecao_id'] = $colecaoOption['id'];
@@ -612,7 +612,9 @@ function pc_load_pre_cadastro(int $preCadastroId): array
         'items' => [],
     ];
 
+    $tributos = (int) ($header['consolidado'] ?? 0) === 1 ? [] : pc_tributos_padrao(db());
     foreach ($itemsRows as $itemRow) {
+        $itemRow = pc_tributos_com_padrao($itemRow, $tributos);
         $unidadeOption = pc_domain_value('produtos_medidas', 'Sigla', ['Sigla', 'Unidade'], $itemRow['Unidade'] ?? '');
         $ncmOption = pc_domain_value('cests_ncm', 'ncm', ['ncm', 'descricao'], $itemRow['ncm'] ?? '');
         $cfopOption = pc_domain_value('cfops', 'CFOP', ['CFOP', 'Descricao'], $itemRow['cfop'] ?? '');
@@ -660,7 +662,7 @@ function pc_load_pre_cadastro(int $preCadastroId): array
             'caracteristica_id_text' => $caracteristicaOption['text'] ?? '',
             'setor_laranja' => (string) $itemRow['setor_laranja'],
             'preco_cheio' => (string) $itemRow['preco_cheio'],
-            'agrupar_cores_duplicadas' => 'N',
+            'agrupar_cores_duplicadas' => 'S',
             'encomenda' => (string) $itemRow['encomenda'],
             'estilo' => (string) ($itemRow['estilo'] ?? ''),
             'estilo_text' => $estiloOption['text'] ?? '',
@@ -777,7 +779,7 @@ function pc_recalc_group(array &$group): void
 
 function pc_item_agrupar_cores_duplicadas(array $item): bool
 {
-    $value = strtoupper(pc_trim($item['agrupar_cores_duplicadas'] ?? 'N'));
+    $value = strtoupper(pc_trim($item['agrupar_cores_duplicadas'] ?? 'S'));
     return in_array($value, ['S', 'SIM', '1', 'TRUE', 'ON'], true);
 }
 

@@ -1262,6 +1262,7 @@ let preCadastroGroups = [];
 
 function initPreCadastroProdutos() {
     const cfg = window.preCadastroProdutosConfig;
+    window.AllopPreCadastroFotos.init();
     $('#pre-cadastro-pedido').select2({
         width: '100%',
         placeholder: 'Digite para pesquisar o pedido',
@@ -1437,6 +1438,7 @@ function setPreCadastroPreviewLoading(loading) {
 }
 
 function renderPreCadastroPreview(response) {
+    window.AllopPreCadastroFotos.reset();
     const pedido = response.pedido || {};
     $('#pre-cadastro-resumo-card').removeClass('d-none');
     $('#pre-cadastro-pedido-resumo').html(
@@ -1490,6 +1492,7 @@ function renderPreCadastroItem(item, groupIndex, itemIndex) {
     const itemId = 'pre-cadastro-item-' + groupIndex + '-' + itemIndex;
     const dadosTabId = itemId + '-dados';
     const tributosTabId = itemId + '-tributos';
+    const fotosTabId = itemId + '-fotos';
     const expandedByDefault = !preCadastroIsEditMode() && itemIndex === 0;
     const collapseClass = expandedByDefault ? 'accordion-collapse collapse show' : 'accordion-collapse collapse';
     const buttonClass = expandedByDefault ? 'accordion-button' : 'accordion-button collapsed';
@@ -1521,6 +1524,7 @@ function renderPreCadastroItem(item, groupIndex, itemIndex) {
         '<ul class="nav nav-tabs mb-3" role="tablist">' +
         '<li class="nav-item" role="presentation"><button class="nav-link active" id="' + dadosTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + dadosTabId + '" type="button" role="tab" aria-controls="' + dadosTabId + '" aria-selected="true">Dados</button></li>' +
         '<li class="nav-item" role="presentation"><button class="nav-link" id="' + tributosTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + tributosTabId + '" type="button" role="tab" aria-controls="' + tributosTabId + '" aria-selected="false">Tributos</button></li>' +
+        '<li class="nav-item" role="presentation"><button class="nav-link pre-cadastro-fotos-tab" id="' + fotosTabId + '-tab" data-bs-toggle="tab" data-bs-target="#' + fotosTabId + '" type="button" role="tab" aria-controls="' + fotosTabId + '" aria-selected="false">Imagens / IA</button></li>' +
         '</ul>' +
         '<div class="tab-content">' +
         '<div class="tab-pane fade show active" id="' + dadosTabId + '" role="tabpanel" aria-labelledby="' + dadosTabId + '-tab">' +
@@ -1542,7 +1546,7 @@ function renderPreCadastroItem(item, groupIndex, itemIndex) {
         preCadastroSelect(path, 'caracteristica_id', 'Característica', 'caracteristicas', item.caracteristica_id || '', item.caracteristica_id_text || '', 'col-12 col-md-3') +
         preCadastroSelect(path, 'genero_id', 'Gênero', 'generos', item.genero_id || '', item.genero_id_text || '', 'col-12 col-md-3') +
         preCadastroSelect(path, 'estilo', 'Estilo', 'estilos', item.estilo || '', item.estilo_text || '', 'col-12 col-md-3') +
-        preCadastroSimNaoSelect(path, 'agrupar_cores_duplicadas', 'Somar tamanho/cor duplicado', item.agrupar_cores_duplicadas || 'N', 'col-12 col-md-3') +
+        preCadastroSimNaoSelect(path, 'agrupar_cores_duplicadas', 'Somar tamanho/cor duplicado', item.agrupar_cores_duplicadas ?? 'S', 'col-12 col-md-3') +
         '</div>' +
         '</div>' +
         '<div class="tab-pane fade" id="' + tributosTabId + '" role="tabpanel" aria-labelledby="' + tributosTabId + '-tab">' +
@@ -1552,7 +1556,7 @@ function renderPreCadastroItem(item, groupIndex, itemIndex) {
         preCadastroSelect(path, 'cst_pis', 'CST PIS', 'st_pis', item.cst_pis || '', item.cst_pis_text || '', 'col-12 col-md-2') +
         preCadastroSelect(path, 'cst_cofins', 'CST COFINS', 'st_cofins', item.cst_cofins || '', item.cst_cofins_text || '', 'col-12 col-md-2') +
         preCadastroSelect(path, 'cst_ipi', 'CST IPI', 'st_ipi', item.cst_ipi || '', item.cst_ipi_text || '', 'col-12 col-md-2') +
-        preCadastroSelect(path, 'cfop', 'CFOP', 'cfops', item.cfop || '5102', item.cfop_text || '5102', 'col-12 col-md-2') +
+        preCadastroSelect(path, 'cfop', 'CFOP', 'cfops', item.cfop || '', item.cfop_text || '', 'col-12 col-md-2') +
         preCadastroSelect(path, 'cfop_propria', 'CFOP própria', 'cfops', item.cfop_propria || '', item.cfop_propria_text || '', 'col-12 col-md-2') +
         preCadastroInput(path, 'aliquota_icms', 'Alíquota ICMS', item.aliquota_icms || 0, 'col-12 col-md-2', 'number') +
         preCadastroInput(path, 'reducao_icms', 'Redução ICMS', item.reducao_icms || 0, 'col-12 col-md-2', 'number') +
@@ -1560,6 +1564,9 @@ function renderPreCadastroItem(item, groupIndex, itemIndex) {
         preCadastroInput(path, 'aliquota_cofins', 'Alíquota COFINS', item.aliquota_cofins || 0, 'col-12 col-md-2', 'number') +
         preCadastroInput(path, 'aliquota_ipi', 'Alíquota IPI', item.aliquota_ipi || 0, 'col-12 col-md-2', 'number') +
         '</div>' +
+        '</div>' +
+        '<div class="tab-pane fade" id="' + fotosTabId + '" role="tabpanel" aria-labelledby="' + fotosTabId + '-tab">' +
+        window.AllopPreCadastroFotos.panel(groupIndex, itemIndex) +
         '</div>' +
         '</div>' +
         '</div>' +
@@ -2018,7 +2025,7 @@ function recalcPreCadastroReferences() {
 }
 
 function preCadastroItemAgrupaDuplicados(item) {
-    const value = String(item.agrupar_cores_duplicadas || 'N').trim().toUpperCase();
+    const value = String(item.agrupar_cores_duplicadas ?? 'S').trim().toUpperCase();
     return ['S', 'SIM', '1', 'TRUE', 'ON'].indexOf(value) >= 0;
 }
 
