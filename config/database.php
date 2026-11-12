@@ -17,7 +17,7 @@ const DB_PASS = 'Allop@Devel##2022';
 const DB_CHARSET = 'utf8mb4';
 
 const DB_FOTOS_HOST = 'g.gcompdv.com.br';
-const DB_FOTOS_NAME = 'allop_devel_fotos';
+const DB_FOTOS_NAME = 'allop_kidstok_fotos';
 const DB_FOTOS_USER = 'allopdevel';
 const DB_FOTOS_PASS = 'Allop@Devel##2022';
 const DB_FOTOS_CHARSET = 'utf8mb4';

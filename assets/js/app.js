@@ -1,4 +1,7 @@
 ﻿$(function () {
+    if (window.produtosConfig) {
+        initProdutos();
+    }
     $('.js-select2').select2({
         width: '100%',
         placeholder: 'Digite para pesquisar',
@@ -5759,6 +5762,357 @@ function formatDateTimeSecondsBr(value) {
 
 function formatMoneyBr(value) {
     return Number(value || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function initProdutos() {
+    const config = window.produtosConfig;
+    const decimalValue = node => node?.hasAttribute('data-decimal-places') ? window.AllopDecimal.canonical(node) : (node?.value || '');
+    const decimalData = form => {
+        const data = Object.fromEntries(new FormData(form));
+        form.querySelectorAll('[data-decimal-places][name]').forEach(node => { data[node.name] = decimalValue(node); });
+        return data;
+    };
+    const $form = $('#produtos-form');
+    const $grid = $('#produtos-grid');
+    let page = 1;
+    let loading = false;
+    let loaded = !config.id;
+
+    function endpoint(action, extra) {
+        return config.api + '?' + $.param(Object.assign({ cadastro: config.entity, action }, extra || {}));
+    }
+
+    function error(xhr) {
+        appAlert(xhr.responseJSON?.message || 'Não foi possível concluir a operação.', 'danger');
+    }
+
+    $('.produtos-select').each(function () {
+        const $select = $(this);
+        $select.select2({
+            width: '100%', placeholder: $select.data('placeholder') || 'Selecione', allowClear: true,
+            ajax: {
+                url: endpoint('options', { field: $select.data('field') }), dataType: 'json', delay: 250,
+                data: params => ({ q: params.term || '', Grupo: $('#produto-Grupo').val() || '' }),
+                processResults: response => ({ results: response.results || [] })
+            }
+        });
+    });
+
+    function valueText(column, value) {
+        if (['Inclusao', 'Alteracao', 'Usuario'].includes(column) && (value === null || value === undefined || value === '' || String(value).startsWith('0000-00-00'))) return '—';
+        if (value === null || value === undefined) return '';
+        if (/^Preco(?:Compra|Venda)/.test(column)) return formatMoneyBr(value);
+        if (['Inclusao', 'Alteracao', 'DataAtualizacao', 'DataVoltaAtualizacao'].includes(column)) return formatDateBr(String(value).slice(0, 10));
+        return String(value);
+    }
+
+    function formLink(id, readOnly) {
+        return 'produtos_form.php?' + $.param({ cadastro: config.entity, id, consulta: readOnly ? 1 : 0 });
+    }
+
+    function loadGrid(targetPage) {
+        if (loading) return;
+        loading = true;
+        $('#produtos-anterior, #produtos-proxima').prop('disabled', true);
+        const query = $('#produtos-filtro').serializeArray();
+        query.push({ name: 'page', value: targetPage });
+        $.getJSON(endpoint('list'), $.param(query)).done(response => {
+            page = response.page;
+            $grid.empty();
+            $('#produtos-selecionar-todos').prop('checked', false);
+            for (const row of response.data) {
+                const $tr = $('<tr>');
+                if (config.selectable) {
+                    $tr.append($('<td>').attr('data-label', 'Selecionar').append($('<input type="checkbox" class="produtos-selecao">').val(row[config.key]).attr('aria-label', 'Selecionar ' + row[config.key])));
+                }
+                config.columns.forEach((column, index) => {
+                    $('<td>').attr('data-label', config.labels[index]).text(valueText(column, row[column + '_text'] ?? row[column])).appendTo($tr);
+                });
+                const $actions = $('<div class="produtos-row-actions">');
+                const $actionCell = $('<td class="text-end">').attr('data-label', 'Ações').append($actions);
+                $('<a class="btn btn-sm btn-outline-secondary btn-view me-1">').attr('href', formLink(row[config.key], true)).text('Consultar').appendTo($actions);
+                if (config.editable && config.canEdit) {
+                    $('<a class="btn btn-sm btn-orange btn-edit me-1">').attr('href', formLink(row[config.key], false)).text('Editar').appendTo($actions);
+                }
+                if (config.editable && config.canDelete) {
+                    $('<button class="btn btn-sm btn-outline-danger btn-delete" type="button">').text('Excluir').on('click', function () {
+                        if (!confirm('Excluir este registro? Cadastros com vínculos não podem ser excluídos.')) return;
+                        const $button = $(this).prop('disabled', true);
+                        $.ajax({ url: endpoint('delete'), method: 'POST', dataType: 'json', data: { id: row[config.key], csrf: config.csrf } })
+                            .done(result => {
+                                appAlert(result.message, 'success');
+                                loadGrid(page);
+                            }).fail(error).always(() => $button.prop('disabled', false));
+                    }).appendTo($actions);
+                }
+                if (config.entity === 'consolidar' && config.canProcess) {
+                    $('<button class="btn btn-sm btn-orange" type="button">').text('Consolidar').on('click', function () {
+                        if (!confirm('Consolidar a referência ' + row[config.key] + '?')) return;
+                        const $button = $(this).prop('disabled', true);
+                        process('consolidate', { id: row[config.key] }).done(() => loadGrid(page)).always(() => $button.prop('disabled', false));
+                    }).appendTo($actions);
+                }
+                $tr.append($actionCell).appendTo($grid);
+            }
+            if (!response.data.length) {
+                $('<tr>').append($('<td class="text-center text-muted">').attr('colspan', config.columns.length + 1).text('Nenhum registro encontrado.')).appendTo($grid);
+            }
+            $('#produtos-pagina').text('Página ' + page);
+            $('#produtos-anterior').prop('disabled', page <= 1);
+            $('#produtos-proxima').prop('disabled', !response.more);
+        }).fail(xhr => {
+            error(xhr);
+            $grid.empty().append($('<tr>').append($('<td>').attr('colspan', config.columns.length + 1).text('Não foi possível carregar os registros.')));
+        }).always(() => { loading = false; });
+    }
+
+    function renderDetails(rows, more, currentPage) {
+        const $area = $('#produtos-details-grid').empty();
+        if (!rows.length) return;
+        $('#produtos-details').removeClass('d-none');
+        const columns = Object.keys(rows[0]);
+        const labels = {
+            Distribuidora: 'Referência completa', Descricao: 'Descrição', Tamanho: 'Tamanho', Cor: 'Cor',
+            PrecoCompra: 'Compra', PrecoCompraTabela: 'Atacado', PrecoVendaTabela: 'Varejo',
+            Sequencia: 'Sequência', ReferenciaMaster: 'Referência master', Produto: 'Produto', Referencia: 'Referência',
+            PrecoAtacadoAtual: 'Atacado atual', PrecoVarejoAtual: 'Varejo atual', PrecoAtacadoNovo: 'Atacado novo', PrecoVarejoNovo: 'Varejo novo'
+        };
+        const $table = $('<table class="table table-custom align-middle">');
+        const $head = $('<tr>');
+        columns.forEach(column => $('<th>').text(labels[column] || column).appendTo($head));
+        $table.append($('<thead>').append($head));
+        const $body = $('<tbody>');
+        rows.forEach(row => {
+            const $tr = $('<tr>');
+            columns.forEach(column => $('<td>').attr('data-label', labels[column] || column).text(valueText(column, row[column])).appendTo($tr));
+            if (config.entity === 'precos_lote' && !config.readonly && batchState === 0) {
+                const $actions = $('<td>').attr('data-label', 'Ações');
+                $('<button type="button" class="btn btn-sm btn-outline-secondary me-1">').text('Editar').on('click', () => {
+                    const $itemForm = $('#produtos-lote-item');
+                    $itemForm.find('[name="item_id"]').val(row.IDItens);
+                    $itemForm.find('[name="referencia"]').val(row.Referencia);
+                    window.AllopDecimal.set($itemForm.find('[name="varejo"]')[0], row.PrecoVarejoNovo);
+                    window.AllopDecimal.set($itemForm.find('[name="atacado"]')[0], row.PrecoAtacadoNovo);
+                    document.getElementById('lote-referencia').focus();
+                }).appendTo($actions);
+                $('<button type="button" class="btn btn-sm btn-outline-danger">').text('Excluir').on('click', function () {
+                    if (!confirm('Excluir este item do lote?')) return;
+                    const $button = $(this).prop('disabled', true);
+                    process('batch_item_delete', { id: config.id, item_id: row.IDItens }).done(loadRecord).always(() => $button.prop('disabled', false));
+                }).appendTo($actions);
+                $tr.append($actions);
+            }
+            $body.append($tr);
+        });
+        $area.append($table.append($body));
+        if (more || currentPage > 1) {
+            const $nav = $('<div class="d-flex justify-content-between align-items-center">');
+            $('<button type="button" class="btn btn-outline-secondary">').text('Anterior').prop('disabled', currentPage <= 1).on('click', () => loadRecord(currentPage - 1)).appendTo($nav);
+            $('<span>').text('Página ' + currentPage).appendTo($nav);
+            $('<button type="button" class="btn btn-outline-secondary">').text('Próxima').prop('disabled', !more).on('click', () => loadRecord(currentPage + 1)).appendTo($nav);
+            $area.append($nav);
+        }
+    }
+
+    if ($grid.length) {
+        $('#produtos-filtro').on('submit', event => { event.preventDefault(); loadGrid(1); });
+        $('#produtos-anterior').on('click', () => loadGrid(page - 1));
+        $('#produtos-proxima').on('click', () => loadGrid(page + 1));
+        loadGrid(1);
+    }
+    let batchState = 0;
+    let detailsPage = 1;
+    function applyRecord(response) {
+            Object.entries(response.data).forEach(([field, value]) => {
+                const $input = $form.find('[name]').filter(function () { return this.name.replace(/\[\]$/, '') === field; });
+                if ($input.hasClass('produtos-select')) {
+                    if ($input.prop('multiple')) {
+                        $input.empty();
+                        String(value || '').split(';').filter(Boolean).forEach(id => $input.append(new Option(response.related[field]?.[id] || id, id, true, true)));
+                        $input.trigger('change');
+                    } else if (value !== null && value !== '') {
+                        $input.empty().append(new Option(response.related[field] || String(value), String(value), true, true)).trigger('change');
+                    }
+                } else {
+                    const label = response.related[field];
+                    if ($input.is('[data-decimal-places]')) window.AllopDecimal.set($input[0], value);
+                    else $input.val(config.readonly && label ? (typeof label === 'object' ? Object.values(label).join('; ') : label) : (value === null ? '' : value));
+                }
+            });
+            loaded = true;
+            if (!config.readonly) {
+                $('#produtos-fields, #produtos-salvar').prop('disabled', false);
+            }
+            if (config.entity === 'precos_lote') {
+                batchState = Number(response.data.Atualizado || 0);
+                $('#produtos-fields, #produtos-salvar').prop('disabled', config.readonly || batchState !== 0);
+                $('#produtos-lote-item :input').prop('disabled', config.readonly || batchState !== 0);
+                $('#produtos-lote-aplicar').prop('disabled', batchState !== 0);
+                $('#produtos-lote-retornar').prop('disabled', batchState !== 1);
+            }
+            if (config.entity === 'produtos' && config.id) {
+                $form.find('[name="Fornecedor"], [name="Categoria"], [name="CodFornecedorR3"]').prop('disabled', true);
+            }
+            if (response.details_page > 1 && !response.details?.length) {
+                loadRecord(response.details_page - 1);
+                return;
+            }
+            renderDetails(response.details || [], response.details_more, response.details_page || 1);
+    }
+    function loadRecord(targetPage) {
+        if (Number.isInteger(targetPage)) detailsPage = targetPage;
+        return $.getJSON(endpoint('get'), { id: config.id, details_page: detailsPage }).done(applyRecord).fail(error);
+    }
+    function loadPhotos() {
+        return $.getJSON(endpoint('photos'), { id: config.id }).done(response => {
+                const $photos = $('#produtos-fotos').empty();
+                response.data.forEach(row => {
+                    const $figure = $('<figure class="mb-0">').appendTo($photos);
+                    $('<img class="produtos-photo rounded border" loading="lazy">')
+                        .attr({ src: endpoint('photo', { id: config.id, sequencia: row.Sequencia, version: Date.now() }), alt: 'Foto ' + row.Sequencia + ' do produto ' + config.id })
+                        .appendTo($figure);
+                    if (config.canDeletePhoto) {
+                        $('<button class="btn btn-sm btn-outline-danger d-block mt-2" type="button">').text('Excluir foto').on('click', function () {
+                            if (!confirm('Excluir esta foto?')) return;
+                            const $button = $(this).prop('disabled', true);
+                            process('photo_delete', { id: config.id, sequencia: row.Sequencia }).done(loadPhotos).always(() => $button.prop('disabled', false));
+                        }).appendTo($figure);
+                    }
+                });
+                if (!response.data.length) $photos.text('Nenhuma foto cadastrada.');
+            }).fail(error);
+    }
+    if ($form.length && config.id) {
+        loadRecord();
+        if (config.entity === 'fotos') loadPhotos();
+    } else if ($form.length && config.entity === 'produtos') {
+        loaded = false;
+        $('#produtos-salvar').prop('disabled', true);
+        $.getJSON(endpoint('defaults')).done(response => {
+            delete response.data.Codigo;
+            applyRecord(response);
+        }).fail(error);
+    }
+    $form.on('submit', function (event) {
+        event.preventDefault();
+        if (config.readonly || !loaded) return;
+        const $button = $('#produtos-salvar');
+        if ($button.prop('disabled')) return;
+        const data = $form.serializeArray().map(entry => {
+            const node = $form.find('[name]').filter(function () { return this.name === entry.name; })[0];
+            return node?.hasAttribute('data-decimal-places') ? { name: entry.name, value: decimalValue(node) } : entry;
+        });
+        if (config.entity === 'produtos' && config.id) {
+            ['Fornecedor', 'Categoria', 'CodFornecedorR3'].forEach(field => data.push({ name: field, value: $form.find('[name="' + field + '"]').val() }));
+        }
+        data.push({ name: 'id', value: config.id || '' }, { name: 'csrf', value: config.csrf });
+        $button.prop('disabled', true).text('Salvando...');
+        $.ajax({ url: endpoint('save'), method: 'POST', dataType: 'json', data: $.param(data) }).done(response => {
+            config.id = String(response.id);
+            appAlert(response.message, 'success');
+            if (response.skipped?.length) appAlert('Referências já cadastradas no GCOM foram preservadas: ' + response.skipped.join(', '), 'warning');
+            $form.find('[name]').filter(function () { return this.name === config.key; }).prop('readonly', true).filter('select').prop('disabled', true);
+            history.replaceState(null, '', formLink(config.id, false));
+            if (config.entity === 'precos_lote' || config.entity === 'produtos') loadRecord();
+        }).fail(error).always(() => $button.prop('disabled', false).text('Salvar'));
+    });
+
+    function process(action, data) {
+        return $.ajax({ url: config.processApi, method: 'POST', dataType: 'json', data: Object.assign({ action, csrf: config.csrf }, data) })
+            .done(response => appAlert(response.message, 'success')).fail(error);
+    }
+    $('#produtos-selecionar-todos').on('change', function () { $('.produtos-selecao').prop('checked', this.checked); });
+    function selectedIds() { return $('.produtos-selecao:checked').map(function () { return String(this.value); }).get(); }
+    $('#produtos-bulk-campo').on('change', function () {
+        const input = document.getElementById('produtos-bulk-valor');
+        if (!input) return;
+        input.value = ''; input.setCustomValidity('');
+        if (this.value === 'Peso' || /^Preco(?:Compra|Venda)/.test(this.value)) window.AllopDecimal.attach(input, this.value === 'Peso' ? 3 : 2);
+        else { delete input.dataset.decimalPlaces; input.classList.remove('allop-decimal'); input.inputMode = ''; }
+    }).trigger('change');
+    $('#produtos-bulk').on('submit', function (event) {
+        event.preventDefault();
+        const ids = selectedIds();
+        if (!ids.length) { appAlert('Selecione as referências que deseja alterar.', 'warning'); return; }
+        if (!confirm('Aplicar esta alteração a ' + ids.length + ' referência(s)?')) return;
+        const $button = $(this).find('button').prop('disabled', true);
+        process(config.entity === 'valores' ? 'grade_bulk_valores' : 'grade_bulk_informacoes', Object.assign({ ids }, decimalData(this)))
+            .done(() => loadGrid(page)).always(() => $button.prop('disabled', false));
+    });
+    $('#produtos-consolidar-selecao').on('click', function () {
+        const ids = selectedIds();
+        if (!ids.length) { appAlert('Selecione as referências para consolidar.', 'warning'); return; }
+        if (!confirm('Consolidar ' + ids.length + ' referência(s) selecionada(s)?')) return;
+        const $button = $(this).prop('disabled', true);
+        process('consolidate', { ids }).done(() => loadGrid(page)).always(() => $button.prop('disabled', false));
+    });
+    $form.on('change input', '[name="Fornecedor"], [name="Categoria"], [name="CodFornecedorR3"]', function () {
+        if (config.entity === 'produtos' && !config.id) {
+            $('#produto-Referencia').val(String($('#produto-Fornecedor').val() || '') + String($('#produto-Categoria').val() || '') + String($('#produto-CodFornecedorR3').val() || ''));
+        }
+    });
+    $form.on('change', '#produto-Grupo', function () {
+        if (loaded && config.entity === 'produtos') $('#produto-GrupoCategoria').val(null).trigger('change');
+    });
+    $form.on('change', '#produto-PrecoVendaTabela, #produto-PrecoCheio', function () {
+        if (['produtos', 'valores'].includes(config.entity)) {
+            $.getJSON(endpoint('defaults')).done(response => {
+                const retail = Number(decimalValue(document.getElementById('produto-PrecoVendaTabela')) || 0);
+                if ($('#produto-PrecoCheio').val() === 'S') window.AllopDecimal.set(document.getElementById('produto-PrecoCompraTabela'), retail);
+                else if (response.data.PrecoAtacadoMetadeVarejo === 'S') window.AllopDecimal.set(document.getElementById('produto-PrecoCompraTabela'), retail / 2);
+            });
+        }
+    });
+    $('#produtos-importar').on('submit', function (event) {
+        event.preventDefault();
+        if (!confirm('Importar as referências encontradas para o Allop?')) return;
+        const $button = $(this).find('button').prop('disabled', true);
+        const values = Object.fromEntries(new FormData(this));
+        process('import', values).done(response => {
+            const r = response.data;
+            $('#produtos-importar-resumo').text('Origem: ' + r.source + '. Incluídos: ' + r.cab + ' cabeçalhos, ' + r.grade + ' grades, ' + r.produtos + ' produtos e ' + r.barras + ' códigos de barras.');
+            loadGrid(1);
+        }).always(() => $button.prop('disabled', false));
+    });
+    $('#produtos-upload').on('submit', function (event) {
+        event.preventDefault();
+        const data = new FormData(this);
+        data.append('action', 'photo_upload'); data.append('csrf', config.csrf); data.append('id', config.id);
+        const $button = $(this).find('button').prop('disabled', true);
+        $.ajax({ url: config.processApi, method: 'POST', data, processData: false, contentType: false, dataType: 'json' })
+            .done(response => { appAlert(response.message, 'success'); this.reset(); loadPhotos(); }).fail(error).always(() => $button.prop('disabled', false));
+    });
+    $('#produtos-lote-item').on('submit', function (event) {
+        event.preventDefault();
+        if (!config.id) { appAlert('Salve o lote antes de incluir os itens.', 'warning'); return; }
+        const $button = $(this).find('button').prop('disabled', true);
+        process('batch_item', Object.assign({ id: config.id }, decimalData(this)))
+            .done(() => { this.reset(); $(this).find('[name="item_id"]').val(''); loadRecord(); }).always(() => $button.prop('disabled', false));
+    });
+    $('#produtos-lote-aplicar, #produtos-lote-retornar').on('click', function () {
+        const restore = this.id === 'produtos-lote-retornar';
+        if (!config.id || !confirm(restore ? 'Restaurar os preços anteriores deste lote?' : 'Aplicar os preços deste lote?')) return;
+        const $button = $(this).prop('disabled', true);
+        process(restore ? 'batch_restore' : 'batch_apply', { id: config.id }).done(loadRecord).always(() => $button.prop('disabled', false));
+    });
+    if ($('#produtos-ordem').length) {
+        $.getJSON(endpoint('sizes')).done(response => {
+            const $list = $('#produtos-ordem').empty();
+            response.data.forEach(row => {
+                const $li = $('<li class="list-group-item d-flex align-items-center gap-2">').data('codigo', row.Codigo);
+                $('<span class="flex-grow-1">').text(row.Codigo + ' - ' + row.Nome).appendTo($li);
+                $('<button class="btn btn-sm btn-outline-secondary" type="button" aria-label="Mover para cima">').text('↑').on('click', () => { const $previous = $li.prev(); if ($previous.length) $li.insertBefore($previous); }).appendTo($li);
+                $('<button class="btn btn-sm btn-outline-secondary" type="button" aria-label="Mover para baixo">').text('↓').on('click', () => { const $next = $li.next(); if ($next.length) $li.insertAfter($next); }).appendTo($li);
+                $list.append($li);
+            });
+            $('#produtos-salvar-ordem').prop('disabled', false);
+        }).fail(error);
+        $('#produtos-salvar-ordem').on('click', function () {
+            const $button = $(this).prop('disabled', true);
+            const ordem = $('#produtos-ordem li').map(function () { return String($(this).data('codigo')); }).get();
+            process('order_sizes', { ordem }).always(() => $button.prop('disabled', false));
+        });
+    }
 }
 
 

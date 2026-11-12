@@ -37,5 +37,22 @@ function menu_items(): array
         $menu[$row['grupo']][] = ['nome' => $row['nome'], 'arquivo' => $row['arquivo']];
     }
 
+    foreach ($menu as $grupo => $itens) {
+        $produtos = [];
+        $outros = [];
+        $position = null;
+        foreach ($itens as $item) {
+            if (strpos($item['arquivo'], 'mod/cadastros/produtos/produtos_lista.php?cadastro=') === 0) {
+                $position ??= count($outros);
+                $produtos[] = $item;
+            } else {
+                $outros[] = $item;
+            }
+        }
+        if ($produtos) {
+            array_splice($outros, $position, 0, [['nome' => 'Produtos', 'itens' => $produtos]]);
+            $menu[$grupo] = $outros;
+        }
+    }
     return $menu;
 }

@@ -84,17 +84,31 @@ function render_header(string $titulo, array $actions = []): void
                     <ul class="navbar-nav ms-lg-auto mb-2 mb-lg-0">
                         <?php foreach (menu_items() as $grupo => $itens): ?>
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle menu-main-link" href="#" role="button" data-bs-toggle="dropdown">
+                                <a class="nav-link dropdown-toggle menu-main-link" href="#" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside">
                                     <span class="menu-svg" aria-hidden="true"><?= menu_icon((string) $grupo) ?></span>
                                     <span><?= h($grupo) ?></span>
                                 </a>
-                                <ul class="dropdown-menu">
+                                <ul class="dropdown-menu dropdown-menu-end">
                                     <?php foreach ($itens as $item): ?>
                                         <li>
+                                            <?php if (isset($item['itens'])): ?>
+                                                <details class="menu-submenu">
+                                                    <summary class="dropdown-item menu-link">
+                                                        <span class="menu-svg submenu-svg" aria-hidden="true"><?= menu_icon((string) $item['nome']) ?></span>
+                                                        <span><?= h($item['nome']) ?></span>
+                                                    </summary>
+                                                    <ul class="menu-submenu-list">
+                                                        <?php foreach ($item['itens'] as $subitem): ?>
+                                                            <li><a class="dropdown-item menu-link" href="<?= app_url($subitem['arquivo']) ?>"><?= h($subitem['nome']) ?></a></li>
+                                                        <?php endforeach; ?>
+                                                    </ul>
+                                                </details>
+                                            <?php else: ?>
                                             <a class="dropdown-item menu-link" href="<?= app_url($item['arquivo']) ?>">
                                                 <span class="menu-svg submenu-svg" aria-hidden="true"><?= menu_icon((string) $item['nome']) ?></span>
                                                 <span><?= h($item['nome']) ?></span>
                                             </a>
+                                            <?php endif; ?>
                                         </li>
                                     <?php endforeach; ?>
                                 </ul>
@@ -142,6 +156,7 @@ function render_footer(): void
 <script src="<?= app_url('assets/vendor/jquery/jquery.min.js') ?>"></script>
 <script src="<?= app_url('assets/vendor/bootstrap/js/bootstrap.bundle.min.js') ?>"></script>
 <script src="<?= app_url('assets/vendor/select2/js/select2.min.js') ?>"></script>
+<script src="<?= app_url('assets/js/decimal_input.js') ?>"></script>
 <script src="<?= app_url('assets/js/app.js') ?>"></script>
 </body>
 </html>

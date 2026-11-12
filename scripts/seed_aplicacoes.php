@@ -586,5 +586,8 @@ BEGIN
   END IF;
 END;");
 
+require_once __DIR__ . '/seed_produtos.php';
+registrar_aplicacoes_produtos(db());
+
 echo "Seed executado com sucesso.\n";
 ?>

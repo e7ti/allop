@@ -1,0 +1,5146 @@
+{
+  "produtos_cab": {
+    "fields": {
+      "Referencia": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Fornecedor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedor": {
+        "type": "varchar",
+        "size": "200",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "CodFornecedorR3": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Categoria": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Grupo": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "GrupoCategoria": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Colecao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Linha": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Composicao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Caracteristica": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Genero": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "50",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DescricaoComplementar": {
+        "type": "varchar",
+        "size": "70",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Unidade": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Cor": {
+        "type": "varchar",
+        "size": "3000",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Tamanho": {
+        "type": "varchar",
+        "size": "3000",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "NCM": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CST_ICMS": {
+        "type": "varchar",
+        "size": "3",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Origem": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "ReducaoICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_PIS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaPIS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_COFINS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaCOFINS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_IPI": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaIPI": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CFOP": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CFOP_ProducaoProria": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Peso": {
+        "type": "double",
+        "size": "13,3",
+        "nullable": false,
+        "auto": false,
+        "default": "0.000"
+      },
+      "PrecoCompra": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompraTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoVendaTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "SetorLaranja": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "Encomenda": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "PrecoCheio": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": "Ativo"
+      },
+      "Inclusao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Consolidado": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "Estilo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Foto": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      }
+    },
+    "relations": {
+      "Estilo": {
+        "table": "produtos_estilos",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "Caracteristica": {
+        "table": "produtos_caracteristicas",
+        "key": "Codigo",
+        "label": "Caracteristica"
+      },
+      "Categoria": {
+        "table": "produtos_categorias",
+        "key": "Codigo",
+        "label": "TipoProduto"
+      },
+      "Colecao": {
+        "table": "produtos_colecao",
+        "key": "Codigo",
+        "label": "Colecao"
+      },
+      "Composicao": {
+        "table": "produtos_composicoes",
+        "key": "Codigo",
+        "label": "Composicao"
+      },
+      "Fornecedor": {
+        "table": "produtos_fornecedor",
+        "key": "Codigo",
+        "label": "NomeFornecedor"
+      },
+      "Genero": {
+        "table": "produtos_generos",
+        "key": "Codigo",
+        "label": "Genero"
+      },
+      "Linha": {
+        "table": "produtos_linhas",
+        "key": "Codigo",
+        "label": "Linha"
+      },
+      "Unidade": {
+        "table": "produtos_medidas",
+        "key": "Sigla",
+        "label": "Unidade"
+      },
+      "NCM": {
+        "table": "cests_ncm",
+        "key": "ncm",
+        "label": "descricao"
+      },
+      "CST_ICMS": {
+        "table": "st_icms",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "Origem": {
+        "table": "st_origem",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "CST_PIS": {
+        "table": "st_pis",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "CST_COFINS": {
+        "table": "st_cofins",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "CST_IPI": {
+        "table": "st_ipi",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "CFOP": {
+        "table": "cfops",
+        "key": "CFOP",
+        "label": "Descricao"
+      },
+      "CFOP_ProducaoProria": {
+        "table": "cfops",
+        "key": "CFOP",
+        "label": "Descricao"
+      },
+      "Grupo": {
+        "table": "produtos_grupos_livre",
+        "key": "GrupoLivre",
+        "label": "GrupoLivre"
+      },
+      "GrupoCategoria": {
+        "table": "produtos_categorias_livre",
+        "key": "CategoriaLivre",
+        "label": "CategoriaLivre"
+      },
+      "Cor": {
+        "table": "produtos_cor",
+        "key": "Codigo",
+        "label": "Nome",
+        "multiple": true
+      },
+      "Tamanho": {
+        "table": "produtos_tamanho",
+        "key": "Codigo",
+        "label": "Nome",
+        "multiple": true
+      }
+    }
+  },
+  "produtos_cab_grade": {
+    "fields": {
+      "Referencia": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Distribuidora": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "GTIN": {
+        "type": "varchar",
+        "size": "14",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Linha": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Colecao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Grupo": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "GrupoCategoria": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Composicao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Caracteristica": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "50",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DescricaoComplementar": {
+        "type": "varchar",
+        "size": "70",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Unidade": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Cor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Genero": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Fornecedor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedor": {
+        "type": "varchar",
+        "size": "200",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedorR3": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Categoria": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Tamanho": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "NCM": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CST_ICMS": {
+        "type": "varchar",
+        "size": "3",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Origem": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "ReducaoICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_PIS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaPIS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_COFINS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaCOFINS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_IPI": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaIPI": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CFOP": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CFOP_ProducaoProria": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Peso": {
+        "type": "double",
+        "size": "13,3",
+        "nullable": false,
+        "auto": false,
+        "default": "0.000"
+      },
+      "PrecoVendaTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompraTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompra": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "SetorLaranja": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "Encomenda": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "PrecoCheio": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "LocalFisico": {
+        "type": "int",
+        "size": "11",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Consolidado": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "CodigoAlternativo": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Estilo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Foto": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      }
+    },
+    "relations": {
+      "Estilo": {
+        "table": "produtos_estilos",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "Linha": {
+        "table": "produtos_linhas",
+        "key": "Codigo",
+        "label": "Linha"
+      },
+      "Unidade": {
+        "table": "produtos_medidas",
+        "key": "Sigla",
+        "label": "Unidade"
+      },
+      "Tamanho": {
+        "table": "produtos_tamanho",
+        "key": "Codigo",
+        "label": "Nome"
+      },
+      "Caracteristica": {
+        "table": "produtos_caracteristicas",
+        "key": "Codigo",
+        "label": "Caracteristica"
+      },
+      "Categoria": {
+        "table": "produtos_categorias",
+        "key": "Codigo",
+        "label": "TipoProduto"
+      },
+      "Colecao": {
+        "table": "produtos_colecao",
+        "key": "Codigo",
+        "label": "Colecao"
+      },
+      "Composicao": {
+        "table": "produtos_composicoes",
+        "key": "Codigo",
+        "label": "Composicao"
+      },
+      "Cor": {
+        "table": "produtos_cor",
+        "key": "Codigo",
+        "label": "Nome"
+      },
+      "Fornecedor": {
+        "table": "produtos_fornecedor",
+        "key": "Codigo",
+        "label": "NomeFornecedor"
+      },
+      "Genero": {
+        "table": "produtos_generos",
+        "key": "Codigo",
+        "label": "Genero"
+      },
+      "NCM": {
+        "table": "cests_ncm",
+        "key": "ncm",
+        "label": "descricao"
+      },
+      "CST_ICMS": {
+        "table": "st_icms",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "Origem": {
+        "table": "st_origem",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "CST_PIS": {
+        "table": "st_pis",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "CST_COFINS": {
+        "table": "st_cofins",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "CST_IPI": {
+        "table": "st_ipi",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "CFOP": {
+        "table": "cfops",
+        "key": "CFOP",
+        "label": "Descricao"
+      },
+      "CFOP_ProducaoProria": {
+        "table": "cfops",
+        "key": "CFOP",
+        "label": "Descricao"
+      },
+      "Grupo": {
+        "table": "produtos_grupos_livre",
+        "key": "GrupoLivre",
+        "label": "GrupoLivre"
+      },
+      "GrupoCategoria": {
+        "table": "produtos_categorias_livre",
+        "key": "CategoriaLivre",
+        "label": "CategoriaLivre"
+      },
+      "LocalFisico": {
+        "table": "produtos_local_fisico",
+        "key": "Codigo",
+        "label": "Local"
+      }
+    }
+  },
+  "produtos": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Distribuidora": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "GTIN": {
+        "type": "varchar",
+        "size": "14",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Linha": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Colecao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Grupo": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "GrupoCategoria": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Composicao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Caracteristica": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "50",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DescricaoComplementar": {
+        "type": "varchar",
+        "size": "70",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Unidade": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Cor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Genero": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Fornecedor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedor": {
+        "type": "varchar",
+        "size": "200",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedorR3": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Categoria": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Tamanho": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "NCM": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CST_ICMS": {
+        "type": "varchar",
+        "size": "3",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Origem": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "ReducaoICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_PIS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaPIS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_COFINS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaCOFINS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_IPI": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaIPI": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CFOP": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CFOP_ProducaoProria": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Peso": {
+        "type": "double",
+        "size": "13,3",
+        "nullable": false,
+        "auto": false,
+        "default": "0.000"
+      },
+      "PrecoVendaTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompraTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompra": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "SetorLaranja": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "PrecoCheio": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "Encomenda": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "LocalFisico": {
+        "type": "int",
+        "size": "11",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodigoAlternativo": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Fashion": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "Estilo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Foto": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      }
+    },
+    "relations": {
+      "Caracteristica": {
+        "table": "produtos_caracteristicas",
+        "key": "Codigo",
+        "label": "Caracteristica"
+      },
+      "Categoria": {
+        "table": "produtos_categorias",
+        "key": "Codigo",
+        "label": "TipoProduto"
+      },
+      "Colecao": {
+        "table": "produtos_colecao",
+        "key": "Codigo",
+        "label": "Colecao"
+      },
+      "Composicao": {
+        "table": "produtos_composicoes",
+        "key": "Codigo",
+        "label": "Composicao"
+      },
+      "Cor": {
+        "table": "produtos_cor",
+        "key": "Codigo",
+        "label": "Nome"
+      },
+      "Fornecedor": {
+        "table": "produtos_fornecedor",
+        "key": "Codigo",
+        "label": "NomeFornecedor"
+      },
+      "Genero": {
+        "table": "produtos_generos",
+        "key": "Codigo",
+        "label": "Genero"
+      },
+      "Linha": {
+        "table": "produtos_linhas",
+        "key": "Codigo",
+        "label": "Linha"
+      },
+      "Tamanho": {
+        "table": "produtos_tamanho",
+        "key": "Codigo",
+        "label": "Nome"
+      }
+    }
+  },
+  "produtos_precos_cab": {
+    "fields": {
+      "ID": {
+        "type": "bigint",
+        "size": "20",
+        "nullable": false,
+        "auto": true,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "60",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DataAtualizacao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DataVoltaAtualizacao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Atualizado": {
+        "type": "tinyint",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "QtdeItens": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "60",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_precos_itens": {
+    "fields": {
+      "IDItens": {
+        "type": "bigint",
+        "size": "20",
+        "nullable": false,
+        "auto": true,
+        "default": null
+      },
+      "IDCab": {
+        "type": "bigint",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Sequencia": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "ReferenciaMaster": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Produto": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Referencia": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "60",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "PrecoAtacadoAtual": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "PrecoVarejoAtual": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "PrecoAtacadoNovo": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "PrecoVarejoNovo": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      }
+    },
+    "relations": {}
+  },
+  "produtos_prm": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CFOP": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Origem": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "CST_ICMS": {
+        "type": "varchar",
+        "size": "3",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "AliquotaICMS": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "ReducaoBaseICMS": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "CST_PIS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "AliquotaPIS": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "CST_COFINS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "AliquotaCOFINS": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "CST_IPI": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "AliquotaIPI": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "UpperCase": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "PrecoAtacadoMetadeVarejo": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      }
+    },
+    "relations": {
+      "CST_ICMS": {
+        "table": "st_icms",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "Origem": {
+        "table": "st_origem",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "CST_PIS": {
+        "table": "st_pis",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "CST_COFINS": {
+        "table": "st_cofins",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "CST_IPI": {
+        "table": "st_ipi",
+        "key": "Codigo",
+        "label": "Descricao"
+      },
+      "CFOP": {
+        "table": "cfops",
+        "key": "CFOP",
+        "label": "Descricao"
+      }
+    }
+  },
+  "produtos_antes_gcom": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Distribuidora": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "GTIN": {
+        "type": "varchar",
+        "size": "14",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Linha": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Colecao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Grupo": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "GrupoCategoria": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Composicao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Caracteristica": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "50",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DescricaoComplementar": {
+        "type": "varchar",
+        "size": "70",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Unidade": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Cor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Genero": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Fornecedor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedor": {
+        "type": "varchar",
+        "size": "200",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedorR3": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Categoria": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Tamanho": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "NCM": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CST_ICMS": {
+        "type": "varchar",
+        "size": "3",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Origem": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "ReducaoICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_PIS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaPIS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_COFINS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaCOFINS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_IPI": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaIPI": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CFOP": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CFOP_ProducaoProria": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Peso": {
+        "type": "double",
+        "size": "13,3",
+        "nullable": false,
+        "auto": false,
+        "default": "0.000"
+      },
+      "PrecoVendaTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompraTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompra": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "SetorLaranja": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "PrecoCheio": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "Encomenda": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "LocalFisico": {
+        "type": "int",
+        "size": "11",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodigoAlternativo": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Estilo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Foto": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      }
+    },
+    "relations": {}
+  },
+  "produtos_colecao": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": true,
+        "default": null
+      },
+      "Colecao": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Externo": {
+        "type": "tinyint",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_linhas": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": true,
+        "default": null
+      },
+      "Linha": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_grupos_livre": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": true,
+        "default": null
+      },
+      "GrupoLivre": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Sts": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": "Ativo"
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": true,
+        "auto": false,
+        "default": ""
+      }
+    },
+    "relations": {}
+  },
+  "produtos_grupos_tamanho": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": true,
+        "default": null
+      },
+      "GrupoLivre": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Tamanho": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Ordem": {
+        "type": "int",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      }
+    },
+    "relations": {
+      "GrupoLivre": {
+        "table": "produtos_grupos_livre",
+        "key": "Codigo",
+        "label": "GrupoLivre"
+      },
+      "Tamanho": {
+        "table": "produtos_tamanho",
+        "key": "Codigo",
+        "label": "Nome"
+      }
+    }
+  },
+  "produtos_categorias_livre": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": true,
+        "default": null
+      },
+      "CategoriaLivre": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Sts": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": "Ativo"
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      }
+    },
+    "relations": {}
+  },
+  "produtos_composicoes": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Composicao": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": true,
+        "auto": false,
+        "default": ""
+      }
+    },
+    "relations": {}
+  },
+  "produtos_caracteristicas": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Caracteristica": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "50",
+        "nullable": true,
+        "auto": false,
+        "default": ""
+      }
+    },
+    "relations": {}
+  },
+  "produtos_grupos": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": true,
+        "default": null
+      },
+      "Grupo": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "SubGrupo": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": "Ativo"
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {
+      "SubGrupo": {
+        "table": "produtos_categorias_livre",
+        "key": "CategoriaLivre",
+        "label": "CategoriaLivre"
+      },
+      "Grupo": {
+        "table": "produtos_grupos_livre",
+        "key": "GrupoLivre",
+        "label": "GrupoLivre"
+      }
+    }
+  },
+  "produtos_categoria_composicao": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": true,
+        "default": null
+      },
+      "Categoria": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Composicao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": "Ativo"
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": true,
+        "auto": false,
+        "default": ""
+      }
+    },
+    "relations": {
+      "Categoria": {
+        "table": "produtos_categorias_livre",
+        "key": "Codigo",
+        "label": "CategoriaLivre"
+      },
+      "Composicao": {
+        "table": "produtos_composicoes",
+        "key": "Codigo",
+        "label": "Composicao"
+      }
+    }
+  },
+  "produtos_categoria_caracteristicas": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": true,
+        "default": null
+      },
+      "Categoria": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Caracteristica": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": "Ativo"
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": true,
+        "auto": false,
+        "default": ""
+      }
+    },
+    "relations": {
+      "Caracteristica": {
+        "table": "produtos_caracteristicas",
+        "key": "Codigo",
+        "label": "Caracteristica"
+      },
+      "Categoria": {
+        "table": "produtos_categorias_livre",
+        "key": "Codigo",
+        "label": "CategoriaLivre"
+      }
+    }
+  },
+  "produtos_fornecedor": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "NomeFornecedor": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "ProducaoProria": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "MarkUpCompra": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "MarkupFranqueadora": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "CFOP_PP": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_categorias": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "TipoProduto": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_tamanho": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Nome": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_tamanho_ordem": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Ordem": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {
+      "Codigo": {
+        "table": "produtos_tamanho",
+        "key": "Codigo",
+        "label": "Nome"
+      }
+    }
+  },
+  "produtos_cor": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Nome": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_generos": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Genero": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Abreviado": {
+        "type": "varchar",
+        "size": "5",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "50",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_estilos": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "120",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_medidas": {
+    "fields": {
+      "Sigla": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Unidade": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_barras": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodigoBarra": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_log_preco": {
+    "fields": {
+      "Id": {
+        "type": "bigint",
+        "size": "20",
+        "nullable": false,
+        "auto": true,
+        "default": null
+      },
+      "DataHora": {
+        "type": "datetime",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Produto": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Referencia": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Acao": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "VarejoOLD": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "VarejoNEW": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "AtacadoOLD": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "AtacadoNEW": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "CompraOLD": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "CompraNEW": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_precos_cab_h": {
+    "fields": {
+      "ID": {
+        "type": "bigint",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "60",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DataAtualizacao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DataVoltaAtualizacao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Atualizado": {
+        "type": "tinyint",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "QtdeItens": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "60",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_precos_itens_h": {
+    "fields": {
+      "IDItens": {
+        "type": "bigint",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "IDCab": {
+        "type": "bigint",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Sequencia": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "ReferenciaMaster": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Produto": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Referencia": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "60",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "PrecoAtacadoAtual": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "PrecoVarejoAtual": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "PrecoAtacadoNovo": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "PrecoVarejoNovo": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      }
+    },
+    "relations": {}
+  },
+  "produtos_gcom": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Distribuidora": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "GTIN": {
+        "type": "varchar",
+        "size": "14",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Linha": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Colecao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Grupo": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "GrupoCategoria": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Composicao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Caracteristica": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "50",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DescricaoComplementar": {
+        "type": "varchar",
+        "size": "70",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Unidade": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Cor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Genero": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Fornecedor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedor": {
+        "type": "varchar",
+        "size": "200",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedorR3": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Categoria": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Tamanho": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "NCM": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CST_ICMS": {
+        "type": "varchar",
+        "size": "3",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Origem": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "ReducaoICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_PIS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaPIS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_COFINS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaCOFINS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_IPI": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaIPI": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CFOP": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CFOP_ProducaoProria": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Peso": {
+        "type": "double",
+        "size": "13,3",
+        "nullable": false,
+        "auto": false,
+        "default": "0.000"
+      },
+      "PrecoVendaTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompraTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompra": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "SetorLaranja": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "PrecoCheio": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "Encomenda": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "LocalFisico": {
+        "type": "int",
+        "size": "11",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodigoAlternativo": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Fashion": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Estilo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Foto": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      }
+    },
+    "relations": {}
+  },
+  "produtos_cab_gcom": {
+    "fields": {
+      "Referencia": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Fornecedor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedor": {
+        "type": "varchar",
+        "size": "200",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "CodFornecedorR3": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Categoria": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Grupo": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "GrupoCategoria": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Colecao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Linha": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Composicao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Caracteristica": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Genero": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "50",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DescricaoComplementar": {
+        "type": "varchar",
+        "size": "70",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Unidade": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Cor": {
+        "type": "varchar",
+        "size": "3000",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Tamanho": {
+        "type": "varchar",
+        "size": "3000",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "NCM": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CST_ICMS": {
+        "type": "varchar",
+        "size": "3",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Origem": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "ReducaoICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_PIS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaPIS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_COFINS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaCOFINS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_IPI": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaIPI": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CFOP": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CFOP_ProducaoProria": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Peso": {
+        "type": "double",
+        "size": "13,3",
+        "nullable": false,
+        "auto": false,
+        "default": "0.000"
+      },
+      "PrecoCompra": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompraTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoVendaTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "SetorLaranja": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "Encomenda": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "PrecoCheio": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": "Ativo"
+      },
+      "Inclusao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Consolidado": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "Estilo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Foto": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      }
+    },
+    "relations": {}
+  },
+  "produtos_cab_grade_gcom": {
+    "fields": {
+      "Referencia": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Distribuidora": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "GTIN": {
+        "type": "varchar",
+        "size": "14",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Linha": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Colecao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Grupo": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "GrupoCategoria": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Composicao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Caracteristica": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "50",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DescricaoComplementar": {
+        "type": "varchar",
+        "size": "70",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Unidade": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Cor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Genero": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Fornecedor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedor": {
+        "type": "varchar",
+        "size": "200",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedorR3": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Categoria": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Tamanho": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "NCM": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CST_ICMS": {
+        "type": "varchar",
+        "size": "3",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Origem": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "ReducaoICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_PIS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaPIS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_COFINS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaCOFINS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_IPI": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaIPI": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CFOP": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CFOP_ProducaoProria": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Peso": {
+        "type": "double",
+        "size": "13,3",
+        "nullable": false,
+        "auto": false,
+        "default": "0.000"
+      },
+      "PrecoVendaTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompraTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompra": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "SetorLaranja": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "Encomenda": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "PrecoCheio": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "LocalFisico": {
+        "type": "int",
+        "size": "11",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Consolidado": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "CodigoAlternativo": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Estilo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Foto": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      }
+    },
+    "relations": {}
+  },
+  "produtos_cab_antes_gcom": {
+    "fields": {
+      "Referencia": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Fornecedor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedor": {
+        "type": "varchar",
+        "size": "200",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "CodFornecedorR3": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Categoria": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Grupo": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "GrupoCategoria": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Colecao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Linha": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Composicao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Caracteristica": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Genero": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "50",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DescricaoComplementar": {
+        "type": "varchar",
+        "size": "70",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Unidade": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Cor": {
+        "type": "varchar",
+        "size": "3000",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Tamanho": {
+        "type": "varchar",
+        "size": "3000",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "NCM": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CST_ICMS": {
+        "type": "varchar",
+        "size": "3",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Origem": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "ReducaoICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_PIS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaPIS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_COFINS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaCOFINS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_IPI": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaIPI": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CFOP": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CFOP_ProducaoProria": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Peso": {
+        "type": "double",
+        "size": "13,3",
+        "nullable": false,
+        "auto": false,
+        "default": "0.000"
+      },
+      "PrecoCompra": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompraTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoVendaTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "SetorLaranja": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "Encomenda": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "PrecoCheio": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": "Ativo"
+      },
+      "Inclusao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Consolidado": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "Estilo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Foto": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      }
+    },
+    "relations": {}
+  },
+  "produtos_cab_grade_antes_gcom": {
+    "fields": {
+      "Referencia": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Distribuidora": {
+        "type": "varchar",
+        "size": "15",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "GTIN": {
+        "type": "varchar",
+        "size": "14",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Linha": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Colecao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Grupo": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "GrupoCategoria": {
+        "type": "varchar",
+        "size": "40",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Composicao": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Caracteristica": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "50",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "DescricaoComplementar": {
+        "type": "varchar",
+        "size": "70",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Unidade": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Cor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Genero": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Fornecedor": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedor": {
+        "type": "varchar",
+        "size": "200",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodFornecedorR3": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Categoria": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Tamanho": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "NCM": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CST_ICMS": {
+        "type": "varchar",
+        "size": "3",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Origem": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "ReducaoICMS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_PIS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaPIS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_COFINS": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaCOFINS": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CST_IPI": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "AliquotaIPI": {
+        "type": "double",
+        "size": "5,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "CFOP": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CFOP_ProducaoProria": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Peso": {
+        "type": "double",
+        "size": "13,3",
+        "nullable": false,
+        "auto": false,
+        "default": "0.000"
+      },
+      "PrecoVendaTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompraTabela": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "PrecoCompra": {
+        "type": "double",
+        "size": "12,2",
+        "nullable": false,
+        "auto": false,
+        "default": "0.00"
+      },
+      "SetorLaranja": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "Encomenda": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "PrecoCheio": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": true,
+        "auto": false,
+        "default": "N"
+      },
+      "LocalFisico": {
+        "type": "int",
+        "size": "11",
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Inclusao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "datetime",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Consolidado": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "CodigoAlternativo": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Estilo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Foto": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      }
+    },
+    "relations": {}
+  },
+  "produtos_barras_gcom": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodigoBarra": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "produtos_barras_antes_gcom": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "CodigoBarra": {
+        "type": "varchar",
+        "size": "20",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "st_icms": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "3",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "150",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "SimplesNacional": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "st_origem": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "200",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "st_pis": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "150",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Operacao": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "IncideImposto": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "st_cofins": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "150",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Operacao": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "IncideImposto": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "st_ipi": {
+    "fields": {
+      "Codigo": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "150",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Operacao": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "IncideImposto": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      }
+    },
+    "relations": {}
+  },
+  "cfops": {
+    "fields": {
+      "CFOP": {
+        "type": "varchar",
+        "size": "4",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Descricao": {
+        "type": "varchar",
+        "size": "50",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Operacao": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "ICMS_CST": {
+        "type": "varchar",
+        "size": "3",
+        "nullable": false,
+        "auto": false,
+        "default": "00"
+      },
+      "ICMS_Reducao": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "PIS_CST": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": "01"
+      },
+      "PIS_Aliquota": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "COFINS_CST": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": "01"
+      },
+      "COFINS_Aliquota": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "IPI_CST": {
+        "type": "varchar",
+        "size": "2",
+        "nullable": false,
+        "auto": false,
+        "default": "53"
+      },
+      "IPI_Aliquota": {
+        "type": "double",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "DestacaTributos": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "0"
+      },
+      "Mensagem": {
+        "type": "varchar",
+        "size": "120",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Devolucao": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": "Ativo"
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "60",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      }
+    },
+    "relations": {}
+  },
+  "cests_ncm": {
+    "fields": {
+      "ncm": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "cest": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "descricao": {
+        "type": "varchar",
+        "size": "255",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": "Ativo"
+      }
+    },
+    "relations": {}
+  },
+  "produtos_local_fisico": {
+    "fields": {
+      "Codigo": {
+        "type": "int",
+        "size": "11",
+        "nullable": false,
+        "auto": false,
+        "default": null
+      },
+      "Local": {
+        "type": "varchar",
+        "size": "10",
+        "nullable": false,
+        "auto": false,
+        "default": ""
+      },
+      "Utilizado": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "Compartilhado": {
+        "type": "varchar",
+        "size": "1",
+        "nullable": false,
+        "auto": false,
+        "default": "N"
+      },
+      "Status": {
+        "type": "varchar",
+        "size": "8",
+        "nullable": false,
+        "auto": false,
+        "default": "Ativo"
+      },
+      "Inclusao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Alteracao": {
+        "type": "date",
+        "size": null,
+        "nullable": true,
+        "auto": false,
+        "default": null
+      },
+      "Usuario": {
+        "type": "varchar",
+        "size": "30",
+        "nullable": true,
+        "auto": false,
+        "default": ""
+      }
+    },
+    "relations": {}
+  }
+}

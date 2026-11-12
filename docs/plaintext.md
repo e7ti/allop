@@ -4,11 +4,13 @@
 **Atencao:** CERTIFIQUE-SE QUE VOCE ESTA NO WORKSPACE ALLOP.
 
 **Documento-base:** 01/06/2026  
-**Ultima revisao documental:** 09/10/2026
-**Ultima revisao conferida do codigo:** 09/10/2026
-**Ultima revisao conferida do `banco.sql`:** 09/10/2026
-**Ultima revisao conferida do `banco_fotos.sql`:** 09/10/2026  
-**Escopo conferido:** aplicacao PHP, APIs, telas, assets, seed, banco principal, banco de fotos e documentacao existente.
+**Ultima revisao documental:** 12/11/2026
+**Ultima revisao conferida do codigo:** 12/11/2026
+**Ultima revisao conferida do `banco.sql`:** 03/11/2026
+**Ultima revisao conferida do `banco_fotos.sql`:** 03/11/2026
+**Escopo desta revisao (12/11/2026):** leitura estatica da estrutura, inicializacao, autenticacao, menu, APIs, telas e scripts, com conferencia dos contratos de e-mail e de Cadastros > Produtos. Antes do commit, a sintaxe PHP/JavaScript foi validada e a suite isolada passou com 216 verificacoes HTTP em fixture SQLite. Nao houve conexao aos bancos configurados, envio SMTP, execucao de seeds, ajuste de triggers ou nova execucao dos testes de navegador. As datas de conferencia dos dumps acima foram mantidas como registro da revisao anterior.
+
+**Verificacoes historicas:** em 04/11/2026, foram registradas 215 verificacoes HTTP em copia temporaria com SQLite e conferencia do cadastro de Produtos com accordion e cinco abas no Chrome local, em desktop e celular; Valores foi conferido em 03/11/2026. As capturas e verificacoes visuais nao foram refeitas em 12/11/2026. Os testes isolados nao comprovam integracao ou concorrencia MySQL; a conferencia visual especifica dos quatro accordions de associacoes permanece pendente. A integracao de 30/10/2026 esta registrada em `docs/conversao_produtos.md`.
 
 ## 1. Objetivo
 
@@ -30,7 +32,8 @@ Principais caracteristicas:
 - endpoints em `api/`;
 - Bootstrap, jQuery e Select2 distribuidos localmente em `assets/vendor/`;
 - Dompdf instalado via Composer para geracao de PDF;
-- menu dinamico por perfil;
+- menu dinamico por perfil, com submenu de Produtos;
+- modulo Cadastros > Produtos com 28 opcoes, grades, consolidacao, fotos, importacao e lotes de precos;
 - dashboard de compras;
 - modulo de compras com pedido, itens, tamanhos, cores, rateio, fotos, e-mail, logs, workflow, pre-cadastro e de/para de cores.
 
@@ -65,6 +68,7 @@ index.php
 | `assets/vendor/` | Bootstrap, jQuery e Select2 locais. |
 | `assets/img/` | Logos e imagens institucionais, incluindo `SemFoto.png` como placeholder atual de item sem foto. |
 | `scripts/` | Rotinas administrativas, incluindo `seed_aplicacoes.php`. |
+| `tests/` | Teste HTTP isolado de Produtos com fixture SQLite e testes de interface de Valores e do cadastro com accordion, usando Node.js e Chrome local. |
 | `docs/` | Documentacao e registros auxiliares. |
 | `banco.sql` | Dump estrutural do banco principal. |
 | `banco_fotos.sql` | Dump estrutural do banco de fotos. |
@@ -73,6 +77,7 @@ index.php
 Arquivos Markdown/documentacao proprios:
 
 - `docs/plaintext.md`: este documento, fonte principal de manutencao;
+- `docs/conversao_produtos.md`: registro da integracao de Produtos de 30/10/2026, regras, ativacao e verificacoes historicas;
 - `docs/plaintext.txt`: documento legado de padroes;
 - `docs/def.txt`: briefing inicial legado.
 
@@ -81,9 +86,10 @@ Arquivos Markdown/documentacao proprios:
 | Arquivo | Funcao |
 | --- | --- |
 | `config/app.php` | Define `APP_NAME`, `APP_DATE`, `BASE_PATH`, `BASE_URL`, `app_url()` e `h()`. |
-| `config/database.php` | Define `db()` e `db_fotos()` com PDO, erro por excecao e prepared statements nativos. |
+| `config/database.php` | Configuracao ativa; define `db()` e `db_fotos()` com PDO, erro por excecao e prepared statements nativos. |
+| `config/database copy.php` | Copia local com configuracao de desenvolvimento; nao e incluida pelo codigo atual nem selecionada automaticamente. |
 | `includes/auth.php` | Inicializa sessao e fornece `current_user()`, `require_login()`, `login_user()` e `logout_user()`. |
-| `includes/permissions.php` | Monta o menu com base em `seg_perfil_permissoes.visualizar`. |
+| `includes/permissions.php` | Monta o menu com base em `seg_perfil_permissoes.visualizar` e agrupa as rotas de cadastros de produtos em submenu. |
 | `includes/layout.php` | Renderiza header, menu, area de conteudo, footer e assets locais. |
 | `includes/smtp_mailer.php` | Cliente SMTP por socket com SSL implicito, STARTTLS e autenticacao opcional. |
 | `api/bootstrap.php` | Inicializacao comum das APIs, `api_response()`, `request_data()` e `api_require_login()`. |
@@ -91,6 +97,21 @@ Arquivos Markdown/documentacao proprios:
 | `assets/js/app.js` | CRUD generico, Select2, alertas, confirmacao, sincronizacao de grids, ViaCEP, empresas, e-mail e fluxo completo de compras. |
 | `assets/css/style.css` | Tema global, responsividade, botoes com icones, grids, dashboard, login e componentes de compras. |
 | `scripts/seed_aplicacoes.php` | Seed de menus, aplicacoes, perfil Administrador, permissoes, usuario inicial e estruturas auxiliares. |
+| `config/produtos.php` | Catalogo das 28 opcoes de Produtos, rotas, tabelas, chaves, campos e capacidades de manutencao. |
+| `config/produtos_schema.json` | Metadados estaticos de campos e relacionamentos usados pelo modulo de Produtos. |
+| `includes/produtos.php` | Permissoes por rota/perfil, token CSRF, validacao e filtros de Produtos. |
+| `includes/produtos_workflow.php` | Regras de cabecalho/grade, consolidacao, importacao, fotos, ordenacao e precos em lote. |
+| `includes/grupo_categoria.php` | Leitura e versao de vinculos e verificacao de dependencias por chave estrangeira, compartilhadas pelas quatro associacoes de Produtos. |
+| `assets/js/grupo_categoria.js` | Grid compartilhado com accordion, selecao de itens, filtros e salvamento por registro principal. |
+| `api/cadastros/produtos_associacoes.php` | API comum das associacoes, com catalogo estatico de tabelas/chaves e permissoes por aplicacao. |
+| `includes/produtos_valores.php` | Filtros, versao dos itens e validacao de valores monetarios da tela de Valores. |
+| `api/cadastros/produtos_valores.php` | Listagem por master, carga de grade filtrada e gravacao transacional dos valores alterados. |
+| `mod/cadastros/produtos/valores_grid.php` / `assets/js/produtos_valores.js` | Tela de Valores com filtros, accordion, edicao direta, previa em lote e salvamento por produto. |
+| `mod/cadastros/produtos/produtos_accordion.php` / `assets/js/produtos_accordion.js` | Grid do cadastro principal com editor no accordion e abas de dados, tributos, referencias, fotos e historico de precos. |
+| `assets/js/decimal_input.js` | Digitacao decimal da direita para a esquerda em campos opt-in de Produtos, com formatacao brasileira e conversao para o valor enviado a API. |
+| `scripts/seed_produtos.php` | Registro transacional e especifico do submenu de Produtos e permissoes iniciais do Administrador. |
+| `scripts/processar_precos_produtos.php` | Executor CLI para aplicacao e retorno de lotes vencidos. |
+| `scripts/ajustar_triggers_fotos_produtos.php` | Ajuste especifico de triggers de fotos em `allop_devel`, com copia das definicoes anteriores. |
 
 ## 5. Bibliotecas e Recursos
 
@@ -101,7 +122,7 @@ Arquivos Markdown/documentacao proprios:
 | Bootstrap 5.3.6 | `assets/vendor/bootstrap/` | Layout, grid, navbar, dropdowns, botoes, cards, modais e utilitarios. |
 | jQuery 3.7.1 | `assets/vendor/jquery/jquery.min.js` | AJAX, manipulacao de DOM e integracao com Select2. |
 | Select2 4.1.0-rc.0 | `assets/vendor/select2/` | Campos pesquisaveis locais e remotos. |
-| Dompdf 3.1 | `composer.json`, `vendor/` | PDF do pedido de compra. |
+| Dompdf 3.1.5 | `composer.lock`, `vendor/` | PDF do pedido de compra; `composer.json` permite a faixa `^3.1`. |
 | ViaCEP | navegador, em `assets/js/app.js` | Preenchimento de endereco no cadastro de Empresas. |
 | Google Fonts/Poppins | `assets/css/style.css` | Fonte visual principal via `@import`. |
 
@@ -148,7 +169,11 @@ Entidades aceitas pelo CRUD generico:
 
 Observacoes de usuarios:
 
-- `seg_usuarios.chequesapp` indica se o usuario pode acessar o aplicativo de cheques (`0` nao, `1` sim).
+- o formulario usa `nome`, `login`, `senha`, `perfil_id`, `ativo` e `chequesapp`;
+- `seg_usuarios.chequesapp` registra a habilitacao para o aplicativo de cheques (`0` nao, `1` sim), mas nao altera o menu ou a sessao do Allop;
+- o CRUD converte `ativo` e `chequesapp` para `0` ou `1`;
+- na edicao, senha vazia preserva a senha existente; senha preenchida e gravada com `password_hash()`;
+- o formulario nao exige senha na inclusao e a API nao aplica tamanho minimo nessa entidade; as validacoes das telas publicas de troca de senha sao separadas.
 
 E-mails de compras:
 
@@ -215,13 +240,46 @@ Empresas:
 - lista ate 200 registros e filtra por nome, fantasia, CNPJ ou cidade;
 - usa ViaCEP no frontend para auxiliar o preenchimento de endereco.
 
-Configuracoes de e-mail:
+#### Configuracoes de e-mail
 
 - acoes `list`, `get`, `save` e `delete`;
 - persiste na tabela `config_email`;
 - usa `cd_id`, `empresa_id`, `NomeConta`, `Habilitado`, `Servidor`, `Porta`, `ModoAutenticado`, `ModoSSL`, `Email`, `Senha` e `Status`;
 - lista ate 200 registros e filtra por conta, servidor, e-mail ou status;
 - e usada pelo envio de propostas de compra.
+
+Contrato da API `api/configuracoes/configuracoes_email.php`:
+
+| Acao | Entrada e retorno |
+| --- | --- |
+| `list` | `q` opcional; pesquisa parcial em `NomeConta`, `Servidor`, `Email` e `Status`, ordena por `Codigo` decrescente e retorna `data` com ate 200 registros, sem paginacao. |
+| `get` | `id` numerico; retorna `data` com `Codigo AS id`, os campos da conta e os textos `cd_id_text`/`empresa_id_text` para os seletores. A empresa usa Fantasia, com fallback para Nome. Registro ausente nao recebe 404 explicito. |
+| `save` | `id > 0` atualiza; sem ID positivo, insere e devolve o ID gerado. Somente campos do catalogo `$columns` entram no SQL. Payload sem campos permitidos retorna 422. |
+| `delete` | Exclui por `Codigo = id` e retorna mensagem de sucesso; nao verifica explicitamente se uma linha foi removida. Restricoes do banco podem impedir a exclusao. |
+
+`Habilitado` e convertido para inteiro booleano; o formulario envia `0` ou `1`. `ModoAutenticado` e `ModoSSL` usam `S`/`N`, e `Status` usa `Ativo`/`Inativo`. Os outros campos seguem para o PDO sem validacao de dominio especifica nessa API. Obrigatoriedade, tamanho e formato de e-mail sao exigidos principalmente pelo HTML do formulario; nao equivalem a validacao no servidor.
+
+O formulario usa Select2 remoto para CD e empresa via `api/seguranca/options.php`, tipos `empresas_cd` e `empresas`. A listagem tambem usa Select2, mas envia o texto da conta selecionada como `q`; a selecao nao restringe pelo ID exato. Salvar mantem o formulario aberto e atualiza seu ID apos a inclusao.
+
+O endpoint exige sessao, mas nao confere permissoes por acao, token CSRF ou metodo HTTP. A tela envia POST em `save`/`delete`, porem isso nao e imposto pelo backend. `action` e lida de GET ou POST, com padrao `list`; ao enviar JSON, informar a acao na URL.
+
+`Senha` e armazenada como recebida e devolvida por `list` e `get`; o formulario de edicao a preenche novamente. Nao existe a regra de preservar a senha quando o campo e enviado vazio: omitir `Senha` preserva o valor no UPDATE, enviar `Senha` vazia o substitui. Esse comportamento difere do cadastro de usuarios.
+
+#### Escolha da conta e transporte SMTP
+
+O envio da proposta em `api/compras/cp_compras.php` seleciona a primeira conta por `Codigo` crescente com o mesmo `cd_id` e `empresa_id` do pedido, `Habilitado = 1` e `Status = 'Ativo'`. Se houver varias contas elegiveis, usa a de menor codigo; sem conta elegivel, interrompe o envio. Os destinatarios vem dos usuarios ativos do fornecedor em `pf_usuarios`/`pf_usuario_fornecedor`; o cadastro `cp_compras_emails` nao substitui essa consulta.
+
+`includes/smtp_mailer.php` implementa o transporte por socket, sem biblioteca adicional:
+
+- `ModoSSL = S` e porta 465: SSL implicito; em outra porta, usa STARTTLS e repete EHLO;
+- `ModoSSL = N`: conexao TCP sem ativar TLS;
+- `ModoAutenticado = S`: AUTH LOGIN usando `Email` e `Senha`;
+- verifica certificado e nome do servidor nas conexoes TLS e configura timeout de 20 segundos para conexao e leitura;
+- valida servidor, porta positiva e e-mail remetente no momento do envio; ignora destinatarios invalidos e elimina duplicados pelo endereco;
+- usa `Email` como remetente e `NomeConta` como nome de exibicao, com fallback para Kidstok quando a chave nao e informada;
+- aceita texto puro e HTML como alternativas MIME em UTF-8/Base64. O envio da proposta fornece os dois formatos.
+
+Salvar uma conta nao testa conexao ou autenticacao SMTP. A API de configuracoes nao possui acao de envio de teste.
 
 ### 6.3 Compras
 
@@ -299,7 +357,9 @@ Acoes de `api/compras/pre_cadastro_produtos.php`:
 | `update` | Atualiza um pre-cadastro ainda nao consolidado, recriando os filhos dentro da transacao. |
 | `consolidate` | Gera `produtos_cab` a partir de `pre_cadastro_item`, gera `produtos_cab_grade` a partir de `pre_cadastro_item_pro` usando campos do item, grava `Consolidado = 'N'` nos produtos gerados e marca `pre_cadastro.consolidado = 1`. |
 | `generate_purchase` | Gera pedidos na tabela `compras` e itens em `compras_itens` a partir de pre-cadastro consolidado, depois move o pre-cadastro para historico. |
-| `history` | Move registros consolidados para `pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst`, criando ou alinhando colunas historicas antes da copia. |
+| `history` | Move o registro para `pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst`, criando ou alinhando colunas historicas antes da copia. A tela oferece a acao apenas para consolidados, mas a API nao valida esse estado. |
+
+A listagem consulta o banco diretamente em `mod/compras/pre_cadastro_produtos_lista.php`, carrega ate 200 registros por ID decrescente e nao possui acao `list` na API de pre-cadastro. As acoes de processamento usam a API.
 
 Regras da listagem:
 
@@ -309,7 +369,9 @@ Regras da listagem:
 - o botao `Historico` aparece apenas quando `consolidado = 1` e possui tooltip `Move pre cadastro para historico`;
 - ao gerar compra, cada registro de `pre_cadastro_item` gera um pedido novo em `compras`;
 - cada registro de `pre_cadastro_item_pro` do item gera uma linha em `compras_itens`;
+- a consolidacao grava em `produtos_cab` e `produtos_cab_grade` com `Consolidado = 'N'`; para gerar compra, a referencia tambem precisa existir em `produtos.Distribuidora`. A acao de consolidacao desta API nao insere diretamente em `produtos`;
 - `pre_cadastro_item_pro.referencia` e validada contra `produtos.Distribuidora`;
+- o numero de cada novo pedido e calculado por `MAX(Pedido) + 1` dentro do CD;
 - `compras_itens.Produto` recebe o `produtos.Codigo` localizado pela `Distribuidora`, para preservar a chave estrangeira;
 - `compras_itens.Distribuidora` recebe a referencia completa de `pre_cadastro_item_pro.referencia`;
 - `pre_cadastro_item.compra_nro` e `pre_cadastro_item_pro.compra_nro` guardam o numero do pedido gerado;
@@ -488,6 +550,133 @@ Detalhes:
 - pedidos fechados, aguardando foto ou localizados em `Fornecedor` usam botao de visualizacao;
 - quando consultas do dashboard falham, os indicadores caem para zero e a listagem fica vazia.
 
+### 6.5 Cadastros > Produtos
+
+O modulo usa as rotas compartilhadas `mod/cadastros/produtos/produtos_lista.php` e `produtos_form.php`. A listagem encaminha `produtos` para `produtos_accordion.php`, `valores` para `valores_grid.php` e as quatro associacoes para `grupo_categoria_grid.php`; as demais opcoes usam a renderizacao generica. O parametro `cadastro` identifica a opcao do catalogo em `config/produtos.php`; cada rota de listagem corresponde a uma aplicacao e suas permissoes no banco.
+
+| Opcoes (`cadastro`) | Comportamento |
+| --- | --- |
+| `produtos` | Cadastro com accordion e cinco abas, cabecalho em `produtos_cab`, referencia R1 + R2 + R3 e geracao de combinacoes em `produtos_cab_grade`, mantendo validacoes e grades existentes. |
+| `valores` | Tela unica com filtros, grid por referencia master e accordion de tamanhos/cores. Edicao direta de valores/indicadores e previa em lote antes de salvar por produto. |
+| `outras_informacoes` | Edicao individual ou em lote de GTIN, local fisico, codigo alternativo, status e peso, pendentes de consolidacao. |
+| `precos_lote` | Cabecalho e itens por referencia master ou completa, aplicacao, retorno de precos e historico. |
+| `fotos` | Consulta, upload e exclusao em `produtos_fotos`, no banco principal; ate cinco imagens por produto e 10 MB por arquivo. |
+| `consolidar` | Publicacao das grades pendentes em `produtos`, individualmente ou por selecao de ate 200 referencias master. |
+| `consulta_geral`, `consulta_precos` | Consulta dos produtos consolidados. |
+| `parametros` | Padroes tributarios, descricoes em maiusculas e relacao atacado/varejo. Exclusao bloqueada. |
+| `importar_antigos` | Importacao por master de oito caracteres ou referencia completa de doze, priorizando GCOM sobre Antes GCOM e permitindo apenas faltantes. |
+| `colecao`, `linha`, `grupo`, `categoria`, `composicao`, `caracteristica`, `fornecedor`, `categoria_r2`, `tamanho`, `cor`, `genero`, `estilo`, `medida` | Manutencao de dominios, com validacao, auditoria e bloqueio de exclusao quando existem vinculos. |
+| `grupo_categoria` | Grid de grupos com accordion e categorias selecionaveis; busca, filtros e gravacao em lote por grupo. |
+| `grupos_tamanho` | Accordion por grupo com selecao em lote de tamanhos; preserva `Ordem` dos vinculos mantidos e usa a ordem geral para os novos, ou zero quando nao cadastrada. |
+| `categoria_composicao`, `categoria_caracteristica` | Accordion por categoria com selecao em lote de composicoes ou caracteristicas. |
+| `ordenar_tamanho` | Ordenacao por setas e gravacao da lista completa, alem da manutencao individual de `Ordem`. |
+
+Listagens genericas usam 50 registros por pagina; Valores usa 30 referencias master por pagina. Detalhes de grades e lotes usam 500 itens por pagina. As associacoes carregam a lista dos registros principais e seus itens ao expandir. A interface usa Bootstrap e Select2 locais. Exportadores e relatorios automaticos especificos do Scriptcase nao foram reproduzidos.
+
+#### Cadastro de Produtos com Accordion e Abas
+
+A rota `mod/cadastros/produtos/produtos_lista.php?cadastro=produtos` carrega o grid especifico. As linhas exibem referencia, descricao, fornecedor/categoria, status e consolidacao, com espacamento vertical moderado e bordas de 10 px. A pesquisa principal usa Select2 remoto: digitar referencia ou descricao retorna sugestoes `Referencia - Descricao`, com 25 opcoes por pagina. Selecionar filtra automaticamente a referencia exata (`product_reference`), em conjunto com os filtros avancados. Limpar o Select2 remove essa restricao; Limpar reinicia todos os filtros. Trocar a selecao respeita o aviso de alteracoes pendentes. O grid mantem a paginacao de 50 produtos. Tamanho e cor filtram codigos completos nas listas separadas por ponto e virgula do cabecalho.
+
+Referencia (Select2), Fornecedor (R1), Categoria (R2) e Codigo (R3) ficam na mesma linha de filtros principais no desktop. R1 e R2 usam Select2 com selecao multipla, mantendo a lista aberta para selecionar varias opcoes; R3 aceita ate quatro caracteres. O filtro considera qualquer fornecedor selecionado e qualquer categoria selecionada, combinando os dois campos entre si e com os demais filtros. Nenhuma opcao selecionada significa todos naquele campo. O envio conserva os arrays completos (`Fornecedor[]` e `Categoria[]` em GET); a API aceita tambem os valores unicos anteriores, usa parametros SQL em `IN` e limita cada lista a 200 codigos. Essa mudanca e exclusiva dos filtros: fornecedor e categoria do editor continuam unicos. Os demais campos ficam em Mais filtros; em telas menores, os filtros principais se reorganizam em duas ou uma coluna.
+
+Um produto fica aberto por vez. As cinco abas sao:
+
+- **Dados do produto:** Referencia, Fornecedor (R1), Categoria (R2) e R3 na primeira linha no desktop, seguidos da classificacao e demais campos cadastrais; em telas menores, a linha se reorganiza em duas ou uma coluna;
+- **Tributos:** NCM, origem, CSTs, aliquotas, reducao de ICMS e CFOPs;
+- **Grade de referencias:** tamanhos/cores e valores padrao para novas combinacoes, seguidos das referencias existentes com precos, status e consolidacao, em paginas de 500 itens;
+- **Fotos:** consulta, inclusao e exclusao usando as permissoes da aplicacao `fotos`, limites de cinco imagens e 10 MB e endpoints ja existentes;
+- **Historico de precos:** consulta da tabela real `produtos_log_preco` (sem acento), por referencia master e suas variantes, mostrando data/hora, acao, usuario e compra/atacado/varejo anteriores e novos. Permite filtrar uma referencia completa, com paginacao de 50 registros, ordenados por data/hora e ID decrescentes.
+
+O botao Novo produto abre o mesmo editor no grid; fotos e historico ficam disponiveis apos o primeiro salvamento. Edicao e inclusao usam as permissoes existentes de `produtos`. Fornecedor, categoria R2 e R3 ficam bloqueados na edicao para preservar a referencia. As abas conservam os dados locais, e fechar/trocar de produto, filtrar, paginar ou sair da tela avisa sobre alteracoes pendentes. Abas e tabelas rolam dentro do painel no celular; as abas tambem aceitam navegacao pelas setas, Home e End.
+
+Salvar reusa `api/cadastros/produtos.php?action=save&cadastro=produtos` e `ProdutosWorkflow::saveProduct()`, mantendo a transacao, os valores individuais existentes e o estado pendente de consolidacao. `get` retorna `version`, calculada a partir do cabecalho; o novo editor envia essa versao na edicao, e um conflito retorna HTTP 409 com rollback. Clientes anteriores que nao enviam `version` conservam o contrato existente. As alteracoes de fotos atualizam a versao do editor apenas quando os demais dados do cabecalho permanecem iguais, preservando edicoes locais e a deteccao de mudancas externas.
+
+A acao nova `price_history` da API generica e exclusiva de `cadastro=produtos`, exige sessao e visualizar da aplicacao, confere a existencia do produto e limita a consulta ao master solicitado e suas variantes. Nao grava nem recalcula historicos. As abas de fotos respeitam a permissao independente de visualizar/inserir/excluir de `fotos`.
+
+O formulario antigo `produtos_form.php?cadastro=produtos` continua acessivel para compatibilidade. O grid principal passa a usar o editor incorporado. Nenhuma tabela, coluna ou menu foi criado para esta alteracao.
+
+Os campos decimais de Produtos usam digitacao da direita para a esquerda: somente os algarismos sao necessarios e a virgula e posicionada automaticamente. Precos, aliquotas e reducoes usam duas casas, e peso usa tres conforme o schema. Por exemplo, `1234` produz `12,34` em preco/aliquota e `1,234` em peso; milhares recebem ponto. O helper opt-in `AllopDecimal` e carregado no layout e aplicado ao accordion, a tela de Valores (grade e lote), aos formularios compartilhados, aos itens de lotes de precos e ao campo Peso das alteracoes em lote de outras informacoes. Inteiros, codigos e demais telas sem o atributo `data-decimal-places` preservam a digitacao existente.
+
+Leituras do banco sao formatadas sem reinterpretar a escala; os dados enviados as APIs usam ponto decimal e nao levam separador de milhar. Campos vazios de aplicacao em lote continuam significando manter o valor. A mascara aceita selecionar/substituir, apagar e colar valores formatados; pesos com tres casas sao preservados ao salvar. A digitação real, Backspace, separador de milhar e persistencia foram conferidos no Chrome com a fixture SQLite, incluindo o formulario de Outras Informacoes.
+
+#### Produtos - Valores
+
+A rota `mod/cadastros/produtos/produtos_lista.php?cadastro=valores` abre a nova tela unica. Referencia, fornecedor R1, categoria R2 e colecao ficam sempre visiveis; Mais filtros inclui R3, referencia do fornecedor, descricao/complemento, linha, grupo/categoria do grupo, genero, composicao, caracteristica, estilo, tamanho, cor, indicadores, status e consolidacao. Os seletores usam Select2 remoto da API generica com as permissoes de `valores`.
+
+O grid agrupa por referencia master e mostra descricao, fornecedor/categoria, quantidade de variantes correspondentes aos filtros em relacao ao total e consolidacao. Um produto fica aberto por vez. O accordion mostra somente as variantes correspondentes aos filtros, com paginacao explicita de 500 itens. Navegar entre produtos, paginas, filtros ou sair da tela alerta sobre alteracoes pendentes.
+
+Na grade, e possivel editar Varejo, Atacado, Compra, Setor Laranja, Preco Cheio, Encomenda e Estilo. A selecao por checkbox limita a aplicacao em lote aos itens da pagina atual; edicoes individuais independem dessa selecao. Campos de lote vazios mantem o valor existente, zero e um valor valido e os seletores iniciam em Nao alterar. Aplicar na grade altera somente a previa local e destaca os campos alterados; Salvar alteracoes grava somente os itens modificados, incluindo edicoes individuais, em transacao unica por produto.
+
+A API especifica `api/cadastros/produtos_valores.php` tem acoes `list`, `get` e `save`. `save` exige POST, sessao, visualizar/editar da aplicacao `valores`, CSRF e uma lista de ate 500 itens com `id`, `version` e `values`, alem do `id` da referencia master. A API valida pertencimento ao produto, campos permitidos e versao por item; conflito retorna HTTP 409 com rollback integral. Grava por `ProdutosWorkflow::saveGrade()` e marca grade/cabecalho como pendentes, sem publicar automaticamente em `produtos`.
+
+Valores aceitam virgula ou ponto decimal, ate duas casas e faixa de 0 a 99.999.999,99; formato brasileiro com milhar e virgula tambem e aceito. Compra deve ser menor ou igual a atacado, e atacado menor ou igual a varejo. Ao alterar varejo, `PrecoAtacadoMetadeVarejo = S` recalcula atacado pela metade, com arredondamento para centavos; Preco Cheio = S sempre iguala atacado e varejo. A previa e a API aplicam essas regras. Vinculos, permissoes e schema existentes sao preservados. Perfis com visualizar sem editar recebem a grade em consulta.
+
+O layout mantem a tabela com rolagem interna no celular, sem transforma-la nos cards do CSS generico. Foram executadas 188 verificacoes HTTP isoladas e o teste de interface no Chrome local, em desktop e celular, com dados ficticios: Select2, previa sem persistencia, salvamento, recarga, edicao individual, arredondamento, cancelamento com aviso e rolagem interna. As capturas foram inspecionadas; nenhum banco configurado foi acessado.
+
+#### APIs de Produtos
+
+As quatro associacoes usam `api/cadastros/produtos_associacoes.php?cadastro=...`, com acoes `list` (registros principais e quantidades), `get` (itens ativos ou ja vinculados, vinculos e versao) e `save`. Os valores permitidos de `cadastro` sao `grupo_categoria`, `grupos_tamanho`, `categoria_composicao` e `categoria_caracteristica`, definidos em `produtos_associacao_config()` de `config/produtos.php`. `api/cadastros/grupo_categoria.php` permanece como rota de compatibilidade, fixada em Grupo / Categoria.
+
+O contrato POST compartilhado usa `grupo` para a chave do registro principal, `categorias` para a lista de chaves dos itens, `version` e `csrf`. Esses nomes sao internos: a interface apresenta grupo/categoria e tamanhos/composicoes/caracteristicas conforme o cadastro. As chaves numericas sao transportadas como strings, preservando tambem os zeros iniciais dos tamanhos. `get` retorna `Valor` (chave) e `Nome` (descricao) separadamente; a busca e a ordenacao usam a descricao.
+
+A listagem mostra inclusive registros sem vinculos. Um accordion fica aberto por vez; busca e filtros Todos os itens/Vinculados/Nao vinculados atuam sobre a selecao atual. Alteracoes pendentes exigem confirmacao ao fechar ou trocar de registro e geram aviso ao sair da pagina. As rotas antigas dos formularios dessas quatro associacoes redirecionam para o grid. `mod/cadastros/produtos/grupo_categoria_grid.php` e `assets/js/grupo_categoria.js` sao compartilhados entre elas.
+
+Os itens aparecem em ordem alfabetica em portugues, preenchendo a primeira coluna de cima para baixo e continuando na segunda. Busca e filtros recalculam a divisao dos itens visiveis; no celular, a lista segue em uma coluna.
+
+A gravacao exige visualizar; inclusoes exigem inserir e remocoes exigem editar e excluir, sempre na aplicacao correspondente ao cadastro solicitado. Preserva codigo, status, ordem e auditoria dos vinculos mantidos e insere novos vinculos ativos com auditoria quando esses campos existem na tabela. Registros inativos nao recebem novos vinculos; itens inativos ja vinculados continuam visiveis. Remocoes verificam as chaves estrangeiras completas, inclusive `ON DELETE CASCADE`, e recusam vinculos usados em outros cadastros. A operacao e transacional, bloqueia o registro principal no MySQL e compara a versao dos vinculos para evitar sobrescrever alteracoes concorrentes (HTTP 409). Nenhuma tabela ou permissao nova e necessaria.
+
+`api/cadastros/produtos.php` recebe `cadastro` e `action`:
+
+| Acao | Contrato |
+| --- | --- |
+| `list`, `get` | Listagem paginada e consulta de registro, relacionamentos e detalhes. |
+| `defaults`, `options` | Valores padrao e opcoes de relacionamentos ativos para Select2. |
+| `price_history` | Somente `produtos`: historico paginado de `produtos_log_preco`, limitado ao produto solicitado, com filtro opcional de referencia completa. |
+| `product_search` | Somente `produtos`: sugestoes Select2 por referencia ou descricao, com `results` e `pagination.more`; exige visualizar da aplicacao. |
+| `sizes` | Lista completa de tamanhos ordenados, somente para `ordenar_tamanho`. |
+| `photos`, `photo` | Sequencias das fotos e conteudo binario da imagem, somente para `fotos`. `photo` nao retorna JSON quando encontra a imagem. |
+| `save`, `delete` | Exigem POST, token `csrf`, capacidade do cadastro e permissao especifica de inserir/editar/excluir, alem de visualizar. |
+
+`api/cadastros/produtos_processos.php` aceita apenas POST, exige sessao, token `csrf`, permissao de visualizar e permissao da operacao:
+
+| Acao | Aplicacao / permissao |
+| --- | --- |
+| `consolidate` | `consolidar` / `processar` |
+| `import` | `importar_antigos` / `processar` |
+| `photo_upload`, `photo_delete` | `fotos` / `inserir` ou `excluir` |
+| `batch_item`, `batch_item_delete` | `precos_lote` / `editar` |
+| `batch_apply`, `batch_restore` | `precos_lote` / `processar` |
+| `order_sizes` | `ordenar_tamanho` / `editar` |
+| `grade_bulk_valores`, `grade_bulk_informacoes` | `valores` ou `outras_informacoes` / `editar` |
+
+Os processos executam transacao e, em MySQL, usam a trava compartilhada `allop_produtos_` + `DB_NAME`, com espera de ate dez segundos. O executor CLI de precos usa a mesma trava. As tabelas e campos do CRUD sao definidos no catalogo/metadados; valores de entrada usam parametros SQL.
+
+#### Regras de Consolidacao e Integracao com Compras
+
+- salvar cabecalho preserva grades e valores individuais existentes e acrescenta novas combinacoes; referencias em `produtos_referencias_prod` sao preservadas;
+- excluir uma familia com produtos publicados remove somente grades ainda nao publicadas;
+- consolidar publica grades com `Consolidado = 'N'` em `produtos`, preserva codigo e GTIN existentes e marca as grades processadas como consolidadas;
+- novas publicacoes geram codigo de oito posicoes a partir do maior codigo atual, com base 115000 quando vazio, e GTIN de quatorze posicoes;
+- codigo alternativo deve apontar para outra referencia consolidada com o mesmo tamanho/cor;
+- a consolidacao PHP nao executa `produtos_000_sp`, procedure com integracoes externas;
+- a consolidacao do pre-cadastro de Compras gera apenas cabecalho/grade pendentes; a publicacao por este modulo permite que as referencias passem a existir em `produtos.Distribuidora`, exigido para gerar compra;
+- fotos de Produtos ficam no banco principal, enquanto as fotos de pedidos de compra usam `db_fotos()`;
+- os tres gatilhos `produtos_fotos_before_insert`, `produtos_fotos_before_update` e `produtos_fotos_before_delete` do dump chamam `sp_atualiza_data_alteracao_produtos_cab` sem prefixo de outro banco.
+
+#### Lotes de Precos e Agendamento
+
+O fluxo considera parametros de atacado e preco cheio. Na aplicacao, captura os precos vigentes para retorno; na restauracao, recusa referencias cujos precos mudaram posteriormente. Os estados sao `0` (nao aplicado), `1` (aguarda retorno) e `9` (finalizado). Aplicacao e retorno atualizam o historico em `produtos_precos_cab_h` e `produtos_precos_itens_h`, mantendo a consulta do lote.
+
+```powershell
+# Apenas consulta lotes vencidos no banco configurado:
+php scripts/processar_precos_produtos.php
+
+# Aplica lotes e retornos vencidos no banco configurado:
+php scripts/processar_precos_produtos.php --execute
+```
+
+A execucao automatica depende de cron ou Agendador de Tarefas configurado no servidor. A presenca do script nao comprova que o agendamento esteja ativo. As datas do modulo usam `America/Sao_Paulo`.
+
 ## 7. Autenticacao, Sessao, Menu e Permissoes
 
 Sessao:
@@ -508,7 +697,11 @@ Formato de resposta das APIs:
 }
 ```
 
-Falhas usam `success: false` e normalmente incluem `message`. Os status HTTP usados incluem 401, 403, 404, 422 e 500. O fluxo `sx.php` tambem pode retornar 419 quando o token proprio do formulario expira ou nao confere.
+Falhas usam `success: false` e normalmente incluem `message`. Os status HTTP usados incluem 401, 403, 404, 405, 409, 422 e 500; em Produtos, 405 indica metodo incorreto e 409 indica conflito de versao. O fluxo `sx.php` tambem pode retornar 419 quando o token proprio do formulario expira ou nao confere.
+
+`api/bootstrap.php` define o Content-Type JSON. `request_data()` decodifica o corpo quando o Content-Type contem `application/json`; nos demais casos retorna POST, se houver, ou GET. Nao mescla automaticamente parametros da URL com o corpo. Cada endpoint resolve `action` separadamente: configuracoes de e-mail usa GET/POST, enquanto `produtos_processos.php` le a acao dos dados retornados por `request_data()`. Conferir o endpoint antes de montar chamadas JSON. Fotos e PDF possuem respostas binarias proprias.
+
+`api_require_login()` verifica somente a existencia de `current_user()` na sessao. A verificacao de permissoes por perfil e de CSRF depende do endpoint; nao e fornecida automaticamente pelo bootstrap.
 
 Menu:
 
@@ -520,6 +713,10 @@ Menu:
 - menus `Principal` e `Sair` sao filtrados em `menu_items()`;
 - o link da logo abre `dashboard.php`;
 - o link `Sair` e fixo no header.
+- rotas iniciadas por `mod/cadastros/produtos/produtos_lista.php?cadastro=` sao agrupadas em um submenu visual `Produtos`, na posicao da primeira rota desse grupo;
+- o layout suporta abertura do submenu por clique e navegacao por teclado;
+- o formulario de aplicacoes (`mod/seguranca/aplicacoes_form.php`) cadastra `nome`, `rota`, `menu_id` e `ordem` pelo CRUD generico; nao ha campo proprio de submenu nessa tela;
+- no modulo de Produtos, as permissoes sao consultadas por perfil e pela rota completa com `cadastro`, e tambem sao verificadas nas APIs. Esse controle nao se estende automaticamente aos endpoints antigos.
 
 IDs de menu previstos pelo seed:
 
@@ -538,7 +735,9 @@ IDs de menu previstos pelo seed:
 
 ### 8.1 Banco Principal
 
-`config/database.php` aponta o sistema para o banco principal de desenvolvimento `allop_devel`. As credenciais existem no arquivo de configuracao, mas nao devem ser copiadas para novas documentacoes, commits ou mensagens.
+Na configuracao local conferida em 03/11/2026, `config/database.php` define `DB_NAME = allop_devel`. O arquivo `config/database copy.php` tambem mantem `allop_devel`, mas nao e carregado pelo fluxo normal da aplicacao. Nao existe seletor automatico de ambiente entre esses arquivos; `seed_produtos.php` permite escolher explicitamente um arquivo de `config/` via `--config`. As credenciais existem nos arquivos de configuracao, mas nao devem ser copiadas para novas documentacoes, commits ou mensagens.
+
+O cabecalho de `banco.sql` identifica a origem como `allop_devel`, com geracao em 21/09/2026 e servidor MySQL 5.7.35-log. O nome no dump nao comprova o schema ou os dados do banco ativo; esta revisao conferiu apenas os arquivos locais.
 
 `banco.sql` contem:
 
@@ -574,9 +773,11 @@ Essas triggers gravam snapshots em tabelas de log usando os dados antigos (`OLD`
 
 As tabelas de historico do pre-cadastro (`pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst`) sao criadas ou alinhadas pelo seed e pela API antes do processo de mover para historico.
 
+O dump inclui `pre_cadastro.consolidado`, `pre_cadastro.compra` e `pre_cadastro_item.compra_nro`, mas nao inclui `compra_nro` em `pre_cadastro_item_pro`. O seed acrescenta essa coluna e tambem a garante no historico da grade; a API so preenche `pre_cadastro_item_pro.compra_nro` quando a coluna existe.
+
 ### 8.2 Banco de Fotos
 
-`config/database.php` aponta o banco de fotos para `allop_devel_fotos`.
+Na configuracao local conferida em 03/11/2026, `config/database.php` define `DB_FOTOS_NAME = allop_kidstok_fotos`. A copia `config/database copy.php` conserva `allop_devel_fotos`, sem uso automatico pela aplicacao. Assim, a configuracao ativa combina o banco principal `allop_devel` com o banco de fotos `allop_kidstok_fotos`; os nomes foram conferidos nos arquivos, sem conexao aos bancos nesta revisao.
 
 `banco_fotos.sql` contem duas tabelas:
 
@@ -596,13 +797,14 @@ As tabelas tem estrutura equivalente para armazenar fotos em Base64, com campos 
 - cria ou atualiza menus canonicos;
 - corrige rotas antigas de e-mail;
 - cadastra aplicacoes existentes;
-- concede todas as permissoes ao Administrador quando a permissao ainda nao existe;
+- concede todas as permissoes ao Administrador quando a permissao ainda nao existe; em permissoes existentes, atualiza somente `visualizar` conforme o cadastro da aplicacao, preservando os demais campos;
 - cria o usuario `admin` apenas se ele ainda nao existir;
 - cria tabelas auxiliares com `CREATE TABLE IF NOT EXISTS`;
 - cria ou ajusta estruturas ligadas a `config_email`, `urls_allop` e compras;
 - garante `pre_cadastro.consolidado`, `pre_cadastro.compra`, `pre_cadastro_item.compra_nro` e `pre_cadastro_item_pro.compra_nro`;
 - cria ou alinha `pre_cadastro_hst`, `pre_cadastro_item_hst` e `pre_cadastro_item_pro_hst` com as tabelas origem;
 - registra a aplicacao `De/Para de Cores` no menu Compras;
+- chama `registrar_aplicacoes_produtos()` de `scripts/seed_produtos.php` para registrar as 28 opcoes de Cadastros > Produtos;
 - recria triggers de log de compras com `DROP TRIGGER IF EXISTS` + `CREATE TRIGGER`;
 - imprime `Seed executado com sucesso.`.
 
@@ -623,6 +825,16 @@ Aplicacoes registradas pelo seed:
 - De/Para de Cores.
 
 O seed e parcialmente idempotente, mas executa DDL e altera dados de menu/permissoes. Deve ser usado com backup e consciencia do ambiente.
+
+Para instalar somente as aplicacoes de Produtos, o seed especifico exige CLI, perfil `Administrador` existente e conferencia do nome do banco:
+
+```powershell
+php scripts/seed_produtos.php --database=allop_devel
+```
+
+O argumento `--database` valida o banco conectado; nao troca a conexao. O padrao esperado e `allop_devel`. `--config` permite informar um arquivo dentro de `config/`. O registro usa transacao, aproveita o menu `Cadastro`/`Cadastros` existente ou cria `Cadastros`, atualiza nome/rota/ordem e preserva permissoes ja existentes. Novas permissoes do Administrador respeitam as capacidades de cada opcao, com imprimir/exportar desabilitados. Outros perfis precisam de liberacao nas telas de seguranca. O seed especifico nao cria as tabelas comerciais.
+
+`scripts/ajustar_triggers_fotos_produtos.php` e uma rotina separada e exclusiva de `allop_devel`. Sem argumentos, consulta os tres gatilhos de fotos e informa os que ainda chamam a procedure de `allop_kidstok`. Com `--execute`, salva as definicoes anteriores em arquivo SQL temporario e substitui essas chamadas por chamadas locais. O dump atual ja contem as chamadas locais; nao executar o ajuste como passo obrigatorio de uma instalacao nova.
 
 ## 10. Padroes Para Novas Implementacoes
 
@@ -679,7 +891,7 @@ Banco:
 
 - confirmar nomes e tipos no schema real antes de programar;
 - usar `db()` para dados principais;
-- usar `db_fotos()` exclusivamente para fotos;
+- usar `db_fotos()` para as fotos de compras em `cp_compras_fotos`/`cp_compras_fotos_ks`; as fotos do cadastro de Produtos ficam em `produtos_fotos` no banco principal e usam `db()`;
 - nao documentar credenciais;
 - evitar DDL em rotinas de aplicacao;
 - atualizar `banco.sql` e `banco_fotos.sql` quando uma mudanca de schema for aprovada;
@@ -708,14 +920,14 @@ Banco:
 
 ## 12. Pontos de Atencao Conhecidos
 
-1. **Permissao incompleta nas APIs:** o menu usa `visualizar` por perfil, mas as APIs nao validam permissoes especificas de inserir, editar, excluir, imprimir, exportar ou processar.
+1. **Permissao incompleta nas APIs antigas:** o menu usa `visualizar` por perfil, mas os endpoints antigos nao validam todas as permissoes por acao. As APIs de Cadastros > Produtos verificam visualizar e permissoes especificas de gravacao/processamento; nao generalizar essa protecao para o restante do sistema.
 2. **Permissoes por usuario sem efeito no menu:** `seg_usuarios_permissoes` existe e possui telas, mas nao participa da montagem do menu.
 3. **Dashboard sem filtro por permissoes:** os indicadores de compras ainda nao variam conforme permissoes do usuario.
 4. **Troca de senha admin publica:** `api/seguranca/admin_senha.php` nao chama `api_require_login()` e o formulario `alterar_senha_admin.php` fica fora do fluxo autenticado.
 5. **Grafias legadas:** `seg_usuarios_permissoes` usa `edtiar` e `imprirmir` no codigo.
-6. **Credenciais no codigo:** `config/database.php` contem constantes versionadas; o recomendado e migrar para variaveis de ambiente.
+6. **Credenciais no codigo:** `config/database.php` e a copia local `config/database copy.php` contem credenciais em constantes; o recomendado e migrar para variaveis de ambiente.
 7. **Erros expostos:** varias APIs retornam `Throwable::getMessage()` diretamente ao cliente.
-8. **CSRF ausente ou parcial:** a maioria dos formularios e acoes mutaveis nao possui token CSRF; `sx.php` e uma excecao parcial porque valida token proprio, mas continua fora da autenticacao principal.
+8. **CSRF ausente ou parcial:** os formularios e acoes antigas nao possuem protecao uniforme. As gravacoes e processos de Cadastros > Produtos exigem POST e token CSRF de sessao. `sx.php` valida token proprio, mas continua fora da autenticacao principal.
 9. **Senha legada aceita:** o login aceita texto puro para compatibilidade.
 10. **DDL no seed:** `seed_aplicacoes.php` cria tabelas auxiliares e recria triggers; isso deve ser executado com backup.
 11. **Transacao entre bancos:** operacoes com fotos podem envolver banco principal e banco de fotos sem atomicidade distribuida real.
@@ -730,6 +942,14 @@ Banco:
 20. **Pre-cadastro sem permissao propria por acao:** `pre_cadastro_produtos.php` exige sessao, mas nao confere permissao especifica de processar/gravar antes de gerar ou inserir o pre-cadastro.
 21. **De/para de cores opcional:** a sugestao automatica de cor KidStok no pre-cadastro depende da existencia e preenchimento de `cp_depara_cor`; a tela `mod/compras/cp_depara_cor_form.php` ajuda a manter esse mapa, mas sem ele a cor precisa ser completada manualmente.
 22. **`sx.php` publico para troca de senha:** a tela externa possui token de formulario, mas nao exige login, perfil, permissao ou segredo adicional antes de listar usuarios e alterar senhas de `seg_usuarios`.
+23. **Historico sem validacao de consolidacao na API:** a listagem so oferece `Historico` para registros consolidados, mas `pc_mover_pre_cadastro_historico()` verifica o ID e a existencia do registro sem exigir `consolidado = 1`.
+24. **Consultas diretas em telas:** a listagem de pre-cadastro, o formulario em lote de de/para e o dashboard consultam o banco no PHP da propria tela. Sao excecoes atuais ao padrao de concentrar acesso a dados em APIs.
+25. **Senha de usuario sem validacao minima no CRUD:** o formulario de usuarios permite senha vazia na inclusao e a API generica nao exige tamanho minimo; na edicao, senha vazia preserva o valor existente.
+26. **Bancos de ambientes diferentes na configuracao ativa:** o principal aponta para `allop_devel` e as fotos de compras para `allop_kidstok_fotos`. Conferir ambos ao preparar ambiente e antes de gravar fotos de pedidos.
+27. **Lotes dependem de agendador externo:** o script de precos nao instala cron/tarefa; sem agendamento, aplicacao e retorno dependem de execucao manual.
+28. **Limites dos testes isolados de Produtos:** a fixture SQLite adapta `FOR UPDATE` e metadados MySQL; nao comprova concorrencia, triggers, procedures ou integracoes reais do MySQL.
+29. **Senha SMTP exposta nas consultas autenticadas:** `configuracoes_email.php` inclui `Senha` nas respostas de `list` e `get`, e nao verifica permissao especifica da aplicacao. O campo password no formulario apenas mascara a exibicao visual.
+30. **Validacao de e-mail concentrada no formulario:** o cadastro de contas nao valida no servidor todos os campos obrigatorios, formato, porta ou modos. A validacao de transporte ocorre somente no envio; gravar a configuracao nao comprova funcionamento do SMTP.
 
 ## 13. Como Recriar o Projeto do Zero
 
@@ -740,10 +960,12 @@ Esta secao descreve o caminho minimo para reconstruir o Allop em um ambiente nov
 Ambiente esperado:
 
 - servidor web com PHP habilitado, como Apache/IIS/Nginx com PHP-FPM;
-- PHP com extensoes `pdo`, `pdo_mysql`, `mbstring`, `openssl`, `json`, `fileinfo` e `gd` quando houver geracao/manipulacao de imagem ou PDF;
+- PHP com extensoes `pdo`, `pdo_mysql`, `dom`, `mbstring`, `openssl`, `json`, `fileinfo` e `gd` quando houver geracao/manipulacao de imagem ou PDF; `dom` e `mbstring` sao requisitos do Dompdf no `composer.lock`;
 - MySQL ou MariaDB compativel com o dump existente;
 - Composer instalado para restaurar dependencias PHP;
 - navegador com acesso aos assets locais do projeto.
+
+`composer.json` nao declara uma versao minima explicita de PHP; conferir a compatibilidade das dependencias de `composer.lock` com o runtime escolhido. Para executar o teste isolado de Produtos, tambem sao necessarios Python 3 e PHP CLI com `pdo_sqlite`.
 
 O projeto pode rodar em subpasta, pois `config/app.php` calcula `BASE_URL` com base em `SCRIPT_NAME`. Mesmo assim, depois de publicar em uma nova pasta, conferir rotas de `api/`, `mod/` e assets.
 
@@ -759,7 +981,7 @@ Para recriar o projeto, manter estes itens:
 - telas raiz `login.php`, `dashboard.php`, `alterar_senha_admin.php` e `sx.php`, quando esses fluxos forem usados no ambiente;
 - bibliotecas locais em `assets/vendor/`.
 
-A pasta `vendor/` pode ser recriada com Composer quando `composer.json` e `composer.lock` estiverem presentes.
+A pasta `vendor/` pode ser recriada com Composer quando `composer.json` e `composer.lock` estiverem presentes. `config/database copy.php` e uma copia local, nao um arquivo necessario a execucao.
 
 ### 13.3 Passo a Passo
 
@@ -769,13 +991,17 @@ A pasta `vendor/` pode ser recriada com Composer quando `composer.json` e `compo
 4. Importar `banco.sql` no banco principal.
 5. Criar o banco de fotos.
 6. Importar `banco_fotos.sql` no banco de fotos.
-7. Ajustar `config/database.php` com host, nome dos bancos, usuarios, senhas e charset do novo ambiente.
+7. Ajustar `config/database.php` com host, nome dos bancos, usuarios, senhas e charset do novo ambiente; alterar apenas `config/database copy.php` nao muda as conexoes utilizadas.
 8. Acessar `index.php` pelo navegador e validar se a tela de login carrega com CSS, JS e imagens.
 9. Executar `scripts/seed_aplicacoes.php` apenas apos backup ou em ambiente novo, para criar/atualizar menus, aplicacoes, permissoes, perfil Administrador e usuario administrador inicial.
 10. Entrar como administrador e trocar a senha inicial imediatamente pela tela `alterar_senha_admin.php` ou por fluxo administrativo equivalente.
 11. Se `sx.php` for publicado no ambiente, restringir seu acesso na camada de infraestrutura ou substituir por fluxo autenticado.
 12. Conferir o menu do perfil Administrador e liberar permissoes dos demais perfis conforme necessario.
 13. Testar dashboard, listagens principais, cadastro de empresas/CD, configuracao de e-mail e fluxo de pedido de compra.
+14. Conferir as 28 aplicacoes no submenu Cadastros > Produtos e as permissoes de cada perfil; se apenas esse modulo precisar ser registrado, usar o seed especifico descrito na secao 9.
+15. Validar cadastros auxiliares, cabecalho/grade, consolidacao e consultas de Produtos em ambiente de teste. Configurar agendador de precos somente quando esse processamento automatico for necessario.
+
+Os dumps sao estruturais e o seed nao popula todo o catalogo comercial e fiscal. Fluxos de compras e pre-cadastro dependem de empresas/CDs, fornecedores, colecoes, categorias, tamanhos, cores e demais dominios cadastrados ou importados. A geracao de compra tambem depende das referencias em `produtos.Distribuidora`.
 
 ### 13.4 Ordem Recomendada de Validacao Inicial
 
@@ -792,7 +1018,11 @@ Depois da instalacao:
 - criar ou editar um pedido em `mod/compras/cp_compras_form.php`;
 - testar upload/visualizacao de fotos usando o banco de fotos;
 - gerar PDF por `api/compras/cp_compras_pdf.php`;
-- testar envio de e-mail apenas com SMTP configurado.
+- testar envio de e-mail apenas com SMTP configurado e conta ativa/habilitada para o mesmo CD e empresa do pedido;
+- abrir `mod/cadastros/produtos/produtos_lista.php?cadastro=produtos` e conferir submenu, filtros e paginacao;
+- validar parametros e dominios antes de gerar grade e consolidar produtos;
+- conferir upload de fotos em `produtos_fotos` no banco principal e as permissoes por acao;
+- validar aplicacao/retorno de lotes com dados de teste, incluindo conflito de precos.
 
 ### 13.5 Pontos que Nao Devem Ser Inferidos
 
@@ -823,9 +1053,36 @@ Checklist:
 - validar regras no frontend e na API;
 - conferir perfil Administrador e menu apos mudancas no seed;
 - testar rollback de operacoes compostas;
+- em pre-cadastro, conferir consolidacao, existencia das referencias em `produtos.Distribuidora`, geracao de compra e movimentacao para historico;
 - conferir banco principal e banco de fotos quando houver fotos;
 - revisar console do navegador e log do PHP;
 - nao sobrescrever mudancas fora do escopo.
+
+Para alteracoes no modulo de Produtos, ha um teste HTTP existente:
+
+Em 12/11/2026, antes do commit, `python tests/produtos_http_test.py` passou com 216 verificacoes HTTP em fixture SQLite; a sintaxe dos arquivos PHP e JavaScript envolvidos tambem foi validada. As demais contagens e capturas mencionadas nesta secao sao registros de execucoes anteriores; os testes de navegador nao foram refeitos nessa data. As suites cobrem Produtos; nao ha suite especifica de configuracoes de e-mail ou SMTP em `tests/`.
+
+```powershell
+python tests/produtos_http_test.py
+```
+
+Ele cria copia temporaria dos arquivos necessarios, substitui a conexao por fixture SQLite e sobe servidor PHP local, sem conectar aos bancos configurados do projeto. Cobre listagens, geracao de grade, consolidacao e preservacao de codigos, edicoes em lote, rollback, lotes e retorno de precos, importacao, fotos, ordenacao, permissoes e CSRF. Inclui os quatro grids de associacao e a API em lote, conflito de versao, permissoes por aplicacao, preservacao de dados existentes, zeros iniciais dos tamanhos, itens inativos e protecao contra exclusao de vinculos em uso, inclusive com cascata. Requer Python 3 e PHP CLI com `pdo_sqlite`; nao substitui validacao das particularidades MySQL. A execucao historica de 30/10/2026 esta descrita em `docs/conversao_produtos.md`; o teste foi executado novamente em 03/11/2026 com 168 verificacoes para validar as quatro associacoes.
+
+O teste opcional de interface de Valores usa Chrome local no Windows e Node.js com `WebSocket` global. Ele recebe exclusivamente o diretorio de uma fixture SQLite gerada pelo teste HTTP (o caminho e impresso ao final), copia os assets e inicia PHP/Chrome temporarios, encerrados no final:
+
+```powershell
+node tests/produtos_valores_browser_test.mjs CAMINHO_DA_FIXTURE
+```
+
+O script recusa configuracoes sem os marcadores da fixture. Valida previa sem gravacao, salvamento, recarga, calculo de atacado, arredondamento, aviso ao cancelar e rolagem mobile. Salva `valores-desktop.png` e `valores-mobile.png` na fixture.
+
+Para o cadastro de Produtos com accordion e cinco abas:
+
+```powershell
+node tests/produtos_accordion_browser_test.mjs CAMINHO_DA_FIXTURE
+```
+
+Esse teste tambem recusa configuracoes fora da fixture e valida Select2, abas, edicao e salvamento de tributos, grade existente, fotos, historico, descarte de alteracoes, navegacao por teclado, criacao e reabertura de produto, geracao de grade e upload de foto com edicao pendente. Salva `produtos-desktop.png` e `produtos-mobile.png`; as capturas foram inspecionadas em 04/11/2026. A suite HTTP teve 215 verificacoes nessa data, incluindo historico paginado/isolado por produto, permissoes e conflito de versao do cabecalho. Os testes de interface sao separados dessa contagem.
 
 ## 15. Regra de Manutencao Deste Documento
 

@@ -4431,7 +4431,7 @@ CREATE TABLE IF NOT EXISTS `produtos_fotos` (
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
 /*!50003 CREATE*/ /*!50017 DEFINER=`allopdevel`@`%`*/ /*!50003 TRIGGER `produtos_fotos_before_insert` BEFORE INSERT ON `produtos_fotos` FOR EACH ROW BEGIN
-	CALL allop_kidstok.sp_atualiza_data_alteracao_produtos_cab(NEW.Referencia);
+	CALL sp_atualiza_data_alteracao_produtos_cab(NEW.Referencia);
 END */;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -4448,7 +4448,7 @@ DELIMITER ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
 /*!50003 CREATE*/ /*!50017 DEFINER=`allopdevel`@`%`*/ /*!50003 TRIGGER `produtos_fotos_before_update` BEFORE UPDATE ON `produtos_fotos` FOR EACH ROW BEGIN
-	CALL allop_kidstok.sp_atualiza_data_alteracao_produtos_cab(NEW.Referencia);
+	CALL sp_atualiza_data_alteracao_produtos_cab(NEW.Referencia);
 END */;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
@@ -4465,7 +4465,7 @@ DELIMITER ;
 /*!50003 SET sql_mode              = 'NO_AUTO_VALUE_ON_ZERO' */ ;
 DELIMITER ;;
 /*!50003 CREATE*/ /*!50017 DEFINER=`allopdevel`@`%`*/ /*!50003 TRIGGER `produtos_fotos_before_delete` BEFORE DELETE ON `produtos_fotos` FOR EACH ROW BEGIN
-	CALL allop_kidstok.sp_atualiza_data_alteracao_produtos_cab(OLD.Referencia);
+	CALL sp_atualiza_data_alteracao_produtos_cab(OLD.Referencia);
 END */;;
 DELIMITER ;
 /*!50003 SET sql_mode              = @saved_sql_mode */ ;
